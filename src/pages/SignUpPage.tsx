@@ -12,6 +12,7 @@ type SignUpForm = {
   username: string;
   email: string;
   password: string;
+  confirmPassword: string;
 };
 
 export const SignUpPage = () => {
@@ -20,12 +21,19 @@ export const SignUpPage = () => {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<SignUpForm>();
 
+  const passwordValue = watch('password');
+
   const onSubmit = handleSubmit(async (values) => {
     try {
-      await apiService.signup(values);
+      await apiService.signup({
+        username: values.username,
+        email: values.email,
+        password: values.password,
+      });
       pushToast('Регистрация успешна. Теперь можно войти.', 'success');
       navigate('/signin');
     } catch (error) {
@@ -62,6 +70,7 @@ export const SignUpPage = () => {
           <TextInput
             label="Пароль"
             error={errors.password?.message}
+            withPasswordToggle
             inputProps={{
               placeholder: '********',
               type: 'password',
@@ -69,6 +78,21 @@ export const SignUpPage = () => {
               ...register('password', {
                 required: 'Введите пароль',
                 minLength: { value: 6, message: 'Минимум 6 символов' },
+              }),
+            }}
+          />
+
+          <TextInput
+            label="Повторите пароль"
+            error={errors.confirmPassword?.message}
+            withPasswordToggle
+            inputProps={{
+              placeholder: '********',
+              type: 'password',
+              autoComplete: 'new-password',
+              ...register('confirmPassword', {
+                required: 'Повторите пароль',
+                validate: (value) => value === passwordValue || 'Пароли не совпадают',
               }),
             }}
           />

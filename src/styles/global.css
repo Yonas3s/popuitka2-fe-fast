@@ -120,6 +120,54 @@ a {
   display: flex;
   align-items: center;
   gap: 18px;
+  min-width: 0;
+}
+
+.account-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(126, 166, 255, 0.32);
+  background: rgba(10, 18, 32, 0.74);
+  min-width: 0;
+}
+
+.account-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(120deg, var(--accent), var(--accent-3));
+  box-shadow: 0 0 12px rgba(73, 224, 201, 0.5);
+  flex-shrink: 0;
+}
+
+.account-meta {
+  display: grid;
+  min-width: 0;
+}
+
+.account-meta strong {
+  font-size: 12px;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+}
+
+.account-meta span {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 240px;
+}
+
+.account-provider {
+  color: #93aef0;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .ghost-link {
@@ -389,6 +437,11 @@ p {
   gap: 8px;
 }
 
+.input-wrap {
+  position: relative;
+  display: grid;
+}
+
 .field-label {
   color: var(--muted);
   font-size: 13px;
@@ -412,10 +465,74 @@ p {
   transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
 }
 
+.input-with-toggle {
+  padding-right: 42px;
+}
+
 .input:focus {
   border-color: rgba(73, 224, 201, 0.7);
   box-shadow: 0 0 0 3px rgba(73, 224, 201, 0.16);
   background: rgba(8, 16, 30, 0.9);
+}
+
+.input:disabled,
+.input[readonly] {
+  background: rgba(8, 16, 30, 0.58);
+  color: #d3dff6;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  padding: 4px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #a9bdea;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 180ms ease, background 180ms ease;
+}
+
+.password-toggle:hover {
+  color: #ebf3ff;
+  background: rgba(126, 166, 255, 0.13);
+}
+
+.password-eye-icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.otp-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.otp-cell {
+  border: 1px solid rgba(126, 166, 255, 0.26);
+  background: rgba(6, 12, 24, 0.72);
+  color: var(--ink);
+  border-radius: 12px;
+  height: 48px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  outline: none;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.otp-cell:focus {
+  border-color: rgba(73, 224, 201, 0.7);
+  box-shadow: 0 0 0 3px rgba(73, 224, 201, 0.16);
 }
 
 .cards-grid {
@@ -453,6 +570,46 @@ p {
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+}
+
+.account-overview {
+  display: grid;
+  gap: 16px;
+}
+
+.account-overview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.account-provider-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(126, 166, 255, 0.32);
+  padding: 6px 11px;
+  color: #aac2ff;
+  background: rgba(11, 18, 33, 0.66);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.account-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.account-stat-card {
+  border: 1px solid rgba(126, 166, 255, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(6, 12, 24, 0.5);
+  display: grid;
+  gap: 6px;
 }
 
 .status-row {
@@ -902,6 +1059,10 @@ p {
   .landing-stats {
     grid-template-columns: 1fr;
   }
+
+  .account-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 900px) {
@@ -911,6 +1072,38 @@ p {
 
   .topbar {
     flex-wrap: wrap;
+  }
+
+  .topnav {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .account-pill {
+    width: 100%;
+  }
+
+  .account-meta span {
+    max-width: none;
+  }
+
+  .otp-grid {
+    gap: 8px;
+  }
+
+  .otp-cell {
+    height: 44px;
+    font-size: 20px;
+  }
+
+  .account-overview-header {
+    flex-direction: column;
+  }
+
+  .account-stats-grid {
+    grid-template-columns: 1fr;
   }
 
   .page-title,

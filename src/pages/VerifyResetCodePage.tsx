@@ -1,75 +1,99 @@
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PageShell } from '../components/layout/PageShell';
 import { GlassPanel } from '../components/ui/GlassPanel';
 import { GradientButton } from '../components/ui/GradientButton';
+import { OtpCodeInput } from '../components/ui/OtpCodeInput';
 import { TextInput } from '../components/ui/TextInput';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { useUiStore } from '../store/ui.store';
+import { useResetFlowStore } from '../store/reset-flow.store';
 
-type VerifyForm = {
-  email: string;
-  code: string;
-};
+const CODE_LENGTH = 6;
 
 export const VerifyResetCodePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const pushToast = useUiStore((state) => state.pushToast);
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors, isSubmitting },
-  } = useForm<VerifyForm>();
+  const email = useResetFlowStore((state) => state.email);
+  const setEmail = useResetFlowStore((state) => state.setEmail);
+  const setCode = useResetFlowStore((state) => state.setCode);
+  const [code, setCodeValue] = useState('');
+  const [codeError, setCodeError] = useState('');
+  const [isSubmitting, setSubmitting] = useState(false);
+  const emailFromQuery = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('email')?.trim() || '';
+  }, [location.search]);
+  const effectiveEmail = email || emailFromQuery;
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const email = params.get('email');
-    if (email) {
-      setValue('email', email);
+    if (!email && emailFromQuery) {
+      setEmail(emailFromQuery);
     }
-  }, [location.search, setValue]);
+  }, [email, emailFromQuery, setEmail]);
 
-  const onSubmit = handleSubmit(async (values) => {
+  useEffect(() => {
+    if (!effectiveEmail) {
+      pushToast('Сначала укажите email для восстановления', 'info');
+      navigate('/forgot-password', { replace: true });
+    }
+  }, [effectiveEmail, navigate, pushToast]);
+
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!effectiveEmail) {
+      return;
+    }
+
+    const normalizedCode = code.replace(/\D/g, '').slice(0, CODE_LENGTH);
+    if (normalizedCode.length < CODE_LENGTH) {
+      setCodeError(`Введите код из ${CODE_LENGTH} цифр`);
+      return;
+    }
+
+    setSubmitting(true);
     try {
-      await apiService.verifyResetCode(values);
+      await apiService.verifyResetCode({ email: effectiveEmail, code: normalizedCode });
+      setCode(normalizedCode);
       pushToast('Код подтвержден', 'success');
-      const query = `email=${encodeURIComponent(values.email)}&code=${encodeURIComponent(values.code)}`;
-      navigate(`/reset-password?${query}`);
+      navigate('/reset-password');
     } catch (error) {
       const normalized = normalizeApiError(error);
       pushToast(normalized.message, 'error');
+    } finally {
+      setSubmitting(false);
     }
-  });
+  };
 
   return (
-    <PageShell title="Подтвердите код" subtitle="Введите email и код из письма.">
+    <PageShell title="Подтвердите код" subtitle="Проверьте почту и введите код из 6 цифр.">
       <GlassPanel className="auth-panel">
         <form className="form-grid" onSubmit={onSubmit}>
           <TextInput
             label="Email"
-            error={errors.email?.message}
+            error={undefined}
             inputProps={{
               type: 'email',
-              placeholder: 'mail@example.com',
-              ...register('email', { required: 'Введите email' }),
+              value: effectiveEmail,
+              readOnly: true,
+              disabled: true,
             }}
           />
 
-          <TextInput
-            label="Код"
-            error={errors.code?.message}
-            inputProps={{
-              placeholder: '123456',
-              ...register('code', {
-                required: 'Введите код',
-                minLength: { value: 4, message: 'Слишком короткий код' },
-              }),
+          <OtpCodeInput
+            label="Код подтверждения"
+            value={code}
+            onChange={(nextCode) => {
+              setCodeValue(nextCode);
+              if (codeError) {
+                setCodeError('');
+              }
             }}
+            error={codeError}
+            length={CODE_LENGTH}
           />
 
           <GradientButton type="submit" disabled={isSubmitting}>

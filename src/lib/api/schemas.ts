@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Project, PublicSharePayload, Stage, Task } from '../../types/models';
+import type { AuthProfile, Project, PublicSharePayload, Stage, Task } from '../../types/models';
 
 const recordSchema = z.record(z.unknown());
 
@@ -40,6 +40,21 @@ const taskSchema = z
     done: z.boolean().optional(),
     is_done: z.boolean().optional(),
     completed: z.boolean().optional(),
+  })
+  .passthrough();
+
+const meSchema = z
+  .object({
+    _id: z.string().optional(),
+    id: z.string().optional(),
+    username: z.string().optional(),
+    name: z.string().optional(),
+    email: z.string().optional(),
+    auth_provider: z.string().optional(),
+    authProvider: z.string().optional(),
+    provider: z.string().optional(),
+    created_at: z.string().optional(),
+    createdAt: z.string().optional(),
   })
   .passthrough();
 
@@ -150,6 +165,37 @@ export const normalizeTask = (value: unknown, index = 0): Task => {
   };
 };
 
+export const normalizeAuthProfile = (value: unknown): AuthProfile => {
+  const parsed = meSchema.safeParse(value);
+  const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
+
+  const username =
+    (typeof record.username === 'string' && record.username) ||
+    (typeof record.name === 'string' && record.name) ||
+    'User';
+
+  const email = typeof record.email === 'string' ? record.email : '';
+  const authProvider =
+    (typeof record.auth_provider === 'string' && record.auth_provider) ||
+    (typeof record.authProvider === 'string' && record.authProvider) ||
+    (typeof record.provider === 'string' && record.provider) ||
+    'local';
+
+  const createdAt =
+    (typeof record.created_at === 'string' && record.created_at) ||
+    (typeof record.createdAt === 'string' && record.createdAt) ||
+    undefined;
+
+  return {
+    id: normalizeId(record, 'me'),
+    username,
+    email,
+    authProvider,
+    createdAt,
+    raw: record,
+  };
+};
+
 const normalizeCollection = <T>(
   value: unknown,
   keys: string[],
@@ -239,6 +285,12 @@ export const extractToken = (value: unknown): string => {
   }
 
   return '';
+};
+
+export const extractAuthProfile = (value: unknown): AuthProfile => {
+  const asObj = asRecord(value);
+  const nested = pickRecordFromPossibleKeys(asObj, ['user', 'data', 'profile']);
+  return normalizeAuthProfile(nested ?? asObj);
 };
 
 export const extractPublicShare = (value: unknown, shareToken: string): PublicSharePayload => {

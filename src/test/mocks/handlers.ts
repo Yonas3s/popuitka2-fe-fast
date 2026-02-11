@@ -52,6 +52,20 @@ export const handlers = [
     return HttpResponse.json({ token: 'jwt-token' });
   }),
 
+  http.get(/.*\/me$/, async ({ request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    return HttpResponse.json({
+      username: 'yokio4242',
+      id: '698b1202cb65b668e76f6c88',
+      email: 'gud.pro2018@yandex.ru',
+      auth_provider: 'local',
+      created_at: '2026-02-10T11:09:54.132Z',
+    });
+  }),
+
   http.post(/.*\/forgot-password$/, async () => HttpResponse.json({ ok: true })),
 
   http.post(/.*\/verify-reset-code$/, async ({ request }) => {

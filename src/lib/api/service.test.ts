@@ -21,6 +21,9 @@ describe('api service flow', () => {
 
     useAuthStore.getState().setToken(token);
 
+    const me = await apiService.getMe();
+    expect(me.email).toContain('@');
+
     const beforeProjects = await apiService.getProjects();
     expect(beforeProjects.length).toBeGreaterThan(0);
 

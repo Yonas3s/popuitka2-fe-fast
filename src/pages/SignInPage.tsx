@@ -70,6 +70,7 @@ export const SignInPage = () => {
           <TextInput
             label="Пароль"
             error={errors.password?.message}
+            withPasswordToggle
             inputProps={{
               placeholder: '********',
               type: 'password',

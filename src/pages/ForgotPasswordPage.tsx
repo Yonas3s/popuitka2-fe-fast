@@ -7,6 +7,7 @@ import { TextInput } from '../components/ui/TextInput';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { useUiStore } from '../store/ui.store';
+import { useResetFlowStore } from '../store/reset-flow.store';
 
 type ForgotForm = {
   email: string;
@@ -15,6 +16,8 @@ type ForgotForm = {
 export const ForgotPasswordPage = () => {
   const navigate = useNavigate();
   const pushToast = useUiStore((state) => state.pushToast);
+  const setEmail = useResetFlowStore((state) => state.setEmail);
+  const clearFlow = useResetFlowStore((state) => state.clearFlow);
 
   const {
     register,
@@ -25,8 +28,10 @@ export const ForgotPasswordPage = () => {
   const onSubmit = handleSubmit(async (values) => {
     try {
       await apiService.forgotPassword(values);
+      clearFlow();
+      setEmail(values.email);
       pushToast('Код отправлен на email', 'success');
-      navigate(`/verify-reset-code?email=${encodeURIComponent(values.email)}`);
+      navigate('/verify-reset-code');
     } catch (error) {
       const normalized = normalizeApiError(error);
       pushToast(normalized.message, 'error');

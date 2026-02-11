@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { PageShell } from '../components/layout/PageShell';
@@ -9,12 +9,14 @@ import { EmptyState } from '../components/feedback/EmptyState';
 import { ErrorState } from '../components/feedback/ErrorState';
 import { useProjectsStore } from '../store/projects.store';
 import { useUiStore } from '../store/ui.store';
+import { useAuthStore } from '../store/auth.store';
 
 type ProjectForm = {
   project_name: string;
 };
 
 export const ProjectsPage = () => {
+  const user = useAuthStore((state) => state.user);
   const projects = useProjectsStore((state) => state.projects);
   const loading = useProjectsStore((state) => state.loading);
   const error = useProjectsStore((state) => state.error);
@@ -43,8 +45,67 @@ export const ProjectsPage = () => {
     }
   });
 
+  const createdDate = useMemo(() => {
+    if (!user?.createdAt) {
+      return '—';
+    }
+    const date = new Date(user.createdAt);
+    if (Number.isNaN(date.getTime())) {
+      return '—';
+    }
+    return date.toLocaleDateString('ru-RU');
+  }, [user?.createdAt]);
+
+  const daysInProduct = useMemo(() => {
+    if (!user?.createdAt) {
+      return null;
+    }
+    const date = new Date(user.createdAt);
+    if (Number.isNaN(date.getTime())) {
+      return null;
+    }
+    const diffMs = Date.now() - date.getTime();
+    return Math.max(1, Math.floor(diffMs / (24 * 60 * 60 * 1000)));
+  }, [user?.createdAt]);
+
+  const providerLabel = user?.authProvider?.toLowerCase() === 'github' ? 'GitHub' : 'Local';
+  const compactId = user?.id ? `${user.id.slice(0, 6)}...${user.id.slice(-4)}` : '—';
+
   return (
     <PageShell title="Проекты" subtitle="Создавайте проекты и переходите к управлению стадиями.">
+      <GlassPanel className="account-overview">
+        <div className="account-overview-header">
+          <div>
+            <h2>Профиль</h2>
+            <p className="muted">Сейчас используется аккаунт {user?.email || '—'}.</p>
+          </div>
+          <span className="account-provider-tag">{providerLabel}</span>
+        </div>
+
+        <div className="account-stats-grid">
+          <article className="account-stat-card">
+            <p className="stat-label">Username</p>
+            <p className="stat-value">@{user?.username || 'account'}</p>
+          </article>
+          <article className="account-stat-card">
+            <p className="stat-label">Аккаунт создан</p>
+            <p className="stat-value">{createdDate}</p>
+          </article>
+          <article className="account-stat-card">
+            <p className="stat-label">Дней в системе</p>
+            <p className="stat-value">{daysInProduct ?? '—'}</p>
+          </article>
+          <article className="account-stat-card">
+            <p className="stat-label">Ваших проектов</p>
+            <p className="stat-value">{projects.length}</p>
+          </article>
+          <article className="account-stat-card">
+            <p className="stat-label">User ID</p>
+            <p className="stat-value mono">{compactId}</p>
+          </article>
+        </div>
+      </GlassPanel>
+
       <div className="content-grid">
         <GlassPanel>
           <h2>Новый проект</h2>

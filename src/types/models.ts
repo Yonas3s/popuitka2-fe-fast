@@ -8,6 +8,15 @@ export type AuthTokenResponse = {
   token: string;
 };
 
+export type AuthProfile = {
+  id: string;
+  username: string;
+  email: string;
+  authProvider: string;
+  createdAt?: string;
+  raw: Record<string, unknown>;
+};
+
 export type Project = {
   id: string;
   projectName: string;

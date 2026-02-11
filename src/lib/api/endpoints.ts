@@ -1,5 +1,6 @@
 export const endpoints = {
   health: () => '/health',
+  me: () => '/me',
   signup: () => '/signup',
   signin: () => '/signin',
   forgotPassword: () => '/forgot-password',
