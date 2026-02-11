@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AuthProfile, Project, PublicSharePayload, Stage, Task } from '../../types/models';
+import type { AdminStat, AuthProfile, Project, PublicSharePayload, Stage, Task } from '../../types/models';
 
 const recordSchema = z.record(z.unknown());
 
@@ -55,6 +55,24 @@ const meSchema = z
     provider: z.string().optional(),
     created_at: z.string().optional(),
     createdAt: z.string().optional(),
+  })
+  .passthrough();
+
+const adminStatSchema = z
+  .object({
+    users: z.number().optional(),
+    dev_users: z.number().optional(),
+    admin_users: z.number().optional(),
+    local_users: z.number().optional(),
+    gh_users: z.number().optional(),
+    projects: z.number().optional(),
+    active_projects: z.number().optional(),
+    completed_projects: z.number().optional(),
+    stages: z.number().optional(),
+    waiting_stages: z.number().optional(),
+    active_stages: z.number().optional(),
+    review_stages: z.number().optional(),
+    completed_stages: z.number().optional(),
   })
   .passthrough();
 
@@ -196,6 +214,33 @@ export const normalizeAuthProfile = (value: unknown): AuthProfile => {
   };
 };
 
+const getNumber = (record: Record<string, unknown>, key: string): number => {
+  const value = record[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+};
+
+export const normalizeAdminStat = (value: unknown): AdminStat => {
+  const parsed = adminStatSchema.safeParse(value);
+  const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
+
+  return {
+    users: getNumber(record, 'users'),
+    devUsers: getNumber(record, 'dev_users'),
+    adminUsers: getNumber(record, 'admin_users'),
+    localUsers: getNumber(record, 'local_users'),
+    ghUsers: getNumber(record, 'gh_users'),
+    projects: getNumber(record, 'projects'),
+    activeProjects: getNumber(record, 'active_projects'),
+    completedProjects: getNumber(record, 'completed_projects'),
+    stages: getNumber(record, 'stages'),
+    waitingStages: getNumber(record, 'waiting_stages'),
+    activeStages: getNumber(record, 'active_stages'),
+    reviewStages: getNumber(record, 'review_stages'),
+    completedStages: getNumber(record, 'completed_stages'),
+    raw: record,
+  };
+};
+
 const normalizeCollection = <T>(
   value: unknown,
   keys: string[],
@@ -291,6 +336,12 @@ export const extractAuthProfile = (value: unknown): AuthProfile => {
   const asObj = asRecord(value);
   const nested = pickRecordFromPossibleKeys(asObj, ['user', 'data', 'profile']);
   return normalizeAuthProfile(nested ?? asObj);
+};
+
+export const extractAdminStat = (value: unknown): AdminStat => {
+  const asObj = asRecord(value);
+  const nested = pickRecordFromPossibleKeys(asObj, ['stats', 'data', 'stat']);
+  return normalizeAdminStat(nested ?? asObj);
 };
 
 export const extractPublicShare = (value: unknown, shareToken: string): PublicSharePayload => {

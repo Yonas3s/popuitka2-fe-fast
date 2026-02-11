@@ -17,6 +17,23 @@ export type AuthProfile = {
   raw: Record<string, unknown>;
 };
 
+export type AdminStat = {
+  users: number;
+  devUsers: number;
+  adminUsers: number;
+  localUsers: number;
+  ghUsers: number;
+  projects: number;
+  activeProjects: number;
+  completedProjects: number;
+  stages: number;
+  waitingStages: number;
+  activeStages: number;
+  reviewStages: number;
+  completedStages: number;
+  raw: Record<string, unknown>;
+};
+
 export type Project = {
   id: string;
   projectName: string;

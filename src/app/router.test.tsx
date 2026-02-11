@@ -37,6 +37,13 @@ describe('router smoke', () => {
     expect(await screen.findByRole('heading', { name: 'Проекты' })).toBeInTheDocument();
   });
 
+  it('renders private admin route for authenticated user', async () => {
+    useAuthStore.setState({ token: 'jwt-token', isAuthenticated: true });
+    renderRoute('/admin');
+
+    expect(await screen.findByRole('heading', { name: 'Админ-панель' })).toBeInTheDocument();
+  });
+
   it('renders not found page', async () => {
     renderRoute('/unknown-route');
 

@@ -11,6 +11,7 @@ import { ProjectDetailsPage } from '../pages/ProjectDetailsPage';
 import { StageDetailsPage } from '../pages/StageDetailsPage';
 import { PublicClientPage } from '../pages/PublicClientPage';
 import { AuthCallbackPage } from '../pages/AuthCallbackPage';
+import { AdminPage } from '../pages/AdminPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
 export const AppRoutes = () => {
@@ -29,6 +30,7 @@ export const AppRoutes = () => {
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
       <Route element={<RequireAuth />}>
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
         <Route path="/projects/:projectId/stages/:stageId" element={<StageDetailsPage />} />

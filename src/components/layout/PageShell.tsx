@@ -79,6 +79,9 @@ export const PageShell = ({ children, title, subtitle }: PageShellProps) => {
                 <Link to="/projects" className="ghost-link">
                   Проекты
                 </Link>
+                <Link to="/admin" className="ghost-link">
+                  Админка
+                </Link>
                 <button
                   className="ghost-link"
                   type="button"

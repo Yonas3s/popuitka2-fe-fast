@@ -23,6 +23,8 @@ describe('api service flow', () => {
 
     const me = await apiService.getMe();
     expect(me.email).toContain('@');
+    const stat = await apiService.getAdminStat();
+    expect(stat.projects).toBeGreaterThanOrEqual(0);
 
     const beforeProjects = await apiService.getProjects();
     expect(beforeProjects.length).toBeGreaterThan(0);

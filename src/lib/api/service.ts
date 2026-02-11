@@ -7,11 +7,12 @@ import {
   extractShareLink,
   extractStage,
   extractStages,
+  extractAdminStat,
   extractAuthProfile,
   extractTasks,
   extractToken,
 } from './schemas';
-import type { AuthProfile, Project, PublicSharePayload, ShareLinkResponse, Stage, Task } from '../../types/models';
+import type { AdminStat, AuthProfile, Project, PublicSharePayload, ShareLinkResponse, Stage, Task } from '../../types/models';
 
 export type SignUpPayload = {
   username: string;
@@ -70,6 +71,11 @@ export const apiService = {
   async getMe(): Promise<AuthProfile> {
     const response = await apiClient.get(endpoints.me());
     return extractAuthProfile(response.data);
+  },
+
+  async getAdminStat(): Promise<AdminStat> {
+    const response = await apiClient.get(endpoints.stat());
+    return extractAdminStat(response.data);
   },
 
   async signup(payload: SignUpPayload): Promise<void> {

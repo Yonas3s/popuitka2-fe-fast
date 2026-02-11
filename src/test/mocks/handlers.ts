@@ -66,6 +66,28 @@ export const handlers = [
     });
   }),
 
+  http.get(/.*\/stat$/, async ({ request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    return HttpResponse.json({
+      users: 2,
+      dev_users: 0,
+      admin_users: 2,
+      local_users: 1,
+      gh_users: 1,
+      projects: 3,
+      active_projects: 3,
+      completed_projects: 0,
+      stages: 5,
+      waiting_stages: 0,
+      active_stages: 2,
+      review_stages: 0,
+      completed_stages: 3,
+    });
+  }),
+
   http.post(/.*\/forgot-password$/, async () => HttpResponse.json({ ok: true })),
 
   http.post(/.*\/verify-reset-code$/, async ({ request }) => {
