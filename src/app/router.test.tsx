@@ -19,7 +19,7 @@ describe('router smoke', () => {
   it('renders landing page', async () => {
     renderRoute('/');
 
-    expect(await screen.findByText(/popuitka2 — фронт/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Попутка v2' })).toBeInTheDocument();
   });
 
   it('redirects unauthorized user from private route to signin', async () => {
