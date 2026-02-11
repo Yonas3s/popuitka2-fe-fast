@@ -14,6 +14,8 @@ const renderRoute = (path: string) => {
 describe('router smoke', () => {
   beforeEach(() => {
     useAuthStore.setState({ token: null, isAuthenticated: false });
+    sessionStorage.clear();
+    window.history.replaceState({}, '', '/');
   });
 
   it('renders landing page', async () => {
@@ -39,5 +41,21 @@ describe('router smoke', () => {
     renderRoute('/unknown-route');
 
     expect(await screen.findByText('404')).toBeInTheDocument();
+  });
+
+  it('completes oauth callback and redirects to projects', async () => {
+    window.history.replaceState({}, '', '/auth/callback?token=oauth-jwt');
+    renderRoute('/auth/callback');
+
+    expect(await screen.findByRole('heading', { name: 'Проекты' })).toBeInTheDocument();
+    expect(localStorage.getItem('token')).toBe('oauth-jwt');
+    expect(useAuthStore.getState().token).toBe('oauth-jwt');
+  });
+
+  it('redirects to signin when oauth callback has no token', async () => {
+    window.history.replaceState({}, '', '/auth/callback');
+    renderRoute('/auth/callback');
+
+    expect(await screen.findByRole('heading', { name: 'Вход' })).toBeInTheDocument();
   });
 });

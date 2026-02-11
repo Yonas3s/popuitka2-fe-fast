@@ -10,6 +10,7 @@ import { ProjectsPage } from '../pages/ProjectsPage';
 import { ProjectDetailsPage } from '../pages/ProjectDetailsPage';
 import { StageDetailsPage } from '../pages/StageDetailsPage';
 import { PublicClientPage } from '../pages/PublicClientPage';
+import { AuthCallbackPage } from '../pages/AuthCallbackPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
 export const AppRoutes = () => {
@@ -24,6 +25,8 @@ export const AppRoutes = () => {
         <Route path="/verify-reset-code" element={<VerifyResetCodePage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Route>
+
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
       <Route element={<RequireAuth />}>
         <Route path="/projects" element={<ProjectsPage />} />

@@ -211,6 +211,56 @@ p {
   max-width: 620px;
 }
 
+.github-oauth {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(126, 166, 255, 0.3);
+  background: linear-gradient(180deg, rgba(21, 34, 58, 0.86), rgba(8, 14, 28, 0.9));
+  color: #f2f7ff;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.github-oauth:hover {
+  transform: translateY(-1px);
+  border-color: rgba(73, 224, 201, 0.5);
+  box-shadow: 0 14px 28px rgba(2, 10, 24, 0.42);
+}
+
+.github-oauth-icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.oauth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0 2px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.oauth-divider::before,
+.oauth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(126, 166, 255, 0.45), transparent);
+}
+
 .chips {
   display: flex;
   flex-wrap: wrap;
