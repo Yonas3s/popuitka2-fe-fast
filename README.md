@@ -19,7 +19,7 @@ npm install
 npm run dev
 ```
 
-## ENV +
+## ENV
 
 Скопируйте `.env.example` в `.env` и при необходимости измените:
 
