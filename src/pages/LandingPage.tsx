@@ -32,7 +32,7 @@ export const LandingPage = () => {
 
   return (
     <PageShell
-      title="Попутка v2"
+      title="Popuitkav2"
       subtitle="Project delivery workspace: задачи, стадии, апрув клиента и прозрачный прогресс в одном интерфейсе."
     >
       <span className="badge">
