@@ -1,5 +1,14 @@
 import { z } from 'zod';
-import type { AdminStat, AuthProfile, Project, PublicSharePayload, Stage, Task } from '../../types/models';
+import type {
+  AdminStat,
+  AuthProfile,
+  Project,
+  PublicSharePayload,
+  Stage,
+  Task,
+  Team,
+  TeamInvitePreview,
+} from '../../types/models';
 
 const recordSchema = z.record(z.unknown());
 
@@ -73,6 +82,44 @@ const adminStatSchema = z
     active_stages: z.number().optional(),
     review_stages: z.number().optional(),
     completed_stages: z.number().optional(),
+  })
+  .passthrough();
+
+const teamSchema = z
+  .object({
+    _id: z.string().optional(),
+    id: z.string().optional(),
+    name: z.string().optional(),
+    team_name: z.string().optional(),
+    role: z.string().optional(),
+  })
+  .passthrough();
+
+const teamInvitePreviewSchema = z
+  .object({
+    team_name: z.string().optional(),
+    teamName: z.string().optional(),
+    team: z
+      .object({
+        name: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+    inviter_name: z.string().optional(),
+    inviterName: z.string().optional(),
+    inviter: z
+      .object({
+        username: z.string().optional(),
+        name: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+    email: z.string().optional(),
+    expires_at: z.string().optional(),
+    expiresAt: z.string().optional(),
+    accepted_at: z.string().optional(),
+    acceptedAt: z.string().optional(),
+    valid: z.boolean().optional(),
   })
   .passthrough();
 
@@ -241,6 +288,65 @@ export const normalizeAdminStat = (value: unknown): AdminStat => {
   };
 };
 
+export const normalizeTeam = (value: unknown, index = 0): Team => {
+  const parsed = teamSchema.safeParse(value);
+  const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
+
+  const name =
+    (typeof record.name === 'string' && record.name) ||
+    (typeof record.team_name === 'string' && record.team_name) ||
+    `Команда ${index + 1}`;
+
+  const role = typeof record.role === 'string' ? record.role : undefined;
+
+  return {
+    id: normalizeId(record, `team-${index}`),
+    name,
+    role,
+    raw: record,
+  };
+};
+
+export const normalizeTeamInvitePreview = (value: unknown): TeamInvitePreview => {
+  const parsed = teamInvitePreviewSchema.safeParse(value);
+  const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
+
+  const nestedTeam = pickRecordFromPossibleKeys(record, ['team']);
+  const nestedInviter = pickRecordFromPossibleKeys(record, ['inviter']);
+
+  const teamName =
+    (typeof record.team_name === 'string' && record.team_name) ||
+    (typeof record.teamName === 'string' && record.teamName) ||
+    (nestedTeam && typeof nestedTeam.name === 'string' ? nestedTeam.name : '') ||
+    'Команда';
+
+  const inviterName =
+    (typeof record.inviter_name === 'string' && record.inviter_name) ||
+    (typeof record.inviterName === 'string' && record.inviterName) ||
+    (nestedInviter && typeof nestedInviter.username === 'string' ? nestedInviter.username : undefined) ||
+    (nestedInviter && typeof nestedInviter.name === 'string' ? nestedInviter.name : undefined);
+
+  const email = typeof record.email === 'string' ? record.email : undefined;
+  const expiresAt =
+    (typeof record.expires_at === 'string' && record.expires_at) ||
+    (typeof record.expiresAt === 'string' && record.expiresAt) ||
+    undefined;
+  const acceptedAt =
+    (typeof record.accepted_at === 'string' && record.accepted_at) ||
+    (typeof record.acceptedAt === 'string' && record.acceptedAt) ||
+    undefined;
+
+  return {
+    teamName,
+    inviterName,
+    email,
+    expiresAt,
+    acceptedAt,
+    valid: typeof record.valid === 'boolean' ? record.valid : undefined,
+    raw: record,
+  };
+};
+
 const normalizeCollection = <T>(
   value: unknown,
   keys: string[],
@@ -267,6 +373,15 @@ export const extractStages = (value: unknown): Stage[] =>
 
 export const extractTasks = (value: unknown): Task[] =>
   normalizeCollection(value, ['tasks', 'data', 'items'], normalizeTask);
+
+export const extractTeams = (value: unknown): Team[] =>
+  normalizeCollection(value, ['teams', 'data', 'items'], normalizeTeam);
+
+export const extractTeam = (value: unknown): Team => {
+  const asObj = asRecord(value);
+  const nested = pickRecordFromPossibleKeys(asObj, ['team', 'data']);
+  return normalizeTeam(nested ?? asObj);
+};
 
 export const extractProject = (value: unknown): Project => {
   const asObj = asRecord(value);
@@ -342,6 +457,28 @@ export const extractAdminStat = (value: unknown): AdminStat => {
   const asObj = asRecord(value);
   const nested = pickRecordFromPossibleKeys(asObj, ['stats', 'data', 'stat']);
   return normalizeAdminStat(nested ?? asObj);
+};
+
+export const extractTeamInvitePreview = (value: unknown): TeamInvitePreview => {
+  const asObj = asRecord(value);
+  const nested = pickRecordFromPossibleKeys(asObj, ['invite', 'data', 'team_invite']);
+  return normalizeTeamInvitePreview(nested ?? asObj);
+};
+
+export const extractInviteUrl = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  const asObj = asRecord(value);
+  const candidates = [asObj.invite_url, asObj.inviteUrl, asObj.url, asObj.link];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.length > 0) {
+      return candidate;
+    }
+  }
+
+  return '';
 };
 
 export const extractPublicShare = (value: unknown, shareToken: string): PublicSharePayload => {

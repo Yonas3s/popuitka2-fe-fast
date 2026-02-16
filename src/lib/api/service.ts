@@ -5,6 +5,10 @@ import {
   extractProjects,
   extractPublicShare,
   extractShareLink,
+  extractTeams,
+  extractTeam,
+  extractTeamInvitePreview,
+  extractInviteUrl,
   extractStage,
   extractStages,
   extractAdminStat,
@@ -12,7 +16,17 @@ import {
   extractTasks,
   extractToken,
 } from './schemas';
-import type { AdminStat, AuthProfile, Project, PublicSharePayload, ShareLinkResponse, Stage, Task } from '../../types/models';
+import type {
+  AdminStat,
+  AuthProfile,
+  Project,
+  PublicSharePayload,
+  ShareLinkResponse,
+  Stage,
+  Task,
+  Team,
+  TeamInvitePreview,
+} from '../../types/models';
 
 export type SignUpPayload = {
   username: string;
@@ -62,6 +76,14 @@ export type ResetPasswordPayload = {
   password: string;
 };
 
+export type CreateTeamPayload = {
+  name: string;
+};
+
+export type InviteToTeamPayload = {
+  email: string;
+};
+
 export const apiService = {
   async health(): Promise<string> {
     const response = await apiClient.get(endpoints.health());
@@ -97,6 +119,30 @@ export const apiService = {
 
   async resetPassword(payload: ResetPasswordPayload): Promise<void> {
     await apiClient.post(endpoints.resetPassword(), payload);
+  },
+
+  async createTeam(payload: CreateTeamPayload): Promise<Team> {
+    const response = await apiClient.post(endpoints.teams(), payload);
+    return extractTeam(response.data);
+  },
+
+  async getTeams(): Promise<Team[]> {
+    const response = await apiClient.get(endpoints.teams());
+    return extractTeams(response.data);
+  },
+
+  async inviteToTeam(teamId: string, payload: InviteToTeamPayload): Promise<string> {
+    const response = await apiClient.post(endpoints.teamInvite(teamId), payload);
+    return extractInviteUrl(response.data);
+  },
+
+  async getTeamInvite(token: string): Promise<TeamInvitePreview> {
+    const response = await apiClient.get(endpoints.teamInviteByToken(token));
+    return extractTeamInvitePreview(response.data);
+  },
+
+  async acceptTeamInvite(token: string): Promise<void> {
+    await apiClient.post(endpoints.teamInviteAccept(token));
   },
 
   async getProjects(): Promise<Project[]> {

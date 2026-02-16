@@ -21,6 +21,20 @@ type TaskRecord = {
   done: boolean;
 };
 
+type TeamRecord = {
+  _id: string;
+  name: string;
+  role?: string;
+};
+
+type TeamInviteRecord = {
+  teamId: string;
+  email: string;
+  inviterName: string;
+  expiresAt: string;
+  acceptedAt?: string;
+};
+
 const state = {
   projects: [{ _id: 'p1', project_name: 'Demo Project' }] as ProjectRecord[],
   stagesByProject: {
@@ -32,6 +46,8 @@ const state = {
   shareByToken: {
     'public-token-1': { projectId: 'p1', approved: false },
   } as Record<string, { projectId: string; approved: boolean }>,
+  teams: [{ _id: 'team-1', name: 'unit-labs', role: 'owner' }] as TeamRecord[],
+  teamInvites: {} as Record<string, TeamInviteRecord>,
 };
 
 const isAuthorized = (request: Request): boolean => Boolean(request.headers.get('authorization'));
@@ -104,6 +120,92 @@ export const handlers = [
     if (!body?.code) {
       return HttpResponse.json({ message: 'code required' }, { status: 400 });
     }
+
+    return HttpResponse.json({ ok: true });
+  }),
+
+  http.post(/.*\/teams$/, async ({ request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const body = (await request.json()) as { name?: string };
+    const team: TeamRecord = {
+      _id: randomId('team'),
+      name: body.name || 'New Team',
+      role: 'owner',
+    };
+
+    state.teams.unshift(team);
+    return HttpResponse.json(team, { status: 201 });
+  }),
+
+  http.get(/.*\/teams$/, async ({ request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    return HttpResponse.json(state.teams);
+  }),
+
+  http.post(/.*\/teams\/([^/]+)\/invite$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const teamId = String(params[0]);
+    const team = state.teams.find((item) => item._id === teamId);
+    if (!team) {
+      return HttpResponse.json({ message: 'team not found' }, { status: 404 });
+    }
+
+    const body = (await request.json()) as { email?: string };
+    if (!body.email) {
+      return HttpResponse.json({ message: 'email required' }, { status: 400 });
+    }
+
+    const token = `invite-${Math.random().toString(16).slice(2, 14)}`;
+    state.teamInvites[token] = {
+      teamId,
+      email: body.email,
+      inviterName: 'Yonas3s',
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    };
+
+    return HttpResponse.json({
+      invite_url: `https://unit-labs.ru/team-invite?token=${token}`,
+    });
+  }),
+
+  http.get(/.*\/team-invites\/([^/]+)$/, async ({ params }) => {
+    const token = String(params[0]);
+    const invite = state.teamInvites[token];
+    if (!invite) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+
+    const team = state.teams.find((item) => item._id === invite.teamId);
+
+    return HttpResponse.json({
+      team_name: team?.name || 'Команда',
+      inviter_name: invite.inviterName,
+      email: invite.email,
+      expires_at: invite.expiresAt,
+      accepted_at: invite.acceptedAt,
+    });
+  }),
+
+  http.post(/.*\/team-invites\/([^/]+)\/accept$/, async ({ params }) => {
+    const token = String(params[0]);
+    const invite = state.teamInvites[token];
+    if (!invite) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+
+    state.teamInvites[token] = {
+      ...invite,
+      acceptedAt: new Date().toISOString(),
+    };
 
     return HttpResponse.json({ ok: true });
   }),

@@ -37,6 +37,13 @@ describe('router smoke', () => {
     expect(await screen.findByRole('heading', { name: 'Проекты' })).toBeInTheDocument();
   });
 
+  it('renders private teams route for authenticated user', async () => {
+    useAuthStore.setState({ token: 'jwt-token', isAuthenticated: true });
+    renderRoute('/teams');
+
+    expect(await screen.findByRole('heading', { name: 'Команды' })).toBeInTheDocument();
+  });
+
   it('renders private admin route for authenticated user', async () => {
     useAuthStore.setState({ token: 'jwt-token', isAuthenticated: true });
     renderRoute('/admin');
@@ -64,5 +71,12 @@ describe('router smoke', () => {
     renderRoute('/auth/callback');
 
     expect(await screen.findByRole('heading', { name: 'Вход' })).toBeInTheDocument();
+  });
+
+  it('renders public team invite page by token', async () => {
+    window.history.replaceState({}, '', '/team-invite?token=invite-demo');
+    renderRoute('/team-invite');
+
+    expect(await screen.findByRole('heading', { name: 'Приглашение в команду' })).toBeInTheDocument();
   });
 });

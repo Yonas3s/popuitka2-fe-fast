@@ -612,6 +612,24 @@ p {
   gap: 6px;
 }
 
+.team-invite-block {
+  display: grid;
+  gap: 10px;
+}
+
+.team-invite-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.team-invite-kicker {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8fa8d7;
+  font-weight: 700;
+}
+
 .admin-layout {
   display: grid;
   gap: 18px;

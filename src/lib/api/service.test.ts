@@ -26,6 +26,22 @@ describe('api service flow', () => {
     const stat = await apiService.getAdminStat();
     expect(stat.projects).toBeGreaterThanOrEqual(0);
 
+    const createdTeam = await apiService.createTeam({ name: 'unit-labs' });
+    expect(createdTeam.name).toContain('unit-labs');
+
+    const teams = await apiService.getTeams();
+    expect(teams.length).toBeGreaterThan(0);
+
+    const inviteLink = await apiService.inviteToTeam(createdTeam.id, { email: 'teammate@example.com' });
+    expect(inviteLink).toContain('token=');
+
+    const inviteToken = new URL(inviteLink).searchParams.get('token');
+    expect(inviteToken).toBeTruthy();
+    const inviteInfo = await apiService.getTeamInvite(inviteToken || '');
+    expect(inviteInfo.teamName).toContain('unit-labs');
+
+    await apiService.acceptTeamInvite(inviteToken || '');
+
     const beforeProjects = await apiService.getProjects();
     expect(beforeProjects.length).toBeGreaterThan(0);
 

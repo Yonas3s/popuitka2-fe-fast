@@ -34,6 +34,23 @@ export type AdminStat = {
   raw: Record<string, unknown>;
 };
 
+export type Team = {
+  id: string;
+  name: string;
+  role?: string;
+  raw: Record<string, unknown>;
+};
+
+export type TeamInvitePreview = {
+  teamName: string;
+  inviterName?: string;
+  email?: string;
+  expiresAt?: string;
+  acceptedAt?: string;
+  valid?: boolean;
+  raw: Record<string, unknown>;
+};
+
 export type Project = {
   id: string;
   projectName: string;

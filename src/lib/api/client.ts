@@ -28,6 +28,7 @@ apiClient.interceptors.response.use(
         path.startsWith('/forgot-password') ||
         path.startsWith('/verify-reset-code') ||
         path.startsWith('/reset-password') ||
+        path.startsWith('/team-invite') ||
         path.startsWith('/p/');
 
       if (!isPublicPath) {
