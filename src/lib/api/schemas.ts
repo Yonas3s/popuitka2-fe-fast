@@ -89,9 +89,18 @@ const teamSchema = z
   .object({
     _id: z.string().optional(),
     id: z.string().optional(),
+    team_id: z.string().optional(),
+    teamId: z.string().optional(),
     name: z.string().optional(),
     team_name: z.string().optional(),
+    teamName: z.string().optional(),
     role: z.string().optional(),
+    myRole: z.string().optional(),
+    my_role: z.string().optional(),
+    membership_role: z.string().optional(),
+    member_role: z.string().optional(),
+    team_role: z.string().optional(),
+    team: z.unknown().optional(),
   })
   .passthrough();
 
@@ -142,6 +151,15 @@ const pickRecordFromPossibleKeys = (value: Record<string, unknown>, keys: string
 const pickArrayFromPossibleKeys = (value: Record<string, unknown>, keys: string[]): unknown[] => {
   for (const key of keys) {
     const candidate = value[key];
+    if (Array.isArray(candidate)) {
+      return candidate;
+    }
+  }
+  return [];
+};
+
+const pickFirstArrayValue = (value: Record<string, unknown>): unknown[] => {
+  for (const candidate of Object.values(value)) {
     if (Array.isArray(candidate)) {
       return candidate;
     }
@@ -291,16 +309,36 @@ export const normalizeAdminStat = (value: unknown): AdminStat => {
 export const normalizeTeam = (value: unknown, index = 0): Team => {
   const parsed = teamSchema.safeParse(value);
   const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
+  const nestedTeam = pickRecordFromPossibleKeys(record, ['team']);
 
   const name =
     (typeof record.name === 'string' && record.name) ||
     (typeof record.team_name === 'string' && record.team_name) ||
+    (typeof record.teamName === 'string' && record.teamName) ||
+    (nestedTeam && typeof nestedTeam.name === 'string' && nestedTeam.name) ||
+    (nestedTeam && typeof nestedTeam.team_name === 'string' && nestedTeam.team_name) ||
     `Команда ${index + 1}`;
 
-  const role = typeof record.role === 'string' ? record.role : undefined;
+  const role =
+    (typeof record.role === 'string' && record.role) ||
+    (typeof record.myRole === 'string' && record.myRole) ||
+    (typeof record.my_role === 'string' && record.my_role) ||
+    (typeof record.membership_role === 'string' && record.membership_role) ||
+    (typeof record.member_role === 'string' && record.member_role) ||
+    (typeof record.team_role === 'string' && record.team_role) ||
+    (nestedTeam && typeof nestedTeam.role === 'string' ? nestedTeam.role : undefined);
+
+  const idCandidate =
+    record._id ??
+    record.id ??
+    record.team_id ??
+    record.teamId ??
+    nestedTeam?._id ??
+    nestedTeam?.id;
+  const id = typeof idCandidate === 'string' && idCandidate.length > 0 ? idCandidate : `team-${index}`;
 
   return {
-    id: normalizeId(record, `team-${index}`),
+    id,
     name,
     role,
     raw: record,
@@ -374,8 +412,41 @@ export const extractStages = (value: unknown): Stage[] =>
 export const extractTasks = (value: unknown): Task[] =>
   normalizeCollection(value, ['tasks', 'data', 'items'], normalizeTask);
 
-export const extractTeams = (value: unknown): Team[] =>
-  normalizeCollection(value, ['teams', 'data', 'items'], normalizeTeam);
+export const extractTeams = (value: unknown): Team[] => {
+  if (Array.isArray(value)) {
+    return value.map(normalizeTeam);
+  }
+
+  const asObj = asRecord(value);
+  const directArray = pickArrayFromPossibleKeys(
+    asObj,
+    ['teams', 'data', 'items', 'memberships', 'team_members', 'teamMembers'],
+  );
+
+  if (directArray.length > 0) {
+    return directArray.map(normalizeTeam);
+  }
+
+  const fallbackArray = pickFirstArrayValue(asObj);
+  if (fallbackArray.length > 0) {
+    return fallbackArray.map(normalizeTeam);
+  }
+
+  const likelySingleTeam =
+    typeof asObj._id === 'string' ||
+    typeof asObj.id === 'string' ||
+    typeof asObj.team_id === 'string' ||
+    typeof asObj.teamId === 'string' ||
+    typeof asObj.name === 'string' ||
+    typeof asObj.team_name === 'string' ||
+    typeof asObj.teamName === 'string';
+
+  if (likelySingleTeam) {
+    return [normalizeTeam(asObj)];
+  }
+
+  return [];
+};
 
 export const extractTeam = (value: unknown): Team => {
   const asObj = asRecord(value);
