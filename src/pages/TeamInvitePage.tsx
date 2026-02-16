@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { PageShell } from '../components/layout/PageShell';
 import { GlassPanel } from '../components/ui/GlassPanel';
 import { GradientButton } from '../components/ui/GradientButton';
 import { ErrorState } from '../components/feedback/ErrorState';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
+import { useAuthStore } from '../store/auth.store';
 import { useUiStore } from '../store/ui.store';
 import type { ApiError, TeamInvitePreview } from '../types/models';
 
 export const TeamInvitePage = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const routeParams = useParams<{ token?: string }>();
   const pushToast = useUiStore((state) => state.pushToast);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const token = useMemo(() => {
     const queryParams = new URLSearchParams(location.search);
     const queryToken = queryParams.get('token')?.trim() || '';
@@ -67,6 +70,7 @@ export const TeamInvitePage = () => {
       await apiService.acceptTeamInvite(token);
       setAccepted(true);
       pushToast('Приглашение принято', 'success');
+      navigate(isAuthenticated ? '/teams' : '/signin', { replace: true });
     } catch (reason) {
       const normalized = normalizeApiError(reason);
       setError(normalized);
