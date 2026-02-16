@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { PageShell } from '../components/layout/PageShell';
 import { GlassPanel } from '../components/ui/GlassPanel';
 import { GradientButton } from '../components/ui/GradientButton';
@@ -11,11 +11,14 @@ import type { ApiError, TeamInvitePreview } from '../types/models';
 
 export const TeamInvitePage = () => {
   const location = useLocation();
+  const routeParams = useParams<{ token?: string }>();
   const pushToast = useUiStore((state) => state.pushToast);
   const token = useMemo(() => {
-    const params = new URLSearchParams(location.search);
-    return params.get('token')?.trim() || '';
-  }, [location.search]);
+    const queryParams = new URLSearchParams(location.search);
+    const queryToken = queryParams.get('token')?.trim() || '';
+    const pathToken = routeParams.token?.trim() || '';
+    return queryToken || pathToken;
+  }, [location.search, routeParams.token]);
 
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);

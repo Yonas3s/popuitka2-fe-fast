@@ -31,6 +31,8 @@ export const AppRoutes = () => {
 
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
       <Route path="/team-invite" element={<TeamInvitePage />} />
+      <Route path="/team-invite/:token" element={<TeamInvitePage />} />
+      <Route path="/team-invites/:token" element={<TeamInvitePage />} />
 
       <Route element={<RequireAuth />}>
         <Route path="/admin" element={<AdminPage />} />

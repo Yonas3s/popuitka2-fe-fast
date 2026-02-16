@@ -79,4 +79,11 @@ describe('router smoke', () => {
 
     expect(await screen.findByRole('heading', { name: 'Приглашение в команду' })).toBeInTheDocument();
   });
+
+  it('renders public team invite page by path token alias', async () => {
+    window.history.replaceState({}, '', '/team-invites/invite-demo');
+    renderRoute('/team-invites/invite-demo');
+
+    expect(await screen.findByRole('heading', { name: 'Приглашение в команду' })).toBeInTheDocument();
+  });
 });
