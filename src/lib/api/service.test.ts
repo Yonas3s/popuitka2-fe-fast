@@ -31,6 +31,10 @@ describe('api service flow', () => {
 
     const teams = await apiService.getTeams();
     expect(teams.length).toBeGreaterThan(0);
+    const teamDetails = await apiService.getTeamById(createdTeam.id);
+    expect(teamDetails.name).toContain('unit-labs');
+    const teamMembers = await apiService.getTeamMembers(createdTeam.id);
+    expect(teamMembers.length).toBeGreaterThan(0);
 
     const inviteLink = await apiService.inviteToTeam(createdTeam.id, { email: 'teammate@example.com' });
     expect(inviteLink).toContain('token=');

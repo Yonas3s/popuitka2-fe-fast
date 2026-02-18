@@ -9,6 +9,8 @@ import {
   extractTeam,
   extractTeamInvitePreview,
   extractInviteUrl,
+  extractTeamDetails,
+  extractTeamMembers,
   extractStage,
   extractStages,
   extractAdminStat,
@@ -25,6 +27,8 @@ import type {
   Stage,
   Task,
   Team,
+  TeamDetails,
+  TeamMember,
   TeamInvitePreview,
 } from '../../types/models';
 
@@ -130,6 +134,16 @@ export const apiService = {
   async getTeams(): Promise<Team[]> {
     const response = await apiClient.get(endpoints.teams());
     return extractTeams(response.data);
+  },
+
+  async getTeamById(teamId: string): Promise<TeamDetails> {
+    const response = await apiClient.get(endpoints.teamById(teamId));
+    return extractTeamDetails(response.data);
+  },
+
+  async getTeamMembers(teamId: string): Promise<TeamMember[]> {
+    const response = await apiClient.get(endpoints.teamMembers(teamId));
+    return extractTeamMembers(response.data);
   },
 
   async inviteToTeam(teamId: string, payload: InviteToTeamPayload): Promise<string> {

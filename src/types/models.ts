@@ -41,6 +41,26 @@ export type Team = {
   raw: Record<string, unknown>;
 };
 
+export type TeamDetails = {
+  id: string;
+  name: string;
+  ownerId?: string;
+  myRole?: string;
+  stats: {
+    members: number;
+    projects: number;
+  };
+  raw: Record<string, unknown>;
+};
+
+export type TeamMember = {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+  raw: Record<string, unknown>;
+};
+
 export type TeamInvitePreview = {
   teamName: string;
   inviterName?: string;

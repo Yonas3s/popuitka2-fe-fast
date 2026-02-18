@@ -9,7 +9,7 @@ import { ErrorState } from '../components/feedback/ErrorState';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { useUiStore } from '../store/ui.store';
-import type { ApiError, Team } from '../types/models';
+import type { ApiError, Team, TeamDetails, TeamMember } from '../types/models';
 
 type CreateTeamForm = {
   name: string;
@@ -34,6 +34,10 @@ export const TeamsPage = () => {
   const [inviteEmails, setInviteEmails] = useState<Record<string, string>>({});
   const [inviteLoadingByTeam, setInviteLoadingByTeam] = useState<Record<string, boolean>>({});
   const [inviteLinksByTeam, setInviteLinksByTeam] = useState<Record<string, string>>({});
+  const [teamDetailsById, setTeamDetailsById] = useState<Record<string, TeamDetails>>({});
+  const [teamDetailsLoadingById, setTeamDetailsLoadingById] = useState<Record<string, boolean>>({});
+  const [teamMembersByTeamId, setTeamMembersByTeamId] = useState<Record<string, TeamMember[]>>({});
+  const [teamMembersLoadingByTeamId, setTeamMembersLoadingByTeamId] = useState<Record<string, boolean>>({});
 
   const {
     register,
@@ -130,7 +134,72 @@ export const TeamsPage = () => {
     return teams.find((team) => team.id === activeTeamId) || null;
   }, [activeTeamId, teams]);
 
-  const canManageTeam = selectedTeam?.role?.toLowerCase() === 'owner';
+  useEffect(() => {
+    if (!selectedTeam) {
+      return;
+    }
+
+    if (teamDetailsById[selectedTeam.id] || teamDetailsLoadingById[selectedTeam.id]) {
+      return;
+    }
+
+    setTeamDetailsLoadingById((prev) => ({ ...prev, [selectedTeam.id]: true }));
+    apiService
+      .getTeamById(selectedTeam.id)
+      .then((details) => {
+        setTeamDetailsById((prev) => ({ ...prev, [selectedTeam.id]: details }));
+        if (details.myRole) {
+          setTeams((prev) =>
+            prev.map((team) =>
+              team.id === selectedTeam.id
+                ? {
+                    ...team,
+                    role: details.myRole,
+                  }
+                : team,
+            ),
+          );
+        }
+      })
+      .catch((reason) => {
+        const normalized = normalizeApiError(reason);
+        pushToast(normalized.message, 'error');
+      })
+      .finally(() => {
+        setTeamDetailsLoadingById((prev) => ({ ...prev, [selectedTeam.id]: false }));
+      });
+  }, [pushToast, selectedTeam, teamDetailsById, teamDetailsLoadingById]);
+
+  useEffect(() => {
+    if (!selectedTeam || activeSection !== 'members') {
+      return;
+    }
+
+    if (teamMembersByTeamId[selectedTeam.id] || teamMembersLoadingByTeamId[selectedTeam.id]) {
+      return;
+    }
+
+    setTeamMembersLoadingByTeamId((prev) => ({ ...prev, [selectedTeam.id]: true }));
+    apiService
+      .getTeamMembers(selectedTeam.id)
+      .then((members) => {
+        setTeamMembersByTeamId((prev) => ({ ...prev, [selectedTeam.id]: members }));
+      })
+      .catch((reason) => {
+        const normalized = normalizeApiError(reason);
+        pushToast(normalized.message, 'error');
+      })
+      .finally(() => {
+        setTeamMembersLoadingByTeamId((prev) => ({ ...prev, [selectedTeam.id]: false }));
+      });
+  }, [activeSection, pushToast, selectedTeam, teamMembersByTeamId, teamMembersLoadingByTeamId]);
+
+  const selectedTeamDetails = selectedTeam ? teamDetailsById[selectedTeam.id] : undefined;
+  const selectedTeamMembers = selectedTeam ? teamMembersByTeamId[selectedTeam.id] || [] : [];
+  const selectedTeamDetailsLoading = selectedTeam ? Boolean(teamDetailsLoadingById[selectedTeam.id]) : false;
+  const selectedTeamMembersLoading = selectedTeam ? Boolean(teamMembersLoadingByTeamId[selectedTeam.id]) : false;
+  const effectiveRole = (selectedTeamDetails?.myRole || selectedTeam?.role || 'member').toLowerCase();
+  const canManageTeam = effectiveRole === 'owner';
 
   const teamSubtitle = selectedTeam
     ? canManageTeam
@@ -227,7 +296,7 @@ export const TeamsPage = () => {
                   <p className="muted">{teamSubtitle}</p>
                 </div>
                 <div className="teams-workspace-meta">
-                  <span className="account-provider-tag">{selectedTeam.role || 'member'}</span>
+                  <span className="account-provider-tag">{effectiveRole}</span>
                   <span className="muted mono">{selectedTeam.id}</span>
                 </div>
               </GlassPanel>
@@ -235,31 +304,51 @@ export const TeamsPage = () => {
               {activeSection === 'overview' ? (
                 <GlassPanel className="teams-section-panel">
                   <h3>Обзор команды</h3>
-                  <ul className="list">
-                    <li>
-                      <span className="icon" />
-                      <div>Основная навигация вынесена в левое меню для будущих разделов.</div>
-                    </li>
-                    <li>
-                      <span className="icon" />
-                      <div>Инвайты и будущие настройки разделены по отдельным вкладкам.</div>
-                    </li>
-                    <li>
-                      <span className="icon" />
-                      <div>Можно быстро переключаться между командами без потери контекста.</div>
-                    </li>
-                  </ul>
+                  {selectedTeamDetailsLoading ? <p className="muted">Загружаем карточку команды...</p> : null}
+                  {selectedTeamDetails ? (
+                    <div className="teams-overview-grid">
+                      <article className="account-stat-card">
+                        <p className="stat-label">Название</p>
+                        <p className="stat-value">{selectedTeamDetails.name}</p>
+                      </article>
+                      <article className="account-stat-card">
+                        <p className="stat-label">Участники</p>
+                        <p className="stat-value">{selectedTeamDetails.stats.members}</p>
+                      </article>
+                      <article className="account-stat-card">
+                        <p className="stat-label">Проекты</p>
+                        <p className="stat-value">{selectedTeamDetails.stats.projects}</p>
+                      </article>
+                      <article className="account-stat-card">
+                        <p className="stat-label">Owner ID</p>
+                        <p className="stat-value mono">{selectedTeamDetails.ownerId || '—'}</p>
+                      </article>
+                    </div>
+                  ) : (
+                    <p className="muted">Карточка команды пока недоступна.</p>
+                  )}
                 </GlassPanel>
               ) : null}
 
               {activeSection === 'members' ? (
                 <GlassPanel className="teams-section-panel">
                   <h3>Участники</h3>
-                  <p className="muted">Текущая роль в выбранной команде: {selectedTeam.role || 'member'}.</p>
-                  <p className="muted">
-                    Отдельный список участников можно легко добавить в этот раздел, когда появится endpoint
-                    `GET /teams/:teamId/members`.
-                  </p>
+                  <p className="muted">Текущая роль в выбранной команде: {effectiveRole}.</p>
+                  {selectedTeamMembersLoading ? <p className="muted">Загружаем участников...</p> : null}
+                  {!selectedTeamMembersLoading && selectedTeamMembers.length === 0 ? (
+                    <EmptyState title="Участники не найдены" description="В этой команде пока нет участников." />
+                  ) : null}
+                  <div className="teams-members-list">
+                    {selectedTeamMembers.map((member) => (
+                      <article key={member.id} className="teams-member-row">
+                        <div>
+                          <strong>@{member.username}</strong>
+                          <p className="muted">{member.email || 'email не указан'}</p>
+                        </div>
+                        <span className="account-provider-tag">{member.role}</span>
+                      </article>
+                    ))}
+                  </div>
                 </GlassPanel>
               ) : null}
 
@@ -330,7 +419,7 @@ export const TeamsPage = () => {
                       <div className="teams-setting-row">
                         <div>
                           <strong>Переименование команды</strong>
-                          <p className="muted">Скоро: быстрое редактирование названия в этом разделе.</p>
+                          <p className="muted">Скоро: быстрое редактирование названия команды.</p>
                         </div>
                         <button type="button" className="ghost-link" disabled>
                           Скоро

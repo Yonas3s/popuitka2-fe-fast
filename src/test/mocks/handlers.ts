@@ -25,6 +25,7 @@ type TeamRecord = {
   _id: string;
   name: string;
   role?: string;
+  owner_id?: string;
 };
 
 type TeamInviteRecord = {
@@ -33,6 +34,13 @@ type TeamInviteRecord = {
   inviterName: string;
   expiresAt: string;
   acceptedAt?: string;
+};
+
+type TeamMemberRecord = {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
 };
 
 const state = {
@@ -46,7 +54,23 @@ const state = {
   shareByToken: {
     'public-token-1': { projectId: 'p1', approved: false },
   } as Record<string, { projectId: string; approved: boolean }>,
-  teams: [{ _id: 'team-1', name: 'unit-labs', role: 'owner' }] as TeamRecord[],
+  teams: [{ _id: 'team-1', name: 'unit-labs', role: 'owner', owner_id: '698b1202cb65b668e76f6c88' }] as TeamRecord[],
+  teamMembersByTeam: {
+    'team-1': [
+      {
+        id: '698b1202cb65b668e76f6c88',
+        username: 'yokio4242',
+        email: 'gud.pro2018@yandex.ru',
+        role: 'owner',
+      },
+      {
+        id: 'teammate-1',
+        username: 'teammate',
+        email: 'teammate@example.com',
+        role: 'member',
+      },
+    ],
+  } as Record<string, TeamMemberRecord[]>,
   teamInvites: {} as Record<string, TeamInviteRecord>,
 };
 
@@ -134,9 +158,18 @@ export const handlers = [
       _id: randomId('team'),
       name: body.name || 'New Team',
       role: 'owner',
+      owner_id: '698b1202cb65b668e76f6c88',
     };
 
     state.teams.unshift(team);
+    state.teamMembersByTeam[team._id] = [
+      {
+        id: '698b1202cb65b668e76f6c88',
+        username: 'yokio4242',
+        email: 'gud.pro2018@yandex.ru',
+        role: 'owner',
+      },
+    ];
     return HttpResponse.json(team, { status: 201 });
   }),
 
@@ -146,6 +179,51 @@ export const handlers = [
     }
 
     return HttpResponse.json(state.teams);
+  }),
+
+  http.get(/.*\/teams\/([^/]+)$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const teamId = String(params[0]);
+    const team = state.teams.find((item) => item._id === teamId);
+    if (!team) {
+      return HttpResponse.json({ message: 'team not found' }, { status: 404 });
+    }
+
+    return HttpResponse.json({
+      status: 'ok',
+      data: {
+        id: team._id,
+        name: team.name,
+        owner_id: team.owner_id || '698b1202cb65b668e76f6c88',
+        myRole: team.role || 'member',
+        stats: {
+          members: (state.teamMembersByTeam[teamId] || []).length,
+          projects: 1,
+        },
+      },
+    });
+  }),
+
+  http.get(/.*\/teams\/([^/]+)\/members$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const teamId = String(params[0]);
+    const members = state.teamMembersByTeam[teamId];
+    if (!members) {
+      return HttpResponse.json({ message: 'team not found' }, { status: 404 });
+    }
+
+    return HttpResponse.json({
+      status: 'ok',
+      data: {
+        members,
+      },
+    });
   }),
 
   http.post(/.*\/teams\/([^/]+)\/invite$/, async ({ params, request }) => {

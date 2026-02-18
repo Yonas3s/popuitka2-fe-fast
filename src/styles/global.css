@@ -777,6 +777,28 @@ p {
   gap: 12px;
 }
 
+.teams-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.teams-members-list {
+  display: grid;
+  gap: 10px;
+}
+
+.teams-member-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(126, 166, 255, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(6, 12, 24, 0.5);
+}
+
 .teams-settings-list {
   display: grid;
   gap: 10px;
@@ -1549,6 +1571,10 @@ p {
 
   .teams-sidebar {
     position: static;
+  }
+
+  .teams-overview-grid {
+    grid-template-columns: 1fr;
   }
 
   .admin-kpi-grid,

@@ -7,6 +7,8 @@ import type {
   Stage,
   Task,
   Team,
+  TeamDetails,
+  TeamMember,
   TeamInvitePreview,
 } from '../../types/models';
 
@@ -129,6 +131,49 @@ const teamInvitePreviewSchema = z
     accepted_at: z.string().optional(),
     acceptedAt: z.string().optional(),
     valid: z.boolean().optional(),
+  })
+  .passthrough();
+
+const teamDetailsSchema = z
+  .object({
+    _id: z.string().optional(),
+    id: z.string().optional(),
+    name: z.string().optional(),
+    owner_id: z.string().optional(),
+    ownerId: z.string().optional(),
+    myRole: z.string().optional(),
+    my_role: z.string().optional(),
+    role: z.string().optional(),
+    stats: z
+      .object({
+        members: z.number().optional(),
+        projects: z.number().optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
+const teamMemberSchema = z
+  .object({
+    _id: z.string().optional(),
+    id: z.string().optional(),
+    user_id: z.string().optional(),
+    userId: z.string().optional(),
+    username: z.string().optional(),
+    name: z.string().optional(),
+    email: z.string().optional(),
+    role: z.string().optional(),
+    user: z
+      .object({
+        _id: z.string().optional(),
+        id: z.string().optional(),
+        username: z.string().optional(),
+        name: z.string().optional(),
+        email: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
   })
   .passthrough();
 
@@ -385,6 +430,80 @@ export const normalizeTeamInvitePreview = (value: unknown): TeamInvitePreview =>
   };
 };
 
+export const normalizeTeamDetails = (value: unknown): TeamDetails => {
+  const parsed = teamDetailsSchema.safeParse(value);
+  const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
+  const nestedStats = pickRecordFromPossibleKeys(record, ['stats']) ?? {};
+
+  const name =
+    (typeof record.name === 'string' && record.name) ||
+    (typeof record.team_name === 'string' && record.team_name) ||
+    'Команда';
+
+  const ownerId =
+    (typeof record.owner_id === 'string' && record.owner_id) ||
+    (typeof record.ownerId === 'string' && record.ownerId) ||
+    undefined;
+
+  const myRole =
+    (typeof record.myRole === 'string' && record.myRole) ||
+    (typeof record.my_role === 'string' && record.my_role) ||
+    (typeof record.role === 'string' && record.role) ||
+    undefined;
+
+  const members = typeof nestedStats.members === 'number' ? nestedStats.members : 0;
+  const projects = typeof nestedStats.projects === 'number' ? nestedStats.projects : 0;
+
+  return {
+    id: normalizeId(record, 'team'),
+    name,
+    ownerId,
+    myRole,
+    stats: {
+      members,
+      projects,
+    },
+    raw: record,
+  };
+};
+
+export const normalizeTeamMember = (value: unknown, index = 0): TeamMember => {
+  const parsed = teamMemberSchema.safeParse(value);
+  const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
+  const nestedUser = pickRecordFromPossibleKeys(record, ['user']) ?? {};
+
+  const username =
+    (typeof record.username === 'string' && record.username) ||
+    (typeof record.name === 'string' && record.name) ||
+    (typeof nestedUser.username === 'string' && nestedUser.username) ||
+    (typeof nestedUser.name === 'string' && nestedUser.name) ||
+    `member-${index + 1}`;
+
+  const email =
+    (typeof record.email === 'string' && record.email) ||
+    (typeof nestedUser.email === 'string' && nestedUser.email) ||
+    '';
+
+  const role = (typeof record.role === 'string' && record.role) || 'member';
+
+  const idCandidate =
+    record._id ??
+    record.id ??
+    record.user_id ??
+    record.userId ??
+    nestedUser._id ??
+    nestedUser.id;
+  const id = typeof idCandidate === 'string' && idCandidate.length > 0 ? idCandidate : `member-${index}`;
+
+  return {
+    id,
+    username,
+    email,
+    role,
+    raw: record,
+  };
+};
+
 const normalizeCollection = <T>(
   value: unknown,
   keys: string[],
@@ -452,6 +571,34 @@ export const extractTeam = (value: unknown): Team => {
   const asObj = asRecord(value);
   const nested = pickRecordFromPossibleKeys(asObj, ['team', 'data']);
   return normalizeTeam(nested ?? asObj);
+};
+
+export const extractTeamDetails = (value: unknown): TeamDetails => {
+  const asObj = asRecord(value);
+  const nested = pickRecordFromPossibleKeys(asObj, ['data', 'team']);
+  return normalizeTeamDetails(nested ?? asObj);
+};
+
+export const extractTeamMembers = (value: unknown): TeamMember[] => {
+  if (Array.isArray(value)) {
+    return value.map(normalizeTeamMember);
+  }
+
+  const asObj = asRecord(value);
+  const nested = pickRecordFromPossibleKeys(asObj, ['data']);
+  const source = nested ?? asObj;
+
+  const directArray = pickArrayFromPossibleKeys(source, ['members', 'items', 'data']);
+  if (directArray.length > 0) {
+    return directArray.map(normalizeTeamMember);
+  }
+
+  const fallbackArray = pickFirstArrayValue(source);
+  if (fallbackArray.length > 0) {
+    return fallbackArray.map(normalizeTeamMember);
+  }
+
+  return [];
 };
 
 export const extractProject = (value: unknown): Project => {

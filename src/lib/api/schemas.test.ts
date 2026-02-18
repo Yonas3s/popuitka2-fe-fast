@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractTeams } from './schemas';
+import { extractTeamDetails, extractTeamMembers, extractTeams } from './schemas';
 
 describe('extractTeams', () => {
   it('parses plain teams array', () => {
@@ -64,5 +64,47 @@ describe('extractTeams', () => {
     expect(teams[0].id).toBe('69931f174f0a4440fdc468d6');
     expect(teams[0].name).toBe('unit-labs');
     expect(teams[0].role).toBe('owner');
+  });
+});
+
+describe('team details and members extractors', () => {
+  it('parses team details payload', () => {
+    const details = extractTeamDetails({
+      status: 'ok',
+      data: {
+        id: 'team-1',
+        name: 'unit-labs',
+        owner_id: 'owner-1',
+        myRole: 'owner',
+        stats: {
+          members: 4,
+          projects: 7,
+        },
+      },
+    });
+
+    expect(details.id).toBe('team-1');
+    expect(details.name).toBe('unit-labs');
+    expect(details.ownerId).toBe('owner-1');
+    expect(details.myRole).toBe('owner');
+    expect(details.stats.members).toBe(4);
+    expect(details.stats.projects).toBe(7);
+  });
+
+  it('parses team members payload', () => {
+    const members = extractTeamMembers({
+      status: 'ok',
+      data: {
+        members: [
+          { id: 'u1', username: 'yonas', email: 'yonas@example.com', role: 'owner' },
+          { id: 'u2', username: 'dev1', email: 'dev1@example.com', role: 'member' },
+        ],
+      },
+    });
+
+    expect(members).toHaveLength(2);
+    expect(members[0].id).toBe('u1');
+    expect(members[0].username).toBe('yonas');
+    expect(members[0].role).toBe('owner');
   });
 });
