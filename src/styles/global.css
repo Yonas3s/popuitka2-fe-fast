@@ -664,6 +664,135 @@ p {
   gap: 10px;
 }
 
+.teams-layout {
+  display: grid;
+  grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.teams-sidebar {
+  display: grid;
+  gap: 16px;
+  position: sticky;
+  top: 16px;
+}
+
+.teams-sidebar-header {
+  display: grid;
+  gap: 6px;
+}
+
+.teams-sidebar-block {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(126, 166, 255, 0.2);
+}
+
+.teams-sidebar-label {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9ab0d9;
+  font-weight: 700;
+}
+
+.teams-list,
+.teams-sections {
+  display: grid;
+  gap: 8px;
+}
+
+.teams-list-item,
+.teams-section-item {
+  border: 1px solid rgba(126, 166, 255, 0.2);
+  background: rgba(8, 14, 26, 0.65);
+  color: #d9e7ff;
+  border-radius: 10px;
+  padding: 9px 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.teams-list-item:hover,
+.teams-section-item:hover {
+  border-color: rgba(73, 224, 201, 0.42);
+  background: rgba(11, 20, 36, 0.86);
+  transform: translateY(-1px);
+}
+
+.teams-list-item.active,
+.teams-section-item.active {
+  border-color: rgba(73, 224, 201, 0.62);
+  background:
+    radial-gradient(200px 90px at 0% 0%, rgba(73, 224, 201, 0.16), transparent 70%),
+    rgba(11, 20, 36, 0.9);
+}
+
+.teams-list-item:disabled,
+.teams-section-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.teams-list-item {
+  display: grid;
+  gap: 4px;
+}
+
+.teams-list-name {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.teams-list-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.teams-workspace {
+  display: grid;
+  gap: 14px;
+}
+
+.teams-workspace-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.teams-workspace-meta {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.teams-section-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.teams-settings-list {
+  display: grid;
+  gap: 10px;
+}
+
+.teams-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(126, 166, 255, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(6, 12, 24, 0.5);
+}
+
 .team-invite-panel {
   display: grid;
   gap: 14px;
@@ -1391,6 +1520,7 @@ p {
   .landing-story-grid,
   .landing-wide-grid,
   .landing-faq-grid,
+  .teams-layout,
   .hero,
   .content-grid {
     grid-template-columns: 1fr;
@@ -1415,6 +1545,10 @@ p {
 
   .account-stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .teams-sidebar {
+    position: static;
   }
 
   .admin-kpi-grid,
