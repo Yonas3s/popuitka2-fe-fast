@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { PageShell } from '../components/layout/PageShell';
@@ -10,9 +10,12 @@ import { ErrorState } from '../components/feedback/ErrorState';
 import { useProjectsStore } from '../store/projects.store';
 import { useUiStore } from '../store/ui.store';
 import { useAuthStore } from '../store/auth.store';
+import { apiService } from '../lib/api/service';
+import type { Team } from '../types/models';
 
 type ProjectForm = {
   project_name: string;
+  target: string;
 };
 
 export const ProjectsPage = () => {
@@ -23,23 +26,64 @@ export const ProjectsPage = () => {
   const fetchProjects = useProjectsStore((state) => state.fetchProjects);
   const createProject = useProjectsStore((state) => state.createProject);
   const pushToast = useUiStore((state) => state.pushToast);
+  const [ownerTeams, setOwnerTeams] = useState<Team[]>([]);
+  const [teamsLoading, setTeamsLoading] = useState(false);
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
-  } = useForm<ProjectForm>();
+  } = useForm<ProjectForm>({
+    defaultValues: {
+      target: 'personal',
+    },
+  });
 
   useEffect(() => {
     void fetchProjects();
   }, [fetchProjects]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setTeamsLoading(true);
+    apiService
+      .getTeams()
+      .then((teams) => {
+        if (cancelled) {
+          return;
+        }
+        const onlyOwners = teams.filter((team) => team.role?.toLowerCase() === 'owner');
+        setOwnerTeams(onlyOwners);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setOwnerTeams([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setTeamsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selectedTarget = watch('target');
+
   const onSubmit = handleSubmit(async (values) => {
+    const teamId = values.target.startsWith('team:') ? values.target.slice(5) : '';
     try {
-      await createProject(values);
+      await createProject({
+        project_name: values.project_name,
+        ...(teamId ? { team_id: teamId } : {}),
+      });
       pushToast('Проект создан', 'success');
-      reset();
+      reset({ project_name: '', target: values.target });
     } catch {
       pushToast('Не удалось создать проект', 'error');
     }
@@ -114,13 +158,31 @@ export const ProjectsPage = () => {
               label="Название проекта"
               error={errors.project_name?.message}
               inputProps={{
-                placeholder: 'popuitka2 frontend',
+                placeholder: 'unit-labs website',
                 ...register('project_name', {
                   required: 'Введите название проекта',
                   minLength: { value: 2, message: 'Минимум 2 символа' },
                 }),
               }}
             />
+            <label className="field">
+              <span className="field-label">Куда добавить проект</span>
+              <select className="input" {...register('target')}>
+                <option value="personal">Личный проект</option>
+                {ownerTeams.map((team) => (
+                  <option key={team.id} value={`team:${team.id}`}>
+                    Команда: {team.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {teamsLoading ? <p className="muted">Загружаем команды...</p> : null}
+            {!teamsLoading && ownerTeams.length === 0 ? (
+              <p className="muted">У тебя пока нет команд с ролью owner. Проект будет создан как личный.</p>
+            ) : null}
+            {!teamsLoading && selectedTarget.startsWith('team:') ? (
+              <p className="muted">Проект будет привязан к выбранной команде.</p>
+            ) : null}
             <GradientButton type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Создаем...' : 'Создать проект'}
             </GradientButton>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { APP_TITLE } from '../../lib/config/env';
 import { useAuthStore } from '../../store/auth.store';
+import { BrandIcon } from '../ui/BrandIcon';
 
 type PageShellProps = {
   children: ReactNode;
@@ -54,7 +55,8 @@ export const PageShell = ({ children, title, subtitle }: PageShellProps) => {
       <main className="wrap page-shell">
         <header className="topbar fade-up">
           <Link to="/" className="brand">
-            {APP_TITLE}
+            <BrandIcon className="brand-icon" />
+            <span className="brand-text">{APP_TITLE}</span>
           </Link>
 
           <nav className="topnav">

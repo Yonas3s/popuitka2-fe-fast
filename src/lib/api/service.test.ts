@@ -48,6 +48,12 @@ describe('api service flow', () => {
     const createdProject = await apiService.createProject({ project_name: 'A New Project' });
     expect(createdProject.projectName).toContain('A New Project');
 
+    const teamProject = await apiService.createProject({
+      project_name: 'Team Project',
+      team_id: createdTeam.id,
+    });
+    expect(teamProject.projectName).toContain('Team Project');
+
     const fullProject = await apiService.getProject(createdProject.id);
     expect(fullProject.id).toBe(createdProject.id);
 

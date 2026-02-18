@@ -94,7 +94,7 @@ export const TeamInvitePage = () => {
 
       {!loading && !error && invite ? (
         <GlassPanel className="auth-panel team-invite-panel">
-          <p className="team-invite-kicker">popuitka2 team</p>
+          <p className="team-invite-kicker">unit-labs team</p>
           <h2>Тебя пригласили в команду «{invite.teamName}»</h2>
           <p className="muted">
             {invite.inviterName ? `${invite.inviterName} отправил(а) тебе приглашение.` : 'Тебе отправили приглашение в команду.'}

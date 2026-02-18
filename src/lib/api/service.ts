@@ -41,6 +41,7 @@ export type SignInPayload = {
 
 export type CreateProjectPayload = {
   project_name: string;
+  team_id?: string;
 };
 
 export type CreateStagePayload = {

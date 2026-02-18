@@ -2,12 +2,15 @@ import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { PageShell } from '../components/layout/PageShell';
 import { GlassPanel } from '../components/ui/GlassPanel';
+import { BrandIcon } from '../components/ui/BrandIcon';
 import { Chip } from '../components/ui/Chip';
 import { TerminalBlock } from '../components/ui/TerminalBlock';
 import { apiService } from '../lib/api/service';
+import { API_BASE_URL } from '../lib/config/env';
 
 export const LandingPage = () => {
   const [health, setHealth] = useState<'loading' | 'online' | 'offline'>('loading');
+  const healthUrl = `${API_BASE_URL.replace(/\/+$/, '')}/health`;
 
   useEffect(() => {
     let cancelled = false;
@@ -32,7 +35,7 @@ export const LandingPage = () => {
 
   return (
     <PageShell
-      title="Popuitkav2"
+      title="unit-labs"
       subtitle="Project delivery workspace: задачи, стадии, апрув клиента и прозрачный прогресс в одном интерфейсе."
     >
       <span className="badge">
@@ -42,6 +45,10 @@ export const LandingPage = () => {
 
       <div className="landing-hero">
         <GlassPanel className="landing-main">
+          <div className="landing-brandline">
+            <BrandIcon className="landing-brand-icon" />
+            <span className="landing-brand-chip">unit-labs digital workspace</span>
+          </div>
           <p className="landing-kicker">Client-first workflow</p>
           <h2 className="landing-headline">
             Управляйте релизом, а не хаосом.
@@ -64,11 +71,11 @@ export const LandingPage = () => {
           <div className="landing-stats">
             <article className="stat-card">
               <p className="stat-label">Auth</p>
-              <p className="stat-value">JWT + Reset Flow</p>
+              <p className="stat-value">JWT + GitHub OAuth</p>
             </article>
             <article className="stat-card">
-              <p className="stat-label">Core</p>
-              <p className="stat-value">Projects / Stages / Tasks</p>
+              <p className="stat-label">Flow</p>
+              <p className="stat-value">Stages + Tasks + Review</p>
             </article>
             <article className="stat-card">
               <p className="stat-label">Client</p>
@@ -98,62 +105,99 @@ export const LandingPage = () => {
               lines={[
                 '$ npm install',
                 '$ npm run dev',
-                '$ curl https://popuitka2-be.onrender.com/health',
+                `$ curl ${healthUrl}`,
                 '"ok"',
               ]}
             />
-            <a className="cta" href="https://popuitka2-be.onrender.com/health" target="_blank" rel="noreferrer">
+            <a className="cta" href={healthUrl} target="_blank" rel="noreferrer">
               Проверить backend
             </a>
           </GlassPanel>
         </div>
       </div>
 
-      <div className="landing-feature-grid">
-        <GlassPanel className="feature-card">
-          <h3 className="feature-title">Полный продуктовый цикл</h3>
-          <p className="feature-description">
-            От создания проекта и декомпозиции стадий до апрува со стороны клиента через публичную ссылку.
-          </p>
+      <div className="landing-wide-grid">
+        <GlassPanel className="landing-story-panel">
+          <p className="landing-section-eyebrow">Что внутри</p>
+          <h2>Один контур для всей delivery-команды</h2>
           <ul className="list">
             <li>
               <span className="icon" />
-              <div>Регистрация, вход и восстановление пароля по коду.</div>
+              <div>Проекты с последовательными стадиями и контролем статусов.</div>
             </li>
             <li>
               <span className="icon" />
-              <div>CRUD для проектов, стадий и задач с live-обновлением.</div>
+              <div>Задачи внутри каждой стадии без лишней бюрократии.</div>
+            </li>
+            <li>
+              <span className="icon" />
+              <div>Публичный клиентский апрув в один понятный шаг.</div>
             </li>
           </ul>
         </GlassPanel>
 
-        <GlassPanel className="feature-card">
-          <h3 className="feature-title">Прозрачный статус стадий</h3>
-          <p className="feature-description">
-            Статусы `active`, `waiting`, `review`, `completed` прямо в интерфейсе команды и клиента.
-          </p>
+        <GlassPanel className="landing-story-panel">
+          <p className="landing-section-eyebrow">Кому подходит</p>
+          <h2>Для команд, которым важна прозрачность</h2>
           <ul className="list">
             <li>
               <span className="icon" />
-              <div>Request review отправляет стадию на клиентскую проверку.</div>
+              <div>Студии и агентства, работающие с внешним заказчиком.</div>
             </li>
             <li>
               <span className="icon" />
-              <div>Approve переводит стадию в completed и фиксирует результат.</div>
+              <div>Продуктовые команды с staged delivery и review-процессом.</div>
+            </li>
+            <li>
+              <span className="icon" />
+              <div>Небольшие команды, где нужен единый рабочий ритм.</div>
             </li>
           </ul>
-        </GlassPanel>
-
-        <GlassPanel className="feature-card">
-          <h3 className="feature-title">Скорость и контроль</h3>
-          <p className="feature-description">
-            Интерфейс оптимизирован под ежедневную работу: быстрые формы, компактные карточки и фокус на действиях.
-          </p>
-          <TerminalBlock
-            lines={['$ npm run dev', '$ npm run test:run', '$ npm run build']}
-          />
         </GlassPanel>
       </div>
+
+      <GlassPanel className="landing-flow-panel">
+        <p className="landing-section-eyebrow">Как это работает</p>
+        <h2>Путь проекта от идеи до client approve</h2>
+        <div className="landing-flow-grid">
+          <article className="landing-flow-step">
+            <span className="flow-step-index">01</span>
+            <h3>Создаешь проект</h3>
+            <p className="feature-description">Фиксируешь scope и стартуешь структуру этапов.</p>
+          </article>
+          <article className="landing-flow-step">
+            <span className="flow-step-index">02</span>
+            <h3>Декомпозируешь стадии</h3>
+            <p className="feature-description">Разбиваешь работу на контролируемые блоки.</p>
+          </article>
+          <article className="landing-flow-step">
+            <span className="flow-step-index">03</span>
+            <h3>Ведешь задачи</h3>
+            <p className="feature-description">Команда отмечает прогресс и держит контекст в системе.</p>
+          </article>
+          <article className="landing-flow-step">
+            <span className="flow-step-index">04</span>
+            <h3>Отправляешь на review</h3>
+            <p className="feature-description">Клиент получает стадию и принимает решение в один клик.</p>
+          </article>
+        </div>
+      </GlassPanel>
+
+      <GlassPanel className="landing-cta-panel">
+        <p className="landing-section-eyebrow">Старт</p>
+        <h2>Запусти первый проект в unit-labs</h2>
+        <p className="feature-description">
+          Регистрируй аккаунт, создавай команду и веди проект от бэклога до согласованной поставки в одном интерфейсе.
+        </p>
+        <div className="actions-row">
+          <Link className="cta" to="/signup">
+            Создать аккаунт
+          </Link>
+          <Link className="ghost-link" to="/signin">
+            Войти в кабинет
+          </Link>
+        </div>
+      </GlassPanel>
     </PageShell>
   );
 };
