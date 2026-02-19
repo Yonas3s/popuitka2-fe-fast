@@ -149,7 +149,7 @@ export const apiService = {
   },
 
   async getTeamActiveInvites(teamId: string): Promise<TeamActiveInvite[]> {
-    const response = await apiClient.post(endpoints.teamInvites(teamId));
+    const response = await apiClient.get(endpoints.teamInvites(teamId));
     return extractTeamActiveInvites(response.data);
   },
 

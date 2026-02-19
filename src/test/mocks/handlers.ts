@@ -262,7 +262,7 @@ export const handlers = [
     });
   }),
 
-  http.post(/.*\/teams\/([^/]+)\/invites$/, async ({ params, request }) => {
+  http.get(/.*\/teams\/([^/]+)\/invites$/, async ({ params, request }) => {
     if (!isAuthorized(request)) {
       return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
     }
