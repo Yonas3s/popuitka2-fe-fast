@@ -3,6 +3,8 @@ import { http, HttpResponse } from 'msw';
 type ProjectRecord = {
   _id: string;
   project_name: string;
+  team_id?: string;
+  status?: 'active' | 'completed';
   share_link?: string;
 };
 
@@ -47,7 +49,7 @@ type TeamMemberRecord = {
 };
 
 const state = {
-  projects: [{ _id: 'p1', project_name: 'Demo Project' }] as ProjectRecord[],
+  projects: [{ _id: 'p1', project_name: 'Demo Project', status: 'active' }] as ProjectRecord[],
   stagesByProject: {
     p1: [{ _id: 's1', stage_name: 'Init', description: 'Start stage', status: 'active' }],
   } as Record<string, StageRecord[]>,
@@ -229,6 +231,27 @@ export const handlers = [
     });
   }),
 
+  http.get(/.*\/teams\/([^/]+)\/projects$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const teamId = String(params[0]);
+    const team = state.teams.find((item) => item._id === teamId);
+    if (!team) {
+      return HttpResponse.json({ message: 'team not found' }, { status: 404 });
+    }
+
+    const projects = state.projects.filter((project) => project.team_id === teamId);
+    return HttpResponse.json({
+      status: 'ok',
+      data: {
+        myRole: team.role || 'member',
+        projects,
+      },
+    });
+  }),
+
   http.delete(/.*\/teams\/([^/]+)\/members\/([^/]+)$/, async ({ params, request }) => {
     if (!isAuthorized(request)) {
       return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
@@ -314,6 +337,22 @@ export const handlers = [
     });
   }),
 
+  http.post(/.*\/teams\/([^/]+)\/invites\/([^/]+)$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const teamId = String(params[0]);
+    const inviteId = String(params[1]);
+    const invite = state.teamInvites[inviteId];
+    if (!invite || invite.teamId !== teamId) {
+      return HttpResponse.json({ message: 'invite not found' }, { status: 404 });
+    }
+
+    delete state.teamInvites[inviteId];
+    return HttpResponse.json({ status: 'ok' });
+  }),
+
   http.get(/.*\/team-invites\/([^/]+)$/, async ({ params }) => {
     const token = String(params[0]);
     const invite = state.teamInvites[token];
@@ -360,10 +399,12 @@ export const handlers = [
       return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
     }
 
-    const body = (await request.json()) as { project_name?: string };
+    const body = (await request.json()) as { project_name?: string; team_id?: string };
     const project: ProjectRecord = {
       _id: randomId('p'),
       project_name: body.project_name || 'New project',
+      team_id: body.team_id,
+      status: 'active',
     };
 
     state.projects.push(project);

@@ -35,6 +35,8 @@ describe('api service flow', () => {
     expect(teamDetails.name).toContain('unit-labs');
     const teamMembers = await apiService.getTeamMembers(createdTeam.id);
     expect(teamMembers.length).toBeGreaterThan(0);
+    const teamProjectsPayload = await apiService.getTeamProjects(createdTeam.id);
+    expect(teamProjectsPayload.projects.length).toBeGreaterThanOrEqual(0);
     const membersForDeletion = await apiService.getTeamMembers('team-1');
     const removableMember = membersForDeletion.find((member) => member.role !== 'owner');
     expect(removableMember).toBeTruthy();
@@ -50,6 +52,17 @@ describe('api service flow', () => {
     const activeInvites = await apiService.getTeamActiveInvites(createdTeam.id);
     expect(activeInvites.length).toBeGreaterThan(0);
     expect(activeInvites[0].email).toContain('@');
+    await apiService.inviteToTeam(createdTeam.id, { email: 'revoke@example.com' });
+    const activeInvitesBeforeRevoke = await apiService.getTeamActiveInvites(createdTeam.id);
+    const inviteToRevoke = activeInvitesBeforeRevoke.find((invite) => invite.email === 'revoke@example.com');
+    expect(inviteToRevoke).toBeTruthy();
+    if (!inviteToRevoke) {
+      throw new Error('Expected invite for revoke');
+    }
+
+    await apiService.revokeTeamInvite(createdTeam.id, inviteToRevoke.id);
+    const activeInvitesAfterRevoke = await apiService.getTeamActiveInvites(createdTeam.id);
+    expect(activeInvitesAfterRevoke.find((invite) => invite.id === inviteToRevoke.id)).toBeFalsy();
 
     const inviteToken = new URL(inviteLink).searchParams.get('token');
     expect(inviteToken).toBeTruthy();

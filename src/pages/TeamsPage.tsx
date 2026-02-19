@@ -10,16 +10,17 @@ import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { useUiStore } from '../store/ui.store';
 import { useAuthStore } from '../store/auth.store';
-import type { ApiError, Team, TeamActiveInvite, TeamDetails, TeamMember } from '../types/models';
+import type { ApiError, Project, Team, TeamActiveInvite, TeamDetails, TeamMember } from '../types/models';
 
 type CreateTeamForm = {
   name: string;
 };
 
-type TeamSection = 'overview' | 'members' | 'invites' | 'settings';
+type TeamSection = 'overview' | 'projects' | 'members' | 'invites' | 'settings';
 
 const sectionItems: { key: TeamSection; label: string }[] = [
   { key: 'overview', label: 'Обзор' },
+  { key: 'projects', label: 'Проекты' },
   { key: 'members', label: 'Участники' },
   { key: 'invites', label: 'Инвайты' },
   { key: 'settings', label: 'Настройки' },
@@ -39,10 +40,14 @@ export const TeamsPage = () => {
   const [teamDetailsById, setTeamDetailsById] = useState<Record<string, TeamDetails>>({});
   const [teamDetailsLoadingById, setTeamDetailsLoadingById] = useState<Record<string, boolean>>({});
   const [teamDetailsDeniedById, setTeamDetailsDeniedById] = useState<Record<string, boolean>>({});
+  const [teamProjectsByTeamId, setTeamProjectsByTeamId] = useState<Record<string, Project[]>>({});
+  const [teamProjectsLoadingByTeamId, setTeamProjectsLoadingByTeamId] = useState<Record<string, boolean>>({});
+  const [teamProjectsDeniedByTeamId, setTeamProjectsDeniedByTeamId] = useState<Record<string, boolean>>({});
   const [teamMembersByTeamId, setTeamMembersByTeamId] = useState<Record<string, TeamMember[]>>({});
   const [teamMembersLoadingByTeamId, setTeamMembersLoadingByTeamId] = useState<Record<string, boolean>>({});
   const [teamMembersDeniedByTeamId, setTeamMembersDeniedByTeamId] = useState<Record<string, boolean>>({});
   const [removeMemberLoadingById, setRemoveMemberLoadingById] = useState<Record<string, boolean>>({});
+  const [revokeInviteLoadingById, setRevokeInviteLoadingById] = useState<Record<string, boolean>>({});
   const [memberActionsOpenForId, setMemberActionsOpenForId] = useState<string | null>(null);
   const [pendingMemberRemoval, setPendingMemberRemoval] = useState<{ teamId: string; member: TeamMember } | null>(null);
   const [removeMemberConfirmUsername, setRemoveMemberConfirmUsername] = useState('');
@@ -144,6 +149,57 @@ export const TeamsPage = () => {
     [pushToast, teamActiveInvitesDeniedByTeamId],
   );
 
+  const loadTeamProjects = useCallback(
+    async (teamId: string) => {
+      if (teamProjectsDeniedByTeamId[teamId]) {
+        return;
+      }
+
+      setTeamProjectsLoadingByTeamId((prev) => ({ ...prev, [teamId]: true }));
+      try {
+        const payload = await apiService.getTeamProjects(teamId);
+        setTeamProjectsByTeamId((prev) => ({ ...prev, [teamId]: payload.projects }));
+
+        if (payload.myRole) {
+          setTeams((prev) =>
+            prev.map((team) =>
+              team.id === teamId
+                ? {
+                    ...team,
+                    role: payload.myRole,
+                  }
+                : team,
+            ),
+          );
+        }
+      } catch (reason) {
+        const normalized = normalizeApiError(reason);
+
+        if (isAccessDenied(normalized)) {
+          let shouldNotify = false;
+          setTeamProjectsDeniedByTeamId((prev) => {
+            if (prev[teamId]) {
+              return prev;
+            }
+
+            shouldNotify = true;
+            return { ...prev, [teamId]: true };
+          });
+
+          if (shouldNotify) {
+            pushToast('Нет доступа к проектам этой команды', 'error');
+          }
+          return;
+        }
+
+        pushToast(normalized.message, 'error');
+      } finally {
+        setTeamProjectsLoadingByTeamId((prev) => ({ ...prev, [teamId]: false }));
+      }
+    },
+    [pushToast, teamProjectsDeniedByTeamId],
+  );
+
   const onInvite = async (teamId: string) => {
     const email = inviteEmails[teamId]?.trim() ?? '';
     if (!email) {
@@ -179,6 +235,23 @@ export const TeamsPage = () => {
       pushToast('Ссылка приглашения скопирована', 'success');
     } catch {
       pushToast('Не удалось скопировать ссылку', 'error');
+    }
+  };
+
+  const onRevokeInvite = async (teamId: string, inviteId: string) => {
+    setRevokeInviteLoadingById((prev) => ({ ...prev, [inviteId]: true }));
+    try {
+      await apiService.revokeTeamInvite(teamId, inviteId);
+      setTeamActiveInvitesByTeamId((prev) => ({
+        ...prev,
+        [teamId]: (prev[teamId] || []).filter((invite) => invite.id !== inviteId),
+      }));
+      pushToast('Инвайт отозван', 'success');
+    } catch (reason) {
+      const normalized = normalizeApiError(reason);
+      pushToast(normalized.message, 'error');
+    } finally {
+      setRevokeInviteLoadingById((prev) => ({ ...prev, [inviteId]: false }));
     }
   };
 
@@ -391,6 +464,29 @@ export const TeamsPage = () => {
   ]);
 
   useEffect(() => {
+    if (!selectedTeam || activeSection !== 'projects') {
+      return;
+    }
+
+    if (
+      teamProjectsByTeamId[selectedTeam.id]
+      || teamProjectsLoadingByTeamId[selectedTeam.id]
+      || teamProjectsDeniedByTeamId[selectedTeam.id]
+    ) {
+      return;
+    }
+
+    void loadTeamProjects(selectedTeam.id);
+  }, [
+    activeSection,
+    loadTeamProjects,
+    selectedTeam,
+    teamProjectsByTeamId,
+    teamProjectsDeniedByTeamId,
+    teamProjectsLoadingByTeamId,
+  ]);
+
+  useEffect(() => {
     if (!selectedTeam || activeSection !== 'invites' || !canManageTeam) {
       return;
     }
@@ -416,7 +512,9 @@ export const TeamsPage = () => {
 
   const selectedTeamMembers = selectedTeam ? teamMembersByTeamId[selectedTeam.id] || [] : [];
   const selectedTeamActiveInvites = selectedTeam ? teamActiveInvitesByTeamId[selectedTeam.id] || [] : [];
+  const selectedTeamProjects = selectedTeam ? teamProjectsByTeamId[selectedTeam.id] || [] : [];
   const selectedTeamDetailsLoading = selectedTeam ? Boolean(teamDetailsLoadingById[selectedTeam.id]) : false;
+  const selectedTeamProjectsLoading = selectedTeam ? Boolean(teamProjectsLoadingByTeamId[selectedTeam.id]) : false;
   const selectedTeamMembersLoading = selectedTeam ? Boolean(teamMembersLoadingByTeamId[selectedTeam.id]) : false;
   const selectedTeamActiveInvitesLoading = selectedTeam ? Boolean(teamActiveInvitesLoadingByTeamId[selectedTeam.id]) : false;
   const pendingRemovalMember = pendingMemberRemoval?.member ?? null;
@@ -551,6 +649,54 @@ export const TeamsPage = () => {
                   ) : (
                     <p className="muted">Карточка команды пока недоступна.</p>
                   )}
+                </GlassPanel>
+              ) : null}
+
+              {activeSection === 'projects' ? (
+                <GlassPanel className="teams-section-panel">
+                  <div className="teams-invites-header">
+                    <h3>Проекты команды</h3>
+                    <button
+                      type="button"
+                      className="ghost-link"
+                      onClick={() => {
+                        if (!selectedTeam) {
+                          return;
+                        }
+
+                        void loadTeamProjects(selectedTeam.id);
+                      }}
+                    >
+                      Обновить
+                    </button>
+                  </div>
+                  <p className="muted">Все проекты, созданные внутри текущей команды.</p>
+                  {selectedTeamProjectsLoading ? <p className="muted">Загружаем проекты команды...</p> : null}
+                  {!selectedTeamProjectsLoading && selectedTeamProjects.length === 0 ? (
+                    <EmptyState title="Проектов пока нет" description="Создайте первый проект и привяжите его к этой команде." />
+                  ) : null}
+                  <div className="cards-grid">
+                    {selectedTeamProjects.map((project) => (
+                      <article key={project.id} className="card-item">
+                        <h3>{project.projectName}</h3>
+                        <p className="muted mono">{project.id}</p>
+                        {project.status ? (
+                          <p className="status-row">
+                            <span className={`status-badge ${project.status === 'completed' ? 'status-completed' : 'status-active'}`}>
+                              {project.status}
+                            </span>
+                          </p>
+                        ) : null}
+                        {canManageTeam ? (
+                          <a className="ghost-link" href={`/projects/${project.id}`}>
+                            Открыть проект
+                          </a>
+                        ) : (
+                          <span className="muted">Открытие доступно owner</span>
+                        )}
+                      </article>
+                    ))}
+                  </div>
                 </GlassPanel>
               ) : null}
 
@@ -704,6 +850,16 @@ export const TeamsPage = () => {
                                   : '—'}
                               </span>
                               {invite.invitedBy ? <span className="muted mono">{invite.invitedBy}</span> : null}
+                              <button
+                                type="button"
+                                className="ghost-link danger"
+                                disabled={Boolean(revokeInviteLoadingById[invite.id])}
+                                onClick={() => {
+                                  void onRevokeInvite(selectedTeam.id, invite.id);
+                                }}
+                              >
+                                {revokeInviteLoadingById[invite.id] ? 'Отзываем...' : 'Отозвать'}
+                              </button>
                             </div>
                           </article>
                         ))}

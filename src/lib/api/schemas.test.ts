@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { extractTeamActiveInvites, extractTeamDetails, extractTeamMembers, extractTeams } from './schemas';
+import {
+  extractProjects,
+  extractTeamActiveInvites,
+  extractTeamDetails,
+  extractTeamMembers,
+  extractTeamProjects,
+  extractTeams,
+} from './schemas';
 
 describe('extractTeams', () => {
   it('parses plain teams array', () => {
@@ -126,5 +133,37 @@ describe('team details and members extractors', () => {
     expect(invites[0].id).toBe('inv-1');
     expect(invites[0].email).toBe('user@example.com');
     expect(invites[0].invitedBy).toBe('owner-1');
+  });
+
+  it('parses team projects payload with nested data wrapper', () => {
+    const payload = extractTeamProjects({
+      status: 'ok',
+      data: {
+        myRole: 'owner',
+        projects: [
+          { _id: 'p1', project_name: 'Website Revamp', status: 'active', team_id: 'team-1' },
+          { _id: 'p2', project_name: 'CRM', status: 'completed', team_id: 'team-1' },
+        ],
+      },
+    });
+
+    expect(payload.myRole).toBe('owner');
+    expect(payload.projects).toHaveLength(2);
+    expect(payload.projects[0].id).toBe('p1');
+    expect(payload.projects[0].teamId).toBe('team-1');
+    expect(payload.projects[0].status).toBe('active');
+  });
+
+  it('parses projects from generic nested data response', () => {
+    const projects = extractProjects({
+      status: 'ok',
+      data: {
+        projects: [{ _id: 'p5', project_name: 'Nested Project' }],
+      },
+    });
+
+    expect(projects).toHaveLength(1);
+    expect(projects[0].id).toBe('p5');
+    expect(projects[0].projectName).toBe('Nested Project');
   });
 });

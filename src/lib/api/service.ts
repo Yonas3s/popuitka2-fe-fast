@@ -12,6 +12,7 @@ import {
   extractTeamActiveInvites,
   extractTeamDetails,
   extractTeamMembers,
+  extractTeamProjects,
   extractStage,
   extractStages,
   extractAdminStat,
@@ -32,6 +33,7 @@ import type {
   TeamDetails,
   TeamMember,
   TeamInvitePreview,
+  TeamProjectsPayload,
 } from '../../types/models';
 
 export type SignUpPayload = {
@@ -148,6 +150,11 @@ export const apiService = {
     return extractTeamMembers(response.data);
   },
 
+  async getTeamProjects(teamId: string): Promise<TeamProjectsPayload> {
+    const response = await apiClient.get(endpoints.teamProjects(teamId));
+    return extractTeamProjects(response.data);
+  },
+
   async removeTeamMember(teamId: string, userId: string): Promise<void> {
     await apiClient.delete(endpoints.teamMemberByUser(teamId, userId));
   },
@@ -155,6 +162,10 @@ export const apiService = {
   async getTeamActiveInvites(teamId: string): Promise<TeamActiveInvite[]> {
     const response = await apiClient.get(endpoints.teamInvites(teamId));
     return extractTeamActiveInvites(response.data);
+  },
+
+  async revokeTeamInvite(teamId: string, inviteId: string): Promise<void> {
+    await apiClient.post(endpoints.teamInviteById(teamId, inviteId));
   },
 
   async inviteToTeam(teamId: string, payload: InviteToTeamPayload): Promise<string> {

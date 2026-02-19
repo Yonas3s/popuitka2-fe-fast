@@ -70,6 +70,12 @@ export type TeamActiveInvite = {
   raw: Record<string, unknown>;
 };
 
+export type TeamProjectsPayload = {
+  myRole?: string;
+  projects: Project[];
+  raw: Record<string, unknown>;
+};
+
 export type TeamInvitePreview = {
   teamName: string;
   inviterName?: string;
@@ -84,6 +90,8 @@ export type Project = {
   id: string;
   projectName: string;
   description?: string;
+  teamId?: string;
+  status?: 'active' | 'completed';
   shareLink?: string;
   raw: Record<string, unknown>;
 };

@@ -11,6 +11,7 @@ import type {
   TeamDetails,
   TeamMember,
   TeamInvitePreview,
+  TeamProjectsPayload,
 } from '../../types/models';
 
 const recordSchema = z.record(z.unknown());
@@ -22,6 +23,9 @@ const projectSchema = z
     project_name: z.string().optional(),
     name: z.string().optional(),
     description: z.string().optional(),
+    team_id: z.string().optional(),
+    teamId: z.string().optional(),
+    status: z.enum(['active', 'completed']).optional(),
     share_link: z.string().optional(),
     shareLink: z.string().optional(),
     client_url: z.string().optional(),
@@ -242,6 +246,10 @@ export const normalizeProject = (value: unknown, index = 0): Project => {
     'Без названия';
 
   const description = typeof record.description === 'string' ? record.description : undefined;
+  const teamId =
+    (typeof record.team_id === 'string' && record.team_id) ||
+    (typeof record.teamId === 'string' && record.teamId) ||
+    undefined;
   const shareLink =
     (typeof record.share_link === 'string' && record.share_link) ||
     (typeof record.shareLink === 'string' && record.shareLink) ||
@@ -253,6 +261,12 @@ export const normalizeProject = (value: unknown, index = 0): Project => {
     id: normalizeId(record, `project-${index}`),
     projectName,
     description,
+    teamId,
+    status:
+      typeof record.status === 'string' &&
+      ['active', 'completed'].includes(record.status)
+        ? (record.status as 'active' | 'completed')
+        : undefined,
     shareLink,
     raw: record,
   };
@@ -565,8 +579,27 @@ const normalizeCollection = <T>(
   return [];
 };
 
-export const extractProjects = (value: unknown): Project[] =>
-  normalizeCollection(value, ['projects', 'data', 'items'], normalizeProject);
+export const extractProjects = (value: unknown): Project[] => {
+  if (Array.isArray(value)) {
+    return value.map(normalizeProject);
+  }
+
+  const asObj = asRecord(value);
+  const nested = pickRecordFromPossibleKeys(asObj, ['data']);
+  const source = nested ?? asObj;
+
+  const directArray = pickArrayFromPossibleKeys(source, ['projects', 'data', 'items']);
+  if (directArray.length > 0) {
+    return directArray.map(normalizeProject);
+  }
+
+  const fallbackArray = pickFirstArrayValue(source);
+  if (fallbackArray.length > 0) {
+    return fallbackArray.map(normalizeProject);
+  }
+
+  return [];
+};
 
 export const extractStages = (value: unknown): Stage[] =>
   normalizeCollection(value, ['stages', 'data', 'items'], normalizeStage);
@@ -664,6 +697,27 @@ export const extractTeamActiveInvites = (value: unknown): TeamActiveInvite[] => 
   }
 
   return [];
+};
+
+export const extractTeamProjects = (value: unknown): TeamProjectsPayload => {
+  const asObj = asRecord(value);
+  const nested = pickRecordFromPossibleKeys(asObj, ['data']);
+  const source = nested ?? asObj;
+
+  const myRole =
+    (typeof source.myRole === 'string' && source.myRole) ||
+    (typeof source.my_role === 'string' && source.my_role) ||
+    (typeof source.role === 'string' && source.role) ||
+    (typeof asObj.myRole === 'string' && asObj.myRole) ||
+    (typeof asObj.my_role === 'string' && asObj.my_role) ||
+    (typeof asObj.role === 'string' && asObj.role) ||
+    undefined;
+
+  return {
+    myRole,
+    projects: extractProjects(source),
+    raw: source,
+  };
 };
 
 export const extractProject = (value: unknown): Project => {
