@@ -799,6 +799,35 @@ p {
   background: rgba(6, 12, 24, 0.5);
 }
 
+.teams-invites-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.teams-invites-list {
+  display: grid;
+  gap: 10px;
+}
+
+.teams-invite-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(126, 166, 255, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(6, 12, 24, 0.5);
+}
+
+.teams-invite-meta {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
 .teams-settings-list {
   display: grid;
   gap: 10px;
@@ -1575,6 +1604,15 @@ p {
 
   .teams-overview-grid {
     grid-template-columns: 1fr;
+  }
+
+  .teams-member-row,
+  .teams-invite-row {
+    flex-direction: column;
+  }
+
+  .teams-invite-meta {
+    justify-items: start;
   }
 
   .admin-kpi-grid,

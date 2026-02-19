@@ -61,6 +61,15 @@ export type TeamMember = {
   raw: Record<string, unknown>;
 };
 
+export type TeamActiveInvite = {
+  id: string;
+  email: string;
+  invitedBy?: string;
+  createdAt?: string;
+  expiresAt?: string;
+  raw: Record<string, unknown>;
+};
+
 export type TeamInvitePreview = {
   teamName: string;
   inviterName?: string;

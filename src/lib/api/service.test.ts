@@ -38,6 +38,9 @@ describe('api service flow', () => {
 
     const inviteLink = await apiService.inviteToTeam(createdTeam.id, { email: 'teammate@example.com' });
     expect(inviteLink).toContain('token=');
+    const activeInvites = await apiService.getTeamActiveInvites(createdTeam.id);
+    expect(activeInvites.length).toBeGreaterThan(0);
+    expect(activeInvites[0].email).toContain('@');
 
     const inviteToken = new URL(inviteLink).searchParams.get('token');
     expect(inviteToken).toBeTruthy();

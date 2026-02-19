@@ -7,6 +7,7 @@ import type {
   Stage,
   Task,
   Team,
+  TeamActiveInvite,
   TeamDetails,
   TeamMember,
   TeamInvitePreview,
@@ -131,6 +132,20 @@ const teamInvitePreviewSchema = z
     accepted_at: z.string().optional(),
     acceptedAt: z.string().optional(),
     valid: z.boolean().optional(),
+  })
+  .passthrough();
+
+const teamActiveInviteSchema = z
+  .object({
+    _id: z.string().optional(),
+    id: z.string().optional(),
+    email: z.string().optional(),
+    invited_by: z.string().optional(),
+    invitedBy: z.string().optional(),
+    created_at: z.string().optional(),
+    createdAt: z.string().optional(),
+    expires_at: z.string().optional(),
+    expiresAt: z.string().optional(),
   })
   .passthrough();
 
@@ -504,6 +519,34 @@ export const normalizeTeamMember = (value: unknown, index = 0): TeamMember => {
   };
 };
 
+export const normalizeTeamActiveInvite = (value: unknown, index = 0): TeamActiveInvite => {
+  const parsed = teamActiveInviteSchema.safeParse(value);
+  const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
+
+  const email = typeof record.email === 'string' ? record.email : '';
+  const invitedBy =
+    (typeof record.invited_by === 'string' && record.invited_by) ||
+    (typeof record.invitedBy === 'string' && record.invitedBy) ||
+    undefined;
+  const createdAt =
+    (typeof record.created_at === 'string' && record.created_at) ||
+    (typeof record.createdAt === 'string' && record.createdAt) ||
+    undefined;
+  const expiresAt =
+    (typeof record.expires_at === 'string' && record.expires_at) ||
+    (typeof record.expiresAt === 'string' && record.expiresAt) ||
+    undefined;
+
+  return {
+    id: normalizeId(record, `invite-${index}`),
+    email,
+    invitedBy,
+    createdAt,
+    expiresAt,
+    raw: record,
+  };
+};
+
 const normalizeCollection = <T>(
   value: unknown,
   keys: string[],
@@ -596,6 +639,28 @@ export const extractTeamMembers = (value: unknown): TeamMember[] => {
   const fallbackArray = pickFirstArrayValue(source);
   if (fallbackArray.length > 0) {
     return fallbackArray.map(normalizeTeamMember);
+  }
+
+  return [];
+};
+
+export const extractTeamActiveInvites = (value: unknown): TeamActiveInvite[] => {
+  if (Array.isArray(value)) {
+    return value.map(normalizeTeamActiveInvite);
+  }
+
+  const asObj = asRecord(value);
+  const nested = pickRecordFromPossibleKeys(asObj, ['data']);
+  const source = nested ?? asObj;
+
+  const directArray = pickArrayFromPossibleKeys(source, ['invites', 'items', 'data']);
+  if (directArray.length > 0) {
+    return directArray.map(normalizeTeamActiveInvite);
+  }
+
+  const fallbackArray = pickFirstArrayValue(source);
+  if (fallbackArray.length > 0) {
+    return fallbackArray.map(normalizeTeamActiveInvite);
   }
 
   return [];

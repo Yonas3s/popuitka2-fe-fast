@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { PageShell } from '../components/layout/PageShell';
 import { GlassPanel } from '../components/ui/GlassPanel';
@@ -9,7 +9,7 @@ import { ErrorState } from '../components/feedback/ErrorState';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { useUiStore } from '../store/ui.store';
-import type { ApiError, Team, TeamDetails, TeamMember } from '../types/models';
+import type { ApiError, Team, TeamActiveInvite, TeamDetails, TeamMember } from '../types/models';
 
 type CreateTeamForm = {
   name: string;
@@ -38,6 +38,8 @@ export const TeamsPage = () => {
   const [teamDetailsLoadingById, setTeamDetailsLoadingById] = useState<Record<string, boolean>>({});
   const [teamMembersByTeamId, setTeamMembersByTeamId] = useState<Record<string, TeamMember[]>>({});
   const [teamMembersLoadingByTeamId, setTeamMembersLoadingByTeamId] = useState<Record<string, boolean>>({});
+  const [teamActiveInvitesByTeamId, setTeamActiveInvitesByTeamId] = useState<Record<string, TeamActiveInvite[]>>({});
+  const [teamActiveInvitesLoadingByTeamId, setTeamActiveInvitesLoadingByTeamId] = useState<Record<string, boolean>>({});
 
   const {
     register,
@@ -93,6 +95,22 @@ export const TeamsPage = () => {
     }
   });
 
+  const loadActiveInvites = useCallback(
+    async (teamId: string) => {
+      setTeamActiveInvitesLoadingByTeamId((prev) => ({ ...prev, [teamId]: true }));
+      try {
+        const invites = await apiService.getTeamActiveInvites(teamId);
+        setTeamActiveInvitesByTeamId((prev) => ({ ...prev, [teamId]: invites }));
+      } catch (reason) {
+        const normalized = normalizeApiError(reason);
+        pushToast(normalized.message, 'error');
+      } finally {
+        setTeamActiveInvitesLoadingByTeamId((prev) => ({ ...prev, [teamId]: false }));
+      }
+    },
+    [pushToast],
+  );
+
   const onInvite = async (teamId: string) => {
     const email = inviteEmails[teamId]?.trim() ?? '';
     if (!email) {
@@ -107,6 +125,7 @@ export const TeamsPage = () => {
         setInviteLinksByTeam((prev) => ({ ...prev, [teamId]: inviteUrl }));
       }
       setInviteEmails((prev) => ({ ...prev, [teamId]: '' }));
+      await loadActiveInvites(teamId);
       pushToast('Приглашение отправлено', 'success');
     } catch (reason) {
       const normalized = normalizeApiError(reason);
@@ -194,10 +213,24 @@ export const TeamsPage = () => {
       });
   }, [activeSection, pushToast, selectedTeam, teamMembersByTeamId, teamMembersLoadingByTeamId]);
 
+  useEffect(() => {
+    if (!selectedTeam || activeSection !== 'invites') {
+      return;
+    }
+
+    if (teamActiveInvitesByTeamId[selectedTeam.id] || teamActiveInvitesLoadingByTeamId[selectedTeam.id]) {
+      return;
+    }
+
+    void loadActiveInvites(selectedTeam.id);
+  }, [activeSection, loadActiveInvites, selectedTeam, teamActiveInvitesByTeamId, teamActiveInvitesLoadingByTeamId]);
+
   const selectedTeamDetails = selectedTeam ? teamDetailsById[selectedTeam.id] : undefined;
   const selectedTeamMembers = selectedTeam ? teamMembersByTeamId[selectedTeam.id] || [] : [];
+  const selectedTeamActiveInvites = selectedTeam ? teamActiveInvitesByTeamId[selectedTeam.id] || [] : [];
   const selectedTeamDetailsLoading = selectedTeam ? Boolean(teamDetailsLoadingById[selectedTeam.id]) : false;
   const selectedTeamMembersLoading = selectedTeam ? Boolean(teamMembersLoadingByTeamId[selectedTeam.id]) : false;
+  const selectedTeamActiveInvitesLoading = selectedTeam ? Boolean(teamActiveInvitesLoadingByTeamId[selectedTeam.id]) : false;
   const effectiveRole = (selectedTeamDetails?.myRole || selectedTeam?.role || 'member').toLowerCase();
   const canManageTeam = effectiveRole === 'owner';
 
@@ -404,6 +437,48 @@ export const TeamsPage = () => {
                           {inviteLinksByTeam[selectedTeam.id]}
                         </a>
                       ) : null}
+
+                      <div className="teams-invites-header">
+                        <strong>Активные инвайты</strong>
+                        <button
+                          type="button"
+                          className="ghost-link"
+                          onClick={() => {
+                            void loadActiveInvites(selectedTeam.id);
+                          }}
+                        >
+                          Обновить
+                        </button>
+                      </div>
+                      {selectedTeamActiveInvitesLoading ? <p className="muted">Загружаем активные инвайты...</p> : null}
+                      {!selectedTeamActiveInvitesLoading && selectedTeamActiveInvites.length === 0 ? (
+                        <p className="muted">Активных инвайтов пока нет.</p>
+                      ) : null}
+                      <div className="teams-invites-list">
+                        {selectedTeamActiveInvites.map((invite) => (
+                          <article key={invite.id} className="teams-invite-row">
+                            <div>
+                              <strong>{invite.email}</strong>
+                              <p className="muted">
+                                Создан:{' '}
+                                {invite.createdAt
+                                  ? new Date(invite.createdAt).toLocaleString('ru-RU')
+                                  : '—'}
+                              </p>
+                            </div>
+                            <div className="teams-invite-meta">
+                              <span className="account-provider-tag">active</span>
+                              <span className="muted">
+                                До:{' '}
+                                {invite.expiresAt
+                                  ? new Date(invite.expiresAt).toLocaleString('ru-RU')
+                                  : '—'}
+                              </span>
+                              {invite.invitedBy ? <span className="muted mono">{invite.invitedBy}</span> : null}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </GlassPanel>

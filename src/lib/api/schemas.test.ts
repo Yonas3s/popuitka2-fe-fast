@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractTeamDetails, extractTeamMembers, extractTeams } from './schemas';
+import { extractTeamActiveInvites, extractTeamDetails, extractTeamMembers, extractTeams } from './schemas';
 
 describe('extractTeams', () => {
   it('parses plain teams array', () => {
@@ -106,5 +106,25 @@ describe('team details and members extractors', () => {
     expect(members[0].id).toBe('u1');
     expect(members[0].username).toBe('yonas');
     expect(members[0].role).toBe('owner');
+  });
+
+  it('parses active invites payload', () => {
+    const invites = extractTeamActiveInvites({
+      status: 'ok',
+      data: [
+        {
+          id: 'inv-1',
+          email: 'user@example.com',
+          invited_by: 'owner-1',
+          expires_at: '2026-02-19T12:00:00.000Z',
+          created_at: '2026-02-18T12:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(invites).toHaveLength(1);
+    expect(invites[0].id).toBe('inv-1');
+    expect(invites[0].email).toBe('user@example.com');
+    expect(invites[0].invitedBy).toBe('owner-1');
   });
 });

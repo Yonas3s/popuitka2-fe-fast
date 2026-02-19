@@ -29,9 +29,12 @@ type TeamRecord = {
 };
 
 type TeamInviteRecord = {
+  id: string;
   teamId: string;
   email: string;
   inviterName: string;
+  invitedBy: string;
+  createdAt: string;
   expiresAt: string;
   acceptedAt?: string;
 };
@@ -243,15 +246,49 @@ export const handlers = [
     }
 
     const token = `invite-${Math.random().toString(16).slice(2, 14)}`;
+    const createdAt = new Date().toISOString();
     state.teamInvites[token] = {
+      id: token,
       teamId,
       email: body.email,
       inviterName: 'Yonas3s',
+      invitedBy: '698b1202cb65b668e76f6c88',
+      createdAt,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     };
 
     return HttpResponse.json({
       invite_url: `https://unit-labs.ru/team-invite?token=${token}`,
+    });
+  }),
+
+  http.post(/.*\/teams\/([^/]+)\/invites$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const teamId = String(params[0]);
+    const team = state.teams.find((item) => item._id === teamId);
+    if (!team) {
+      return HttpResponse.json({ message: 'team not found' }, { status: 404 });
+    }
+
+    const now = Date.now();
+    const invites = Object.values(state.teamInvites)
+      .filter((invite) => invite.teamId === teamId)
+      .filter((invite) => !invite.acceptedAt)
+      .filter((invite) => new Date(invite.expiresAt).getTime() > now)
+      .map((invite) => ({
+        id: invite.id,
+        email: invite.email,
+        invited_by: invite.invitedBy,
+        expires_at: invite.expiresAt,
+        created_at: invite.createdAt,
+      }));
+
+    return HttpResponse.json({
+      status: 'ok',
+      data: invites,
     });
   }),
 
