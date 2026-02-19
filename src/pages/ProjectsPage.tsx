@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { PageShell } from '../components/layout/PageShell';
 import { GlassPanel } from '../components/ui/GlassPanel';
 import { GradientButton } from '../components/ui/GradientButton';
+import { MenuSelect } from '../components/ui/MenuSelect';
 import { TextInput } from '../components/ui/TextInput';
 import { EmptyState } from '../components/feedback/EmptyState';
 import { ErrorState } from '../components/feedback/ErrorState';
@@ -15,7 +16,6 @@ import type { Team } from '../types/models';
 
 type ProjectForm = {
   project_name: string;
-  target: string;
 };
 
 export const ProjectsPage = () => {
@@ -28,18 +28,14 @@ export const ProjectsPage = () => {
   const pushToast = useUiStore((state) => state.pushToast);
   const [ownerTeams, setOwnerTeams] = useState<Team[]>([]);
   const [teamsLoading, setTeamsLoading] = useState(false);
+  const [projectTarget, setProjectTarget] = useState<string>('personal');
 
   const {
     register,
     handleSubmit,
     reset,
-    watch,
     formState: { errors, isSubmitting },
-  } = useForm<ProjectForm>({
-    defaultValues: {
-      target: 'personal',
-    },
-  });
+  } = useForm<ProjectForm>();
 
   useEffect(() => {
     void fetchProjects();
@@ -73,21 +69,36 @@ export const ProjectsPage = () => {
     };
   }, []);
 
-  const selectedTarget = watch('target');
+  const selectedTarget = projectTarget;
 
   const onSubmit = handleSubmit(async (values) => {
-    const teamId = values.target.startsWith('team:') ? values.target.slice(5) : '';
+    const teamId = selectedTarget.startsWith('team:') ? selectedTarget.slice(5) : '';
     try {
       await createProject({
         project_name: values.project_name,
         ...(teamId ? { team_id: teamId } : {}),
       });
       pushToast('Проект создан', 'success');
-      reset({ project_name: '', target: values.target });
+      reset({ project_name: '' });
     } catch {
       pushToast('Не удалось создать проект', 'error');
     }
   });
+
+  const targetOptions = useMemo(() => {
+    return [
+      {
+        value: 'personal',
+        label: 'Личный проект',
+        description: 'Проект будет доступен только тебе как owner.',
+      },
+      ...ownerTeams.map((team) => ({
+        value: `team:${team.id}`,
+        label: `Команда: ${team.name}`,
+        description: 'Проект закрепится за выбранной командой.',
+      })),
+    ];
+  }, [ownerTeams]);
 
   const createdDate = useMemo(() => {
     if (!user?.createdAt) {
@@ -165,17 +176,13 @@ export const ProjectsPage = () => {
                 }),
               }}
             />
-            <label className="field">
-              <span className="field-label">Куда добавить проект</span>
-              <select className="input" {...register('target')}>
-                <option value="personal">Личный проект</option>
-                {ownerTeams.map((team) => (
-                  <option key={team.id} value={`team:${team.id}`}>
-                    Команда: {team.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <MenuSelect
+              label="Куда добавить проект"
+              value={selectedTarget}
+              options={targetOptions}
+              onChange={setProjectTarget}
+              disabled={teamsLoading && ownerTeams.length === 0}
+            />
             {teamsLoading ? <p className="muted">Загружаем команды...</p> : null}
             {!teamsLoading && ownerTeams.length === 0 ? (
               <p className="muted">У тебя пока нет команд с ролью owner. Проект будет создан как личный.</p>

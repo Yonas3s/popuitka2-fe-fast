@@ -148,6 +148,10 @@ export const apiService = {
     return extractTeamMembers(response.data);
   },
 
+  async removeTeamMember(teamId: string, userId: string): Promise<void> {
+    await apiClient.delete(endpoints.teamMemberByUser(teamId, userId));
+  },
+
   async getTeamActiveInvites(teamId: string): Promise<TeamActiveInvite[]> {
     const response = await apiClient.get(endpoints.teamInvites(teamId));
     return extractTeamActiveInvites(response.data);

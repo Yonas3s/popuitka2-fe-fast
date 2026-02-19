@@ -5,6 +5,7 @@ import { GlassPanel } from '../components/ui/GlassPanel';
 import { GradientButton } from '../components/ui/GradientButton';
 import { ErrorState } from '../components/feedback/ErrorState';
 import { apiService } from '../lib/api/service';
+import { withRedirectQuery } from '../lib/auth/redirect';
 import { normalizeApiError } from '../lib/api/errors';
 import { useAuthStore } from '../store/auth.store';
 import { useUiStore } from '../store/ui.store';
@@ -16,6 +17,7 @@ export const TeamInvitePage = () => {
   const routeParams = useParams<{ token?: string }>();
   const pushToast = useUiStore((state) => state.pushToast);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const returnPath = `${location.pathname}${location.search}`;
   const token = useMemo(() => {
     const queryParams = new URLSearchParams(location.search);
     const queryToken = queryParams.get('token')?.trim() || '';
@@ -30,6 +32,18 @@ export const TeamInvitePage = () => {
   const [error, setError] = useState<ApiError | null>(null);
 
   useEffect(() => {
+    if (isAuthenticated) {
+      return;
+    }
+
+    navigate(withRedirectQuery('/signin', returnPath), { replace: true });
+  }, [isAuthenticated, navigate, returnPath]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     if (!token) {
       setLoading(false);
       setError({ message: 'Токен приглашения не найден в ссылке' });
@@ -58,7 +72,7 @@ export const TeamInvitePage = () => {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [isAuthenticated, token]);
 
   const onAccept = async () => {
     if (!token) {
@@ -70,7 +84,7 @@ export const TeamInvitePage = () => {
       await apiService.acceptTeamInvite(token);
       setAccepted(true);
       pushToast('Приглашение принято', 'success');
-      navigate(isAuthenticated ? '/teams' : '/signin', { replace: true });
+      navigate('/teams', { replace: true });
     } catch (reason) {
       const normalized = normalizeApiError(reason);
       setError(normalized);
@@ -82,17 +96,23 @@ export const TeamInvitePage = () => {
 
   return (
     <PageShell title="Приглашение в команду" subtitle="Подтвердите вступление в команду по ссылке из письма.">
-      {loading ? (
+      {!isAuthenticated ? (
+        <GlassPanel className="auth-panel">
+          <p className="lead">Перенаправляем на вход...</p>
+        </GlassPanel>
+      ) : null}
+
+      {isAuthenticated && loading ? (
         <GlassPanel className="auth-panel">
           <p className="lead">Проверяем приглашение...</p>
         </GlassPanel>
       ) : null}
 
-      {!loading && error ? (
+      {isAuthenticated && !loading && error ? (
         <ErrorState title="Приглашение недоступно" message={error.message} />
       ) : null}
 
-      {!loading && !error && invite ? (
+      {isAuthenticated && !loading && !error && invite ? (
         <GlassPanel className="auth-panel team-invite-panel">
           <p className="team-invite-kicker">unit-labs team</p>
           <h2>Тебя пригласили в команду «{invite.teamName}»</h2>

@@ -229,6 +229,28 @@ export const handlers = [
     });
   }),
 
+  http.delete(/.*\/teams\/([^/]+)\/members\/([^/]+)$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const teamId = String(params[0]);
+    const userId = String(params[1]);
+    const team = state.teams.find((item) => item._id === teamId);
+    if (!team) {
+      return HttpResponse.json({ message: 'team not found' }, { status: 404 });
+    }
+
+    if (team.owner_id === userId) {
+      return HttpResponse.json({ message: 'owner cannot remove self' }, { status: 400 });
+    }
+
+    const members = state.teamMembersByTeam[teamId] || [];
+    state.teamMembersByTeam[teamId] = members.filter((member) => member.id !== userId);
+
+    return HttpResponse.json({ status: 'ok' });
+  }),
+
   http.post(/.*\/teams\/([^/]+)\/invite$/, async ({ params, request }) => {
     if (!isAuthorized(request)) {
       return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });

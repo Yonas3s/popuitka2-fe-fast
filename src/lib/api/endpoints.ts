@@ -10,6 +10,7 @@ export const endpoints = {
   teams: () => '/teams',
   teamById: (teamId: string) => `/teams/${teamId}`,
   teamMembers: (teamId: string) => `/teams/${teamId}/members`,
+  teamMemberByUser: (teamId: string, userId: string) => `/teams/${teamId}/members/${userId}`,
   teamInvites: (teamId: string) => `/teams/${teamId}/invites`,
   teamInvite: (teamId: string) => `/teams/${teamId}/invite`,
   teamInviteByToken: (token: string) => `/team-invites/${token}`,

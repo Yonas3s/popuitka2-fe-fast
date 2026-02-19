@@ -1,10 +1,11 @@
 type TerminalBlockProps = {
   lines: string[];
+  className?: string;
 };
 
-export const TerminalBlock = ({ lines }: TerminalBlockProps) => {
+export const TerminalBlock = ({ lines, className }: TerminalBlockProps) => {
   return (
-    <div className="terminal" aria-label="commands">
+    <div className={`terminal ${className ?? ''}`.trim()} aria-label="commands">
       {lines.map((line, index) => (
         <span key={`${line}-${index}`} className="line">
           {line.startsWith('$') ? (

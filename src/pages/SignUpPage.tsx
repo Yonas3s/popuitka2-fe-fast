@@ -1,10 +1,11 @@
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { PageShell } from '../components/layout/PageShell';
 import { GlassPanel } from '../components/ui/GlassPanel';
 import { GradientButton } from '../components/ui/GradientButton';
 import { TextInput } from '../components/ui/TextInput';
 import { apiService } from '../lib/api/service';
+import { getRedirectFromSearch, withRedirectQuery } from '../lib/auth/redirect';
 import { normalizeApiError } from '../lib/api/errors';
 import { useUiStore } from '../store/ui.store';
 
@@ -17,7 +18,9 @@ type SignUpForm = {
 
 export const SignUpPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const pushToast = useUiStore((state) => state.pushToast);
+  const redirectPath = getRedirectFromSearch(location.search);
   const {
     register,
     handleSubmit,
@@ -35,7 +38,7 @@ export const SignUpPage = () => {
         password: values.password,
       });
       pushToast('Регистрация успешна. Теперь можно войти.', 'success');
-      navigate('/signin');
+      navigate(withRedirectQuery('/signin', redirectPath), { replace: true });
     } catch (error) {
       const normalized = normalizeApiError(error);
       pushToast(normalized.message, 'error');

@@ -21,7 +21,7 @@ describe('router smoke', () => {
   it('renders landing page', async () => {
     renderRoute('/');
 
-    expect(await screen.findByRole('heading', { name: 'unit-labs' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Управляйте релизом, а не хаосом/i })).toBeInTheDocument();
   });
 
   it('redirects unauthorized user from private route to signin', async () => {
@@ -77,17 +77,25 @@ describe('router smoke', () => {
     window.history.replaceState({}, '', '/team-invite?token=invite-demo');
     renderRoute('/team-invite');
 
-    expect(await screen.findByRole('heading', { name: 'Приглашение в команду' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Вход' })).toBeInTheDocument();
   });
 
   it('renders public team invite page by path token alias', async () => {
     window.history.replaceState({}, '', '/team-invites/invite-demo');
     renderRoute('/team-invites/invite-demo');
 
-    expect(await screen.findByRole('heading', { name: 'Приглашение в команду' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Вход' })).toBeInTheDocument();
   });
 
   it('renders public team invite page by plural query alias', async () => {
+    window.history.replaceState({}, '', '/team-invites?token=invite-demo');
+    renderRoute('/team-invites');
+
+    expect(await screen.findByRole('heading', { name: 'Вход' })).toBeInTheDocument();
+  });
+
+  it('renders team invite page for authenticated user', async () => {
+    useAuthStore.setState({ token: 'jwt-token', isAuthenticated: true });
     window.history.replaceState({}, '', '/team-invites?token=invite-demo');
     renderRoute('/team-invites');
 

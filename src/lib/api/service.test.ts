@@ -35,6 +35,15 @@ describe('api service flow', () => {
     expect(teamDetails.name).toContain('unit-labs');
     const teamMembers = await apiService.getTeamMembers(createdTeam.id);
     expect(teamMembers.length).toBeGreaterThan(0);
+    const membersForDeletion = await apiService.getTeamMembers('team-1');
+    const removableMember = membersForDeletion.find((member) => member.role !== 'owner');
+    expect(removableMember).toBeTruthy();
+    if (!removableMember) {
+      throw new Error('Expected removable team member');
+    }
+    await apiService.removeTeamMember('team-1', removableMember.id);
+    const teamMembersAfterDelete = await apiService.getTeamMembers('team-1');
+    expect(teamMembersAfterDelete.length).toBe(membersForDeletion.length - 1);
 
     const inviteLink = await apiService.inviteToTeam(createdTeam.id, { email: 'teammate@example.com' });
     expect(inviteLink).toContain('token=');

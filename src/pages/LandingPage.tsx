@@ -34,14 +34,7 @@ export const LandingPage = () => {
   }, []);
 
   return (
-    <PageShell
-      title="unit-labs"
-      subtitle="Project delivery workspace: задачи, стадии, апрув клиента и прозрачный прогресс в одном интерфейсе."
-    >
-      <span className="badge">
-        <span className="badge-dot" />
-        {health === 'loading' ? 'checking backend' : health === 'online' ? 'backend online' : 'backend offline'}
-      </span>
+    <PageShell>
 
       <div className="landing-hero">
         <GlassPanel className="landing-main">
@@ -85,7 +78,7 @@ export const LandingPage = () => {
         </GlassPanel>
 
         <div className="landing-stack">
-          <GlassPanel>
+          <GlassPanel className="landing-system-panel">
             <h2>Состояние системы</h2>
             <p className={`landing-status-line health-${health}`}>
               <span className="status-orb" />
@@ -99,9 +92,10 @@ export const LandingPage = () => {
             </div>
           </GlassPanel>
 
-          <GlassPanel>
+          <GlassPanel className="landing-quickstart-panel">
             <h2>Quick start</h2>
             <TerminalBlock
+              className="landing-quickstart-terminal"
               lines={[
                 '$ npm install',
                 '$ npm run dev',
@@ -109,7 +103,7 @@ export const LandingPage = () => {
                 '"ok"',
               ]}
             />
-            <a className="cta" href={healthUrl} target="_blank" rel="noreferrer">
+            <a className="cta landing-quickstart-link" href={healthUrl} target="_blank" rel="noreferrer">
               Проверить backend
             </a>
           </GlassPanel>

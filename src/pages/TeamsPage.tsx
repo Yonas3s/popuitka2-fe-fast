@@ -9,6 +9,7 @@ import { ErrorState } from '../components/feedback/ErrorState';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { useUiStore } from '../store/ui.store';
+import { useAuthStore } from '../store/auth.store';
 import type { ApiError, Team, TeamActiveInvite, TeamDetails, TeamMember } from '../types/models';
 
 type CreateTeamForm = {
@@ -25,6 +26,7 @@ const sectionItems: { key: TeamSection; label: string }[] = [
 ];
 
 export const TeamsPage = () => {
+  const currentUser = useAuthStore((state) => state.user);
   const pushToast = useUiStore((state) => state.pushToast);
   const [teams, setTeams] = useState<Team[]>([]);
   const [activeTeamId, setActiveTeamId] = useState<string>('');
@@ -36,10 +38,19 @@ export const TeamsPage = () => {
   const [inviteLinksByTeam, setInviteLinksByTeam] = useState<Record<string, string>>({});
   const [teamDetailsById, setTeamDetailsById] = useState<Record<string, TeamDetails>>({});
   const [teamDetailsLoadingById, setTeamDetailsLoadingById] = useState<Record<string, boolean>>({});
+  const [teamDetailsDeniedById, setTeamDetailsDeniedById] = useState<Record<string, boolean>>({});
   const [teamMembersByTeamId, setTeamMembersByTeamId] = useState<Record<string, TeamMember[]>>({});
   const [teamMembersLoadingByTeamId, setTeamMembersLoadingByTeamId] = useState<Record<string, boolean>>({});
+  const [teamMembersDeniedByTeamId, setTeamMembersDeniedByTeamId] = useState<Record<string, boolean>>({});
+  const [removeMemberLoadingById, setRemoveMemberLoadingById] = useState<Record<string, boolean>>({});
+  const [memberActionsOpenForId, setMemberActionsOpenForId] = useState<string | null>(null);
+  const [pendingMemberRemoval, setPendingMemberRemoval] = useState<{ teamId: string; member: TeamMember } | null>(null);
+  const [removeMemberConfirmUsername, setRemoveMemberConfirmUsername] = useState('');
   const [teamActiveInvitesByTeamId, setTeamActiveInvitesByTeamId] = useState<Record<string, TeamActiveInvite[]>>({});
   const [teamActiveInvitesLoadingByTeamId, setTeamActiveInvitesLoadingByTeamId] = useState<Record<string, boolean>>({});
+  const [teamActiveInvitesDeniedByTeamId, setTeamActiveInvitesDeniedByTeamId] = useState<Record<string, boolean>>({});
+
+  const isAccessDenied = (apiError: ApiError) => apiError.status === 401 || apiError.status === 403;
 
   const {
     register,
@@ -97,18 +108,40 @@ export const TeamsPage = () => {
 
   const loadActiveInvites = useCallback(
     async (teamId: string) => {
+      if (teamActiveInvitesDeniedByTeamId[teamId]) {
+        return;
+      }
+
       setTeamActiveInvitesLoadingByTeamId((prev) => ({ ...prev, [teamId]: true }));
       try {
         const invites = await apiService.getTeamActiveInvites(teamId);
         setTeamActiveInvitesByTeamId((prev) => ({ ...prev, [teamId]: invites }));
       } catch (reason) {
         const normalized = normalizeApiError(reason);
+
+        if (isAccessDenied(normalized)) {
+          let shouldNotify = false;
+          setTeamActiveInvitesDeniedByTeamId((prev) => {
+            if (prev[teamId]) {
+              return prev;
+            }
+
+            shouldNotify = true;
+            return { ...prev, [teamId]: true };
+          });
+
+          if (shouldNotify) {
+            pushToast('Нет доступа к инвайтам этой команды', 'error');
+          }
+          return;
+        }
+
         pushToast(normalized.message, 'error');
       } finally {
         setTeamActiveInvitesLoadingByTeamId((prev) => ({ ...prev, [teamId]: false }));
       }
     },
-    [pushToast],
+    [pushToast, teamActiveInvitesDeniedByTeamId],
   );
 
   const onInvite = async (teamId: string) => {
@@ -149,16 +182,113 @@ export const TeamsPage = () => {
     }
   };
 
+  useEffect(() => {
+    if (!memberActionsOpenForId) {
+      return;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.teams-member-menu')) {
+        setMemberActionsOpenForId(null);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMemberActionsOpenForId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [memberActionsOpenForId]);
+
+  const openRemoveMemberDialog = (teamId: string, member: TeamMember) => {
+    if (member.id === currentUser?.id) {
+      pushToast('Нельзя удалить самого себя из команды владельцем', 'error');
+      return;
+    }
+
+    setPendingMemberRemoval({ teamId, member });
+    setRemoveMemberConfirmUsername('');
+    setMemberActionsOpenForId(null);
+  };
+
+  const closeRemoveMemberDialog = () => {
+    setPendingMemberRemoval(null);
+    setRemoveMemberConfirmUsername('');
+  };
+
+  const confirmRemoveMember = async () => {
+    if (!pendingMemberRemoval) {
+      return;
+    }
+
+    const { teamId, member } = pendingMemberRemoval;
+    const typedUsername = removeMemberConfirmUsername.trim();
+
+    if (typedUsername !== member.username) {
+      pushToast('Username введен неверно', 'error');
+      return;
+    }
+
+    setRemoveMemberLoadingById((prev) => ({ ...prev, [member.id]: true }));
+    try {
+      await apiService.removeTeamMember(teamId, member.id);
+      setTeamMembersByTeamId((prev) => ({
+        ...prev,
+        [teamId]: (prev[teamId] || []).filter((item) => item.id !== member.id),
+      }));
+      setTeamDetailsById((prev) => {
+        const current = prev[teamId];
+        if (!current) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          [teamId]: {
+            ...current,
+            stats: {
+              ...current.stats,
+              members: Math.max(0, current.stats.members - 1),
+            },
+          },
+        };
+      });
+      pushToast('Участник удален из команды', 'success');
+      closeRemoveMemberDialog();
+    } catch (reason) {
+      const normalized = normalizeApiError(reason);
+      pushToast(normalized.message, 'error');
+    } finally {
+      setRemoveMemberLoadingById((prev) => ({ ...prev, [member.id]: false }));
+    }
+  };
+
   const selectedTeam = useMemo(() => {
     return teams.find((team) => team.id === activeTeamId) || null;
   }, [activeTeamId, teams]);
+
+  const selectedTeamDetails = selectedTeam ? teamDetailsById[selectedTeam.id] : undefined;
+  const effectiveRole = (selectedTeamDetails?.myRole || selectedTeam?.role || 'member').toLowerCase();
+  const canManageTeam = effectiveRole === 'owner';
 
   useEffect(() => {
     if (!selectedTeam) {
       return;
     }
 
-    if (teamDetailsById[selectedTeam.id] || teamDetailsLoadingById[selectedTeam.id]) {
+    if (
+      teamDetailsById[selectedTeam.id]
+      || teamDetailsLoadingById[selectedTeam.id]
+      || teamDetailsDeniedById[selectedTeam.id]
+    ) {
       return;
     }
 
@@ -182,19 +312,41 @@ export const TeamsPage = () => {
       })
       .catch((reason) => {
         const normalized = normalizeApiError(reason);
+
+        if (isAccessDenied(normalized)) {
+          let shouldNotify = false;
+          setTeamDetailsDeniedById((prev) => {
+            if (prev[selectedTeam.id]) {
+              return prev;
+            }
+
+            shouldNotify = true;
+            return { ...prev, [selectedTeam.id]: true };
+          });
+
+          if (shouldNotify) {
+            pushToast('Нет доступа к данным команды', 'error');
+          }
+          return;
+        }
+
         pushToast(normalized.message, 'error');
       })
       .finally(() => {
         setTeamDetailsLoadingById((prev) => ({ ...prev, [selectedTeam.id]: false }));
       });
-  }, [pushToast, selectedTeam, teamDetailsById, teamDetailsLoadingById]);
+  }, [pushToast, selectedTeam, teamDetailsById, teamDetailsDeniedById, teamDetailsLoadingById]);
 
   useEffect(() => {
     if (!selectedTeam || activeSection !== 'members') {
       return;
     }
 
-    if (teamMembersByTeamId[selectedTeam.id] || teamMembersLoadingByTeamId[selectedTeam.id]) {
+    if (
+      teamMembersByTeamId[selectedTeam.id]
+      || teamMembersLoadingByTeamId[selectedTeam.id]
+      || teamMembersDeniedByTeamId[selectedTeam.id]
+    ) {
       return;
     }
 
@@ -206,33 +358,72 @@ export const TeamsPage = () => {
       })
       .catch((reason) => {
         const normalized = normalizeApiError(reason);
+
+        if (isAccessDenied(normalized)) {
+          let shouldNotify = false;
+          setTeamMembersDeniedByTeamId((prev) => {
+            if (prev[selectedTeam.id]) {
+              return prev;
+            }
+
+            shouldNotify = true;
+            return { ...prev, [selectedTeam.id]: true };
+          });
+
+          if (shouldNotify) {
+            pushToast('Нет доступа к участникам команды', 'error');
+          }
+          return;
+        }
+
         pushToast(normalized.message, 'error');
       })
       .finally(() => {
         setTeamMembersLoadingByTeamId((prev) => ({ ...prev, [selectedTeam.id]: false }));
       });
-  }, [activeSection, pushToast, selectedTeam, teamMembersByTeamId, teamMembersLoadingByTeamId]);
+  }, [
+    activeSection,
+    pushToast,
+    selectedTeam,
+    teamMembersByTeamId,
+    teamMembersDeniedByTeamId,
+    teamMembersLoadingByTeamId,
+  ]);
 
   useEffect(() => {
-    if (!selectedTeam || activeSection !== 'invites') {
+    if (!selectedTeam || activeSection !== 'invites' || !canManageTeam) {
       return;
     }
 
-    if (teamActiveInvitesByTeamId[selectedTeam.id] || teamActiveInvitesLoadingByTeamId[selectedTeam.id]) {
+    if (
+      teamActiveInvitesByTeamId[selectedTeam.id]
+      || teamActiveInvitesLoadingByTeamId[selectedTeam.id]
+      || teamActiveInvitesDeniedByTeamId[selectedTeam.id]
+    ) {
       return;
     }
 
     void loadActiveInvites(selectedTeam.id);
-  }, [activeSection, loadActiveInvites, selectedTeam, teamActiveInvitesByTeamId, teamActiveInvitesLoadingByTeamId]);
+  }, [
+    activeSection,
+    canManageTeam,
+    loadActiveInvites,
+    selectedTeam,
+    teamActiveInvitesByTeamId,
+    teamActiveInvitesDeniedByTeamId,
+    teamActiveInvitesLoadingByTeamId,
+  ]);
 
-  const selectedTeamDetails = selectedTeam ? teamDetailsById[selectedTeam.id] : undefined;
   const selectedTeamMembers = selectedTeam ? teamMembersByTeamId[selectedTeam.id] || [] : [];
   const selectedTeamActiveInvites = selectedTeam ? teamActiveInvitesByTeamId[selectedTeam.id] || [] : [];
   const selectedTeamDetailsLoading = selectedTeam ? Boolean(teamDetailsLoadingById[selectedTeam.id]) : false;
   const selectedTeamMembersLoading = selectedTeam ? Boolean(teamMembersLoadingByTeamId[selectedTeam.id]) : false;
   const selectedTeamActiveInvitesLoading = selectedTeam ? Boolean(teamActiveInvitesLoadingByTeamId[selectedTeam.id]) : false;
-  const effectiveRole = (selectedTeamDetails?.myRole || selectedTeam?.role || 'member').toLowerCase();
-  const canManageTeam = effectiveRole === 'owner';
+  const pendingRemovalMember = pendingMemberRemoval?.member ?? null;
+  const pendingRemovalLoading = pendingRemovalMember ? Boolean(removeMemberLoadingById[pendingRemovalMember.id]) : false;
+  const pendingRemovalUsernameMatch = pendingRemovalMember
+    ? removeMemberConfirmUsername.trim() === pendingRemovalMember.username
+    : false;
 
   const teamSubtitle = selectedTeam
     ? canManageTeam
@@ -378,7 +569,45 @@ export const TeamsPage = () => {
                           <strong>@{member.username}</strong>
                           <p className="muted">{member.email || 'email не указан'}</p>
                         </div>
-                        <span className="account-provider-tag">{member.role}</span>
+                        <div className="teams-member-actions">
+                          <span className="account-provider-tag">{member.role}</span>
+                          {canManageTeam ? (
+                            member.id === currentUser?.id ? (
+                              <span className="muted">Это вы</span>
+                            ) : (
+                              <div className="teams-member-menu">
+                                <button
+                                  type="button"
+                                  className="teams-member-menu-trigger"
+                                  aria-label={`Действия для @${member.username}`}
+                                  aria-haspopup="menu"
+                                  aria-expanded={memberActionsOpenForId === member.id}
+                                  disabled={Boolean(removeMemberLoadingById[member.id])}
+                                  onClick={() => {
+                                    setMemberActionsOpenForId((prev) => (prev === member.id ? null : member.id));
+                                  }}
+                                >
+                                  <span aria-hidden="true">...</span>
+                                </button>
+
+                                {memberActionsOpenForId === member.id ? (
+                                  <div className="teams-member-menu-panel" role="menu" aria-label={`Меню @${member.username}`}>
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      className="teams-member-menu-item danger"
+                                      onClick={() => {
+                                        openRemoveMemberDialog(selectedTeam.id, member);
+                                      }}
+                                    >
+                                      Удалить участника
+                                    </button>
+                                  </div>
+                                ) : null}
+                              </div>
+                            )
+                          ) : null}
+                        </div>
                       </article>
                     ))}
                   </div>
@@ -517,6 +746,53 @@ export const TeamsPage = () => {
           ) : null}
         </div>
       </div>
+
+      {pendingRemovalMember ? (
+        <div className="modal-backdrop" role="presentation">
+          <section className="panel modal teams-delete-modal" role="dialog" aria-modal="true">
+            <h3>Подтвердите удаление</h3>
+            <p>
+              Чтобы удалить участника <strong>@{pendingRemovalMember.username}</strong>, введите его username вручную.
+            </p>
+            <TextInput
+              label="Username участника"
+              inputProps={{
+                value: removeMemberConfirmUsername,
+                onChange: (event) => {
+                  setRemoveMemberConfirmUsername(event.target.value);
+                },
+                placeholder: pendingRemovalMember.username,
+                autoComplete: 'off',
+                autoCapitalize: 'off',
+                autoCorrect: 'off',
+                spellCheck: false,
+              }}
+            />
+            <p className="muted">
+              Нужно ввести: <span className="mono">@{pendingRemovalMember.username}</span>
+            </p>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="ghost-link"
+                disabled={pendingRemovalLoading}
+                onClick={closeRemoveMemberDialog}
+              >
+                Отмена
+              </button>
+              <GradientButton
+                type="button"
+                disabled={!pendingRemovalUsernameMatch || pendingRemovalLoading}
+                onClick={() => {
+                  void confirmRemoveMember();
+                }}
+              >
+                {pendingRemovalLoading ? 'Удаляем...' : 'Удалить участника'}
+              </GradientButton>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </PageShell>
   );
 };

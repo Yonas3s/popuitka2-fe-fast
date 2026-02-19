@@ -1,10 +1,16 @@
 import { useForm } from 'react-hook-form';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { PageShell } from '../components/layout/PageShell';
 import { GlassPanel } from '../components/ui/GlassPanel';
 import { GradientButton } from '../components/ui/GradientButton';
 import { TextInput } from '../components/ui/TextInput';
 import { normalizeApiError } from '../lib/api/errors';
+import {
+  OAUTH_POST_LOGIN_REDIRECT_KEY,
+  getRedirectFromSearch,
+  sanitizeRedirectPath,
+  withRedirectQuery,
+} from '../lib/auth/redirect';
 import { API_BASE_URL } from '../lib/config/env';
 import { useAuthStore } from '../store/auth.store';
 import { useUiStore } from '../store/ui.store';
@@ -22,9 +28,14 @@ const GitHubIcon = () => (
 
 export const SignInPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const login = useAuthStore((state) => state.login);
   const pushToast = useUiStore((state) => state.pushToast);
   const githubAuthUrl = `${API_BASE_URL}/auth/github`;
+  const redirectFromQuery = getRedirectFromSearch(location.search);
+  const redirectFromState = sanitizeRedirectPath((location.state as { from?: string } | null)?.from);
+  const postLoginPath = redirectFromQuery || redirectFromState || '/projects';
+  const signUpHref = withRedirectQuery('/signup', postLoginPath);
 
   const {
     register,
@@ -36,7 +47,8 @@ export const SignInPage = () => {
     try {
       await login(values);
       pushToast('Вход выполнен', 'success');
-      navigate('/projects');
+      sessionStorage.removeItem(OAUTH_POST_LOGIN_REDIRECT_KEY);
+      navigate(postLoginPath, { replace: true });
     } catch (error) {
       const normalized = normalizeApiError(error);
       pushToast(normalized.message, 'error');
@@ -46,7 +58,13 @@ export const SignInPage = () => {
   return (
     <PageShell title="Вход" subtitle="Авторизуйтесь для доступа к рабочему кабинету.">
       <GlassPanel className="auth-panel">
-        <a className="github-oauth" href={githubAuthUrl}>
+        <a
+          className="github-oauth"
+          href={githubAuthUrl}
+          onClick={() => {
+            sessionStorage.setItem(OAUTH_POST_LOGIN_REDIRECT_KEY, postLoginPath);
+          }}
+        >
           <GitHubIcon />
           <span>Войти через GitHub</span>
         </a>
@@ -88,7 +106,7 @@ export const SignInPage = () => {
           <Link className="ghost-link" to="/forgot-password">
             Забыли пароль?
           </Link>
-          <Link className="ghost-link" to="/signup">
+          <Link className="ghost-link" to={signUpHref}>
             Создать аккаунт
           </Link>
         </div>
