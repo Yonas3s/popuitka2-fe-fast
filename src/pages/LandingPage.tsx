@@ -1,16 +1,13 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { PageShell } from '../components/layout/PageShell';
-import { GlassPanel } from '../components/ui/GlassPanel';
-import { BrandIcon } from '../components/ui/BrandIcon';
-import { Chip } from '../components/ui/Chip';
-import { TerminalBlock } from '../components/ui/TerminalBlock';
+import { useEffect, useMemo, useState } from 'react';
 import { apiService } from '../lib/api/service';
-import { API_BASE_URL } from '../lib/config/env';
+import { APP_TITLE } from '../lib/config/env';
 
 export const LandingPage = () => {
   const [health, setHealth] = useState<'loading' | 'online' | 'offline'>('loading');
-  const healthUrl = `${API_BASE_URL.replace(/\/+$/, '')}/health`;
+  const liveLabel = health === 'online' ? 'v1.0.4 Live' : 'v1.0.4 Checking';
+  const healthClass = `health-${health}`;
+  const year = useMemo(() => new Date().getFullYear(), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,164 +31,183 @@ export const LandingPage = () => {
   }, []);
 
   return (
-    <PageShell>
-
-      <div className="landing-hero">
-        <GlassPanel className="landing-main">
-          <div className="landing-brandline">
-            <BrandIcon className="landing-brand-icon" />
-            <span className="landing-brand-chip">unit-labs digital workspace</span>
+    <div className="stitch-landing">
+      <nav className="stitch-nav">
+        <div className="stitch-container stitch-nav-row">
+          <Link to="/" className="stitch-brand">
+            <span>
+              unit-labs
+              <em>_</em>
+            </span>
+          </Link>
+          <div className="stitch-nav-links">
+            <a href="#features">Features</a>
+            <a href="#workflow">Workflow</a>
+            <a href="#pricing">Pricing</a>
           </div>
-          <p className="landing-kicker">Client-first workflow</p>
-          <h2 className="landing-headline">
-            Управляйте релизом, а не хаосом.
-            <span className="landing-highlight"> От бэклога до approve клиента.</span>
-          </h2>
-          <p className="landing-copy">
-            JWT-авторизация, проекты, стадии, задачи и публичный клиентский кабинет. Бэкенд уже подключен, статусы
-            стадий и ревью-flow работают из коробки.
+          <div className="stitch-nav-actions">
+            <Link to="/signin" className="stitch-link-button">
+              Log in
+            </Link>
+            <Link to="/signup" className="stitch-solid-button">
+              Get Started
+            </Link>
+          </div>
+        </div>
+      </nav>
+
+      <main className="stitch-main">
+        <div className="stitch-main-bg" />
+        <div className="stitch-main-glow" />
+
+        <section className="stitch-container stitch-hero">
+          <div className="stitch-live-badge">
+            <span className={`stitch-live-dot ${healthClass}`} />
+            <span>{liveLabel}</span>
+          </div>
+
+          <h1 className="stitch-title">
+            Manage the release,
+            <br />
+            <span>not the chaos.</span>
+          </h1>
+
+          <p className="stitch-gradient-title">From backlog to approve client.</p>
+
+          <p className="stitch-subtitle">
+            Unit-labs creates order in your deployment cycle. A minimalist tool for engineering teams who value
+            clarity over complexity.
           </p>
 
-          <div className="actions-row">
-            <Link className="cta" to="/signin">
-              Открыть кабинет
-            </Link>
-            <Link className="ghost-link" to="/signup">
-              Создать аккаунт
+          <div className="stitch-hero-actions">
+            <Link to="/signup" className="stitch-ghost-cta">
+              Start
             </Link>
           </div>
 
-          <div className="landing-stats">
-            <article className="stat-card">
-              <p className="stat-label">Auth</p>
-              <p className="stat-value">JWT + GitHub OAuth</p>
-            </article>
-            <article className="stat-card">
-              <p className="stat-label">Flow</p>
-              <p className="stat-value">Stages + Tasks + Review</p>
-            </article>
-            <article className="stat-card">
-              <p className="stat-label">Client</p>
-              <p className="stat-value">Share Link + Approve</p>
-            </article>
-          </div>
-        </GlassPanel>
-
-        <div className="landing-stack">
-          <GlassPanel className="landing-system-panel">
-            <h2>Состояние системы</h2>
-            <p className={`landing-status-line health-${health}`}>
-              <span className="status-orb" />
-              {health === 'loading' ? 'Проверка health endpoint...' : health === 'online' ? 'Backend online' : 'Backend offline'}
-            </p>
-            <div className="chips">
-              <Chip>React + TypeScript</Chip>
-              <Chip>Zustand</Chip>
-              <Chip>REST API</Chip>
-              <Chip>Mongo + JWT</Chip>
+          <div className="stitch-showcase">
+            <div className="stitch-showcase-head">
+              <span />
+              <span />
+              <span />
             </div>
-          </GlassPanel>
+            <div className="stitch-showcase-grid">
+              <aside className="stitch-showcase-side">
+                <div className="line w40" />
+                <div className="line w80" />
+                <div className="line w68" />
+                <div className="line w76" />
+              </aside>
+              <div className="stitch-showcase-main">
+                <div className="line w34" />
+                <div className="stitch-showcase-tasks">
+                  <article>
+                    <div className="task-left">
+                      <span className="box" />
+                      <div className="line w72" />
+                    </div>
+                    <span className="badge ok">approved</span>
+                  </article>
+                  <article>
+                    <div className="task-left">
+                      <span className="box" />
+                      <div className="line w56" />
+                    </div>
+                    <span className="badge review">review</span>
+                  </article>
+                  <article>
+                    <div className="task-left">
+                      <span className="box" />
+                      <div className="line w64" />
+                    </div>
+                    <span className="badge wait">active</span>
+                  </article>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
 
-          <GlassPanel className="landing-quickstart-panel">
-            <h2>Quick start</h2>
-            <TerminalBlock
-              className="landing-quickstart-terminal"
-              lines={[
-                '$ npm install',
-                '$ npm run dev',
-                `$ curl ${healthUrl}`,
-                '"ok"',
-              ]}
-            />
-            <a className="cta landing-quickstart-link" href={healthUrl} target="_blank" rel="noreferrer">
-              Проверить backend
-            </a>
-          </GlassPanel>
+      <section className="stitch-section" id="features">
+        <div className="stitch-container">
+          <div className="stitch-section-head">
+            <h2>Orchestrate the flow</h2>
+            <p>Three simple stages to maintain sanity in your deployment pipeline.</p>
+          </div>
+          <div className="stitch-features-grid">
+            <article className="stitch-feature-card">
+              <div className="stitch-feature-icon">B</div>
+              <h3>Structured Backlog</h3>
+              <p>Capture issues and features in a distraction-free list. Prioritize with drag-and-drop simplicity.</p>
+              <div className="stitch-feature-visual list">
+                <span />
+                <span />
+              </div>
+            </article>
+            <article className="stitch-feature-card">
+              <div className="stitch-feature-icon">S</div>
+              <h3>Release Stages</h3>
+              <p>Move items through customizable environments. Dev, Staging, Production - visualized clearly.</p>
+              <div className="stitch-feature-visual flow">
+                <span />
+                <span />
+                <span />
+              </div>
+            </article>
+            <article className="stitch-feature-card">
+              <div className="stitch-feature-icon">A</div>
+              <h3>Client Approval</h3>
+              <p>Invite stakeholders to review specific builds. Collect approvals and feedback in one place.</p>
+              <div className="stitch-feature-visual approve">
+                <span>Approved</span>
+              </div>
+            </article>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div className="landing-wide-grid">
-        <GlassPanel className="landing-story-panel">
-          <p className="landing-section-eyebrow">Что внутри</p>
-          <h2>Один контур для всей delivery-команды</h2>
-          <ul className="list">
-            <li>
-              <span className="icon" />
-              <div>Проекты с последовательными стадиями и контролем статусов.</div>
-            </li>
-            <li>
-              <span className="icon" />
-              <div>Задачи внутри каждой стадии без лишней бюрократии.</div>
-            </li>
-            <li>
-              <span className="icon" />
-              <div>Публичный клиентский апрув в один понятный шаг.</div>
-            </li>
-          </ul>
-        </GlassPanel>
+      <section className="stitch-dev" id="workflow">
+        <div className="stitch-container stitch-dev-grid">
+          <div className="stitch-dev-copy">
+            <h2>
+              <span>&lt;</span>Developer<span>/&gt;</span> Focused.
+            </h2>
+            <p>
+              Built with the stack you love. Integrates seamlessly with GitHub, GitLab, and Jira. No more context
+              switching.
+            </p>
+            <div className="stitch-dev-tags">
+              <span>git push</span>
+              <span>jira-sync</span>
+            </div>
+          </div>
+          <pre className="stitch-dev-code">{`const release = await unit.create({
+  version: '2.0.4',
+  stage: 'staging',
+  features: [
+    'auth-flow',
+    'dark-mode-fix'
+  ]
+});
 
-        <GlassPanel className="landing-story-panel">
-          <p className="landing-section-eyebrow">Кому подходит</p>
-          <h2>Для команд, которым важна прозрачность</h2>
-          <ul className="list">
-            <li>
-              <span className="icon" />
-              <div>Студии и агентства, работающие с внешним заказчиком.</div>
-            </li>
-            <li>
-              <span className="icon" />
-              <div>Продуктовые команды с staged delivery и review-процессом.</div>
-            </li>
-            <li>
-              <span className="icon" />
-              <div>Небольшие команды, где нужен единый рабочий ритм.</div>
-            </li>
-          </ul>
-        </GlassPanel>
-      </div>
-
-      <GlassPanel className="landing-flow-panel">
-        <p className="landing-section-eyebrow">Как это работает</p>
-        <h2>Путь проекта от идеи до client approve</h2>
-        <div className="landing-flow-grid">
-          <article className="landing-flow-step">
-            <span className="flow-step-index">01</span>
-            <h3>Создаешь проект</h3>
-            <p className="feature-description">Фиксируешь scope и стартуешь структуру этапов.</p>
-          </article>
-          <article className="landing-flow-step">
-            <span className="flow-step-index">02</span>
-            <h3>Декомпозируешь стадии</h3>
-            <p className="feature-description">Разбиваешь работу на контролируемые блоки.</p>
-          </article>
-          <article className="landing-flow-step">
-            <span className="flow-step-index">03</span>
-            <h3>Ведешь задачи</h3>
-            <p className="feature-description">Команда отмечает прогресс и держит контекст в системе.</p>
-          </article>
-          <article className="landing-flow-step">
-            <span className="flow-step-index">04</span>
-            <h3>Отправляешь на review</h3>
-            <p className="feature-description">Клиент получает стадию и принимает решение в один клик.</p>
-          </article>
+// Syncs automatically with your board
+await release.notifyClients();`}</pre>
         </div>
-      </GlassPanel>
+      </section>
 
-      <GlassPanel className="landing-cta-panel">
-        <p className="landing-section-eyebrow">Старт</p>
-        <h2>Запусти первый проект в unit-labs</h2>
-        <p className="feature-description">
-          Регистрируй аккаунт, создавай команду и веди проект от бэклога до согласованной поставки в одном интерфейсе.
-        </p>
-        <div className="actions-row">
-          <Link className="cta" to="/signup">
-            Создать аккаунт
-          </Link>
-          <Link className="ghost-link" to="/signin">
-            Войти в кабинет
-          </Link>
+      <footer className="stitch-footer" id="pricing">
+        <div className="stitch-container stitch-footer-row">
+          <p>
+            © {year} {APP_TITLE}
+          </p>
+          <div>
+            <a href="#features">Features</a>
+            <a href="#workflow">Workflow</a>
+            <a href="#pricing">Pricing</a>
+          </div>
         </div>
-      </GlassPanel>
-    </PageShell>
+      </footer>
+    </div>
   );
 };
