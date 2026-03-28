@@ -679,6 +679,37 @@ export const handlers = [
     return HttpResponse.json(state.directionsByProject[projectId] || []);
   }),
 
+  http.post(/.*\/projects\/([^/]+)\/directions$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+
+    const body = (await request.json()) as { name?: string };
+    const name = String(body.name || '').trim();
+    if (!name) {
+      return HttpResponse.json({ message: 'name required' }, { status: 400 });
+    }
+
+    const existing = state.directionsByProject[projectId] || [];
+    if (existing.some((item) => item.name.toLowerCase() === name.toLowerCase())) {
+      return HttpResponse.json({ message: 'direction already exists' }, { status: 409 });
+    }
+
+    const direction: DirectionRecord = {
+      _id: randomId('dir'),
+      project_id: projectId,
+      name,
+    };
+    state.directionsByProject[projectId] = [...existing, direction];
+    return HttpResponse.json(direction, { status: 201 });
+  }),
+
   http.get(/.*\/projects\/([^/]+)\/stages$/, async ({ params, request }) => {
     if (!isAuthorized(request)) {
       return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });

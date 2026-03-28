@@ -392,15 +392,42 @@ export const ProjectDetailsPage = () => {
 
   const filteredFlatTasks = useMemo(
     () =>
-      flatTasks.filter((task) => {
-        if (flatTypeFilter !== 'all' && task.taskType !== flatTypeFilter) {
-          return false;
-        }
-        if (flatDirectionFilter !== 'all' && !task.directionIds.includes(flatDirectionFilter)) {
-          return false;
-        }
-        return true;
-      }),
+      flatTasks
+        .map((task, index) => {
+          const raw = task.raw as Record<string, unknown>;
+          const doneAtValue =
+            (typeof raw.done_at === 'string' && raw.done_at) ||
+            (typeof raw.doneAt === 'string' && raw.doneAt) ||
+            (typeof raw.updatedAt === 'string' && raw.updatedAt) ||
+            (typeof raw.updated_at === 'string' && raw.updated_at) ||
+            '';
+          const doneAtTs = doneAtValue ? new Date(doneAtValue).getTime() : 0;
+          return {
+            task,
+            index,
+            doneAtTs: Number.isFinite(doneAtTs) ? doneAtTs : 0,
+          };
+        })
+        .filter(({ task }) => {
+          if (flatTypeFilter !== 'all' && task.taskType !== flatTypeFilter) {
+            return false;
+          }
+          if (flatDirectionFilter !== 'all' && !task.directionIds.includes(flatDirectionFilter)) {
+            return false;
+          }
+          return true;
+        })
+        .sort((a, b) => {
+          if (a.task.done !== b.task.done) {
+            return Number(a.task.done) - Number(b.task.done);
+          }
+          if (!a.task.done) {
+            return a.index - b.index;
+          }
+          const doneOrder = b.doneAtTs - a.doneAtTs;
+          return doneOrder !== 0 ? doneOrder : a.index - b.index;
+        })
+        .map(({ task }) => task),
     [flatDirectionFilter, flatTasks, flatTypeFilter],
   );
 

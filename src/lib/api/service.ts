@@ -79,6 +79,10 @@ export type CreateTaskPayload = {
   title: string;
 };
 
+export type CreateDirectionPayload = {
+  name: string;
+};
+
 export type EditTaskTitlePayload = {
   title: string;
 };
@@ -259,6 +263,19 @@ export const apiService = {
   async getDirections(projectId: string): Promise<DirectionTag[]> {
     const response = await apiClient.get(endpoints.directions(projectId));
     return extractDirections(response.data);
+  },
+
+  async addDirection(projectId: string, payload: CreateDirectionPayload): Promise<DirectionTag> {
+    const response = await apiClient.post(endpoints.directions(projectId), payload);
+    const directions = extractDirections(response.data);
+    if (directions.length > 0) {
+      return directions[0];
+    }
+    return {
+      id: `direction-${Date.now()}`,
+      name: payload.name,
+      raw: {},
+    };
   },
 
   async getStages(projectId: string): Promise<Stage[]> {

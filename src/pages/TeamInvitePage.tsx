@@ -1,15 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { PageShell } from '../components/layout/PageShell';
-import { GlassPanel } from '../components/ui/GlassPanel';
-import { GradientButton } from '../components/ui/GradientButton';
-import { ErrorState } from '../components/feedback/ErrorState';
+import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
 import { apiService } from '../lib/api/service';
 import { withRedirectQuery } from '../lib/auth/redirect';
 import { normalizeApiError } from '../lib/api/errors';
 import { useAuthStore } from '../store/auth.store';
 import { useUiStore } from '../store/ui.store';
 import type { ApiError, TeamInvitePreview } from '../types/models';
+
+const formatInviteExpiresAt = (value?: string): string => {
+  if (!value) {
+    return 'Не ограничено';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'Не ограничено';
+  }
+
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
 
 export const TeamInvitePage = () => {
   const location = useLocation();
@@ -95,57 +111,68 @@ export const TeamInvitePage = () => {
   };
 
   return (
-    <PageShell title="Приглашение в команду" subtitle="Подтвердите вступление в команду по ссылке из письма.">
-      {!isAuthenticated ? (
-        <GlassPanel className="auth-panel">
-          <p className="lead">Перенаправляем на вход...</p>
-        </GlassPanel>
-      ) : null}
+    <div className="team-invite-v2-page">
+      <WorkspaceHeader activeTab="teams" />
 
-      {isAuthenticated && loading ? (
-        <GlassPanel className="auth-panel">
-          <p className="lead">Проверяем приглашение...</p>
-        </GlassPanel>
-      ) : null}
+      <main className="projects-v3-main team-invite-v2-main">
+        <div className="projects-v3-grid-bg" />
+        <span className="projects-v3-marker projects-v3-marker-top-left" />
+        <span className="projects-v3-marker projects-v3-marker-top-right" />
+        <span className="projects-v3-marker projects-v3-marker-bottom-left" />
+        <span className="projects-v3-marker projects-v3-marker-bottom-right" />
 
-      {isAuthenticated && !loading && error ? (
-        <ErrorState title="Приглашение недоступно" message={error.message} />
-      ) : null}
+        <div className="projects-v3-container team-invite-v2-content">
+          <section className="team-invite-v2-card">
+            <p className="team-invite-v2-kicker">unit-labs invite</p>
+            <h1>Приглашение в команду</h1>
 
-      {isAuthenticated && !loading && !error && invite ? (
-        <GlassPanel className="auth-panel team-invite-panel">
-          <p className="team-invite-kicker">команда unit-labs</p>
-          <h2>Тебя пригласили в команду «{invite.teamName}»</h2>
-          <p className="muted">
-            {invite.inviterName ? `${invite.inviterName} отправил(а) тебе приглашение.` : 'Тебе отправили приглашение в команду.'}
-          </p>
-          {invite.email ? <p className="muted">Почта приглашения: {invite.email}</p> : null}
-          {invite.expiresAt ? (
-            <p className="muted">
-              Действует до:{' '}
-              {new Date(invite.expiresAt).toLocaleString('ru-RU', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </p>
-          ) : null}
+            {!isAuthenticated ? <p className="team-invite-v2-muted">Перенаправляем на вход...</p> : null}
+            {isAuthenticated && loading ? <p className="team-invite-v2-muted">Проверяем приглашение...</p> : null}
+            {isAuthenticated && !loading && error ? <p className="team-invite-v2-error">{error.message}</p> : null}
 
-          <div className="actions-row">
-            <GradientButton type="button" disabled={accepting || accepted} onClick={() => void onAccept()}>
-              {accepted ? 'Приглашение принято' : accepting ? 'Подтверждаем...' : 'Принять приглашение'}
-            </GradientButton>
-            <Link className="ghost-link" to="/signin">
-              Войти в аккаунт
-            </Link>
-            <Link className="ghost-link" to="/teams">
-              Открыть команды
-            </Link>
-          </div>
-        </GlassPanel>
-      ) : null}
-    </PageShell>
+            {isAuthenticated && !loading && !error && invite ? (
+              <>
+                <h2>Команда «{invite.teamName}»</h2>
+                <p className="team-invite-v2-description">
+                  {invite.inviterName
+                    ? `${invite.inviterName} приглашает тебя присоединиться к команде.`
+                    : 'Тебя пригласили присоединиться к команде.'}
+                </p>
+
+                <dl className="team-invite-v2-meta-grid">
+                  <div>
+                    <dt>Email приглашения</dt>
+                    <dd>{invite.email || '—'}</dd>
+                  </div>
+                  <div>
+                    <dt>Действует до</dt>
+                    <dd>{formatInviteExpiresAt(invite.expiresAt)}</dd>
+                  </div>
+                </dl>
+
+                <div className="team-invite-v2-actions">
+                  <button
+                    type="button"
+                    className="team-invite-v2-accept-btn"
+                    disabled={accepting || accepted}
+                    onClick={() => {
+                      void onAccept();
+                    }}
+                  >
+                    {accepted ? 'Приглашение принято' : accepting ? 'Подтверждаем...' : 'Принять приглашение'}
+                  </button>
+                  <Link className="team-invite-v2-secondary-btn" to="/signin">
+                    Войти в аккаунт
+                  </Link>
+                  <Link className="team-invite-v2-secondary-btn" to="/teams">
+                    Открыть команды
+                  </Link>
+                </div>
+              </>
+            ) : null}
+          </section>
+        </div>
+      </main>
+    </div>
   );
 };

@@ -71,6 +71,8 @@ export const StageDetailsPage = () => {
   const [directionsLoading, setDirectionsLoading] = useState(false);
   const [taskTypeFilter, setTaskTypeFilter] = useState<'all' | TaskType>('all');
   const [directionFilter, setDirectionFilter] = useState<'all' | string>('all');
+  const [newDirectionName, setNewDirectionName] = useState('');
+  const [activeTaskMetaId, setActiveTaskMetaId] = useState<string | null>(null);
   const quickTaskInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -183,7 +185,7 @@ export const StageDetailsPage = () => {
       (typeof raw.createdAt === 'string' && raw.createdAt) ||
       (typeof raw.created_at === 'string' && raw.created_at) ||
       '';
-  if (!value) {
+    if (!value) {
       return 'недавно';
     }
     const date = new Date(value);
@@ -199,18 +201,53 @@ export const StageDetailsPage = () => {
 
   const completedTasks = useMemo(() => tasks.filter((task) => task.done).length, [tasks]);
   const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
+  const getTaskDoneTimestamp = (task: (typeof tasks)[number]) => {
+    const raw = task.raw as Record<string, unknown>;
+    const value =
+      (typeof raw.done_at === 'string' && raw.done_at) ||
+      (typeof raw.doneAt === 'string' && raw.doneAt) ||
+      (typeof raw.updatedAt === 'string' && raw.updatedAt) ||
+      (typeof raw.updated_at === 'string' && raw.updated_at) ||
+      '';
+    if (!value) {
+      return 0;
+    }
+    const timestamp = new Date(value).getTime();
+    return Number.isFinite(timestamp) ? timestamp : 0;
+  };
   const filteredTasks = useMemo(
     () =>
-      tasks.filter((task) => {
-        if (taskTypeFilter !== 'all' && task.taskType !== taskTypeFilter) {
-          return false;
-        }
-        if (directionFilter !== 'all' && !task.directionIds.includes(directionFilter)) {
-          return false;
-        }
-        return true;
-      }),
+      tasks
+        .map((task, index) => ({ task, index, doneAtTs: getTaskDoneTimestamp(task) }))
+        .filter(({ task }) => {
+          if (taskTypeFilter !== 'all' && task.taskType !== taskTypeFilter) {
+            return false;
+          }
+          if (directionFilter !== 'all' && !task.directionIds.includes(directionFilter)) {
+            return false;
+          }
+          return true;
+        })
+        .sort((a, b) => {
+          if (a.task.done !== b.task.done) {
+            return Number(a.task.done) - Number(b.task.done);
+          }
+          if (!a.task.done) {
+            return a.index - b.index;
+          }
+          const doneOrder = b.doneAtTs - a.doneAtTs;
+          return doneOrder !== 0 ? doneOrder : a.index - b.index;
+        })
+        .map(({ task }) => task),
     [directionFilter, taskTypeFilter, tasks],
+  );
+  const directionNameById = useMemo(
+    () => Object.fromEntries(directions.map((direction) => [direction.id, direction.name])),
+    [directions],
+  );
+  const memberNameById = useMemo(
+    () => Object.fromEntries(assignableMembers.map((member) => [member.id, `@${member.username}`])),
+    [assignableMembers],
   );
 
   const ensureStageRoute = () => {
@@ -397,6 +434,32 @@ export const StageDetailsPage = () => {
     }
   };
 
+  const onAddDirection = async () => {
+    if (!projectId) {
+      return;
+    }
+
+    const name = newDirectionName.trim();
+    if (!name) {
+      pushToast('Введите название направления', 'info');
+      return;
+    }
+
+    try {
+      const created = await apiService.addDirection(projectId, { name });
+      setDirections((prev) => {
+        if (prev.some((direction) => direction.id === created.id)) {
+          return prev;
+        }
+        return [...prev, created];
+      });
+      setNewDirectionName('');
+      pushToast('Направление добавлено', 'success');
+    } catch (reason) {
+      pushToast(normalizeApiError(reason).message, 'error');
+    }
+  };
+
   const stageStatusPill = useMemo(() => {
     if (currentStage?.status === 'completed') {
       return { label: 'Готово', className: 'stage-v5-pill done' };
@@ -479,42 +542,6 @@ export const StageDetailsPage = () => {
               {loading && tasks.length === 0 ? <p className="stage-v5-message">Загрузка задач...</p> : null}
               {error ? <p className="stage-v5-message error">{error.message}</p> : null}
 
-              <div className="stage-v5-task-filters">
-                <label>
-                  <span>Тип</span>
-                  <select
-                    value={taskTypeFilter}
-                    onChange={(event) => {
-                      setTaskTypeFilter(event.target.value as 'all' | TaskType);
-                    }}
-                  >
-                    <option value="all">Все типы</option>
-                    <option value="task">Задача</option>
-                    <option value="bug">Баг</option>
-                    <option value="feature">Фича</option>
-                    <option value="improvement">Улучшение</option>
-                    <option value="chore">Техдолг</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Направление</span>
-                  <select
-                    value={directionFilter}
-                    disabled={directionsLoading || directions.length === 0}
-                    onChange={(event) => {
-                      setDirectionFilter(event.target.value as 'all' | string);
-                    }}
-                  >
-                    <option value="all">Все направления</option>
-                    {directions.map((direction) => (
-                      <option key={direction.id} value={direction.id}>
-                        {direction.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
               <div className="stage-v5-task-list">
                 {filteredTasks.map((task) => {
                   const value = editValues[task.id] ?? task.title;
@@ -540,68 +567,95 @@ export const StageDetailsPage = () => {
                           }}
                         />
                         <div className="stage-v5-task-meta">
-                          <label className="stage-v5-task-type">
-                            <span>Тип</span>
-                            <select
-                              value={task.taskType}
-                              onChange={(event) => {
-                                void onTaskTypeChange(task.id, event.target.value as TaskType);
-                              }}
-                            >
-                              <option value="task">Задача</option>
-                              <option value="bug">Баг</option>
-                              <option value="feature">Фича</option>
-                              <option value="improvement">Улучшение</option>
-                              <option value="chore">Техдолг</option>
-                            </select>
-                          </label>
                           <span className={`stage-v5-task-type-pill ${task.taskType}`}>
                             {taskTypeLabels[task.taskType]}
                           </span>
-                          <span className="stage-v5-task-assignee-id">
-                            assignee_user_id: {task.assigneeUserId || '—'}
-                          </span>
-
-                          {project?.teamId ? (
-                            <label className="stage-v5-task-assign">
-                              <span>Исполнитель</span>
-                              <select
-                                value={task.assigneeUserId ?? ''}
-                                disabled={membersLoading}
-                                onChange={(event) => {
-                                  void onAssignTask(task.id, event.target.value || null);
-                                }}
-                              >
-                                <option value="">Без исполнителя</option>
-                                {assignableMembers.map((member) => (
-                                  <option key={member.id} value={member.id}>
-                                    @{member.username} ({member.email})
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
+                          {task.directionIds.length > 0 ? (
+                            task.directionIds.map((directionId) => (
+                              <span key={directionId} className="stage-v5-task-direction-pill">
+                                {directionNameById[directionId] || directionId.slice(0, 6)}
+                              </span>
+                            ))
                           ) : (
-                            <span className="stage-v5-task-assign-note">Личный проект</span>
+                            <span className="stage-v5-task-assign-note">Без направления</span>
                           )}
+                          <span className="stage-v5-task-assignee-pill">
+                            {task.assigneeUserId ? memberNameById[task.assigneeUserId] || task.assigneeUserId : 'Без исполнителя'}
+                          </span>
+                          <button
+                            type="button"
+                            className="stage-v5-task-meta-toggle"
+                            onClick={() => {
+                              setActiveTaskMetaId((prev) => (prev === task.id ? null : task.id));
+                            }}
+                          >
+                            Теги
+                          </button>
                         </div>
 
-                        {directions.length > 0 ? (
-                          <div className="stage-v5-task-directions">
-                            {directions.map((direction) => {
-                              const active = task.directionIds.includes(direction.id);
-                              return (
-                                <button
-                                  key={direction.id}
-                                  type="button"
-                                  className={active ? 'active' : ''}
-                                  onClick={() => {
-                                    void onToggleDirection(task.id, direction.id);
+                        {activeTaskMetaId === task.id ? (
+                          <div className="stage-v5-task-editor">
+                            <label className="stage-v5-task-type">
+                              <span>Тип</span>
+                              <select
+                                value={task.taskType}
+                                onChange={(event) => {
+                                  void onTaskTypeChange(task.id, event.target.value as TaskType);
+                                }}
+                              >
+                                <option value="task">Задача</option>
+                                <option value="bug">Баг</option>
+                                <option value="feature">Фича</option>
+                                <option value="improvement">Улучшение</option>
+                                <option value="chore">Техдолг</option>
+                              </select>
+                            </label>
+
+                            {project?.teamId ? (
+                              <label className="stage-v5-task-assign">
+                                <span>Исполнитель</span>
+                                <select
+                                  value={task.assigneeUserId ?? ''}
+                                  disabled={membersLoading}
+                                  onChange={(event) => {
+                                    void onAssignTask(task.id, event.target.value || null);
                                   }}
                                 >
-                                  {direction.name}
-                                </button>
-                              );
-                            })}
+                                  <option value="">Без исполнителя</option>
+                                  {assignableMembers.map((member) => (
+                                    <option key={member.id} value={member.id}>
+                                      @{member.username} ({member.email})
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            ) : (
+                              <span className="stage-v5-task-assign-note">Личный проект</span>
+                            )}
+
+                            <div className="stage-v5-task-directions">
+                              {directions.length > 0 ? (
+                                directions.map((direction) => {
+                                  const active = task.directionIds.includes(direction.id);
+                                  return (
+                                    <button
+                                      key={direction.id}
+                                      type="button"
+                                      className={active ? 'active' : ''}
+                                      onClick={() => {
+                                        void onToggleDirection(task.id, direction.id);
+                                      }}
+                                    >
+                                      {direction.name}
+                                    </button>
+                                  );
+                                })
+                              ) : (
+                                <span className="stage-v5-task-assign-note">
+                                  Нет направлений. Добавьте в правой колонке.
+                                </span>
+                              )}
+                            </div>
                           </div>
                         ) : null}
                       </div>
@@ -684,6 +738,70 @@ export const StageDetailsPage = () => {
           </div>
 
           <aside className="stage-v5-side-column">
+            <article className="stage-v5-card">
+              <header className="stage-v5-card-head">
+                <h3>Теги и фильтры</h3>
+              </header>
+              <div className="stage-v5-tags-card-body">
+                <div className="stage-v5-task-filters">
+                  <label>
+                    <span>Тип</span>
+                    <select
+                      value={taskTypeFilter}
+                      onChange={(event) => {
+                        setTaskTypeFilter(event.target.value as 'all' | TaskType);
+                      }}
+                    >
+                      <option value="all">Все типы</option>
+                      <option value="task">Задача</option>
+                      <option value="bug">Баг</option>
+                      <option value="feature">Фича</option>
+                      <option value="improvement">Улучшение</option>
+                      <option value="chore">Техдолг</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Направление</span>
+                    <select
+                      value={directionFilter}
+                      disabled={directionsLoading || directions.length === 0}
+                      onChange={(event) => {
+                        setDirectionFilter(event.target.value as 'all' | string);
+                      }}
+                    >
+                      <option value="all">Все направления</option>
+                      {directions.map((direction) => (
+                        <option key={direction.id} value={direction.id}>
+                          {direction.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="stage-v5-direction-create">
+                  <input
+                    value={newDirectionName}
+                    placeholder="Добавить направление"
+                    onChange={(event) => {
+                      setNewDirectionName(event.target.value);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        void onAddDirection();
+                      }
+                    }}
+                  />
+                  <button type="button" onClick={() => void onAddDirection()}>
+                    + Направление
+                  </button>
+                </div>
+
+                <p className="stage-v5-tags-hint">Показано задач: {filteredTasks.length}</p>
+              </div>
+            </article>
+
             <article className="stage-v5-card">
               <header className="stage-v5-card-head">
                 <h3>Контекст</h3>
