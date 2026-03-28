@@ -7,7 +7,7 @@ import { useUiStore } from '../store/ui.store';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
-import type { TeamMember } from '../types/models';
+import type { DirectionTag, TaskType, TeamMember } from '../types/models';
 
 type EditState = {
   [taskId: string]: string;
@@ -24,6 +24,14 @@ const statusToTab = (status?: string): 'draft' | 'progress' | 'review' | 'done' 
     return 'progress';
   }
   return 'draft';
+};
+
+const taskTypeLabels: Record<TaskType, string> = {
+  task: 'Задача',
+  bug: 'Баг',
+  feature: 'Фича',
+  improvement: 'Улучшение',
+  chore: 'Техдолг',
 };
 
 export const StageDetailsPage = () => {
@@ -45,6 +53,7 @@ export const StageDetailsPage = () => {
   const toggleTask = useStageStore((state) => state.toggleTask);
   const editTaskTitle = useStageStore((state) => state.editTaskTitle);
   const assignTask = useStageStore((state) => state.assignTask);
+  const patchTaskMeta = useStageStore((state) => state.patchTaskMeta);
   const deleteTask = useStageStore((state) => state.deleteTask);
 
   const pushToast = useUiStore((state) => state.pushToast);
@@ -58,6 +67,10 @@ export const StageDetailsPage = () => {
   const [requestingReview, setRequestingReview] = useState(false);
   const [assignableMembers, setAssignableMembers] = useState<TeamMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [directions, setDirections] = useState<DirectionTag[]>([]);
+  const [directionsLoading, setDirectionsLoading] = useState(false);
+  const [taskTypeFilter, setTaskTypeFilter] = useState<'all' | TaskType>('all');
+  const [directionFilter, setDirectionFilter] = useState<'all' | string>('all');
   const quickTaskInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -107,6 +120,38 @@ export const StageDetailsPage = () => {
     };
   }, [project?.teamId]);
 
+  useEffect(() => {
+    if (!projectId) {
+      setDirections([]);
+      return;
+    }
+
+    let cancelled = false;
+    setDirectionsLoading(true);
+
+    void apiService
+      .getDirections(projectId)
+      .then((items) => {
+        if (!cancelled) {
+          setDirections(items);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDirections([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setDirectionsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
   const stageTab = statusToTab(currentStage?.status);
 
   const stageVersion = useMemo(() => {
@@ -154,6 +199,19 @@ export const StageDetailsPage = () => {
 
   const completedTasks = useMemo(() => tasks.filter((task) => task.done).length, [tasks]);
   const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
+  const filteredTasks = useMemo(
+    () =>
+      tasks.filter((task) => {
+        if (taskTypeFilter !== 'all' && task.taskType !== taskTypeFilter) {
+          return false;
+        }
+        if (directionFilter !== 'all' && !task.directionIds.includes(directionFilter)) {
+          return false;
+        }
+        return true;
+      }),
+    [directionFilter, taskTypeFilter, tasks],
+  );
 
   const ensureStageRoute = () => {
     if (!projectId || !stageId) {
@@ -292,9 +350,48 @@ export const StageDetailsPage = () => {
 
     try {
       await assignTask(projectId, stageId, taskId, {
-        assignee_user_id: assigneeUserId,
+        user_id: assigneeUserId,
       });
       pushToast(assigneeUserId ? 'Исполнитель назначен' : 'Назначение снято', 'success');
+    } catch (reason) {
+      pushToast(normalizeApiError(reason).message, 'error');
+    }
+  };
+
+  const onTaskTypeChange = async (taskId: string, taskType: TaskType) => {
+    if (!ensureStageRoute()) {
+      return;
+    }
+
+    try {
+      await patchTaskMeta(projectId, stageId, taskId, {
+        task_type: taskType,
+      });
+      pushToast('Тип задачи обновлен', 'success');
+    } catch (reason) {
+      pushToast(normalizeApiError(reason).message, 'error');
+    }
+  };
+
+  const onToggleDirection = async (taskId: string, directionId: string) => {
+    if (!ensureStageRoute()) {
+      return;
+    }
+
+    const task = tasks.find((item) => item.id === taskId);
+    if (!task) {
+      return;
+    }
+
+    const nextDirectionIds = task.directionIds.includes(directionId)
+      ? task.directionIds.filter((id) => id !== directionId)
+      : [...task.directionIds, directionId];
+
+    try {
+      await patchTaskMeta(projectId, stageId, taskId, {
+        direction_ids: nextDirectionIds,
+      });
+      pushToast('Направления обновлены', 'success');
     } catch (reason) {
       pushToast(normalizeApiError(reason).message, 'error');
     }
@@ -382,8 +479,44 @@ export const StageDetailsPage = () => {
               {loading && tasks.length === 0 ? <p className="stage-v5-message">Загрузка задач...</p> : null}
               {error ? <p className="stage-v5-message error">{error.message}</p> : null}
 
+              <div className="stage-v5-task-filters">
+                <label>
+                  <span>Тип</span>
+                  <select
+                    value={taskTypeFilter}
+                    onChange={(event) => {
+                      setTaskTypeFilter(event.target.value as 'all' | TaskType);
+                    }}
+                  >
+                    <option value="all">Все типы</option>
+                    <option value="task">Задача</option>
+                    <option value="bug">Баг</option>
+                    <option value="feature">Фича</option>
+                    <option value="improvement">Улучшение</option>
+                    <option value="chore">Техдолг</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Направление</span>
+                  <select
+                    value={directionFilter}
+                    disabled={directionsLoading || directions.length === 0}
+                    onChange={(event) => {
+                      setDirectionFilter(event.target.value as 'all' | string);
+                    }}
+                  >
+                    <option value="all">Все направления</option>
+                    {directions.map((direction) => (
+                      <option key={direction.id} value={direction.id}>
+                        {direction.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
               <div className="stage-v5-task-list">
-                {tasks.map((task) => {
+                {filteredTasks.map((task) => {
                   const value = editValues[task.id] ?? task.title;
                   return (
                     <div className={`stage-v5-task-row ${task.done ? 'done' : ''}`} key={task.id}>
@@ -407,6 +540,24 @@ export const StageDetailsPage = () => {
                           }}
                         />
                         <div className="stage-v5-task-meta">
+                          <label className="stage-v5-task-type">
+                            <span>Тип</span>
+                            <select
+                              value={task.taskType}
+                              onChange={(event) => {
+                                void onTaskTypeChange(task.id, event.target.value as TaskType);
+                              }}
+                            >
+                              <option value="task">Задача</option>
+                              <option value="bug">Баг</option>
+                              <option value="feature">Фича</option>
+                              <option value="improvement">Улучшение</option>
+                              <option value="chore">Техдолг</option>
+                            </select>
+                          </label>
+                          <span className={`stage-v5-task-type-pill ${task.taskType}`}>
+                            {taskTypeLabels[task.taskType]}
+                          </span>
                           <span className="stage-v5-task-assignee-id">
                             assignee_user_id: {task.assigneeUserId || '—'}
                           </span>
@@ -433,6 +584,26 @@ export const StageDetailsPage = () => {
                             <span className="stage-v5-task-assign-note">Личный проект</span>
                           )}
                         </div>
+
+                        {directions.length > 0 ? (
+                          <div className="stage-v5-task-directions">
+                            {directions.map((direction) => {
+                              const active = task.directionIds.includes(direction.id);
+                              return (
+                                <button
+                                  key={direction.id}
+                                  type="button"
+                                  className={active ? 'active' : ''}
+                                  onClick={() => {
+                                    void onToggleDirection(task.id, direction.id);
+                                  }}
+                                >
+                                  {direction.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : null}
                       </div>
                       <div className="stage-v5-task-actions">
                         <button
@@ -455,6 +626,10 @@ export const StageDetailsPage = () => {
                     </div>
                   );
                 })}
+
+                {!loading && !error && tasks.length > 0 && filteredTasks.length === 0 ? (
+                  <p className="stage-v5-message">По выбранным фильтрам задач нет.</p>
+                ) : null}
 
                 <div className="stage-v5-task-input-row">
                   <input

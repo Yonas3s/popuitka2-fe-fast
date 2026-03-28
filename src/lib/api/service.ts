@@ -2,6 +2,7 @@ import { apiClient } from './client';
 import { endpoints } from './endpoints';
 import {
   extractAdminActionLogs,
+  extractDirections,
   extractProject,
   extractProjects,
   extractApiTokens,
@@ -31,11 +32,13 @@ import type {
   ApiToken,
   AuthProfile,
   CreatedApiToken,
+  DirectionTag,
   Project,
   PublicSharePayload,
   ShareLinkResponse,
   Stage,
   Task,
+  TaskType,
   Team,
   TeamActiveInvite,
   TeamDetails,
@@ -81,7 +84,13 @@ export type EditTaskTitlePayload = {
 };
 
 export type AssignTaskPayload = {
+  user_id?: string | null;
   assignee_user_id?: string | null;
+};
+
+export type PatchTaskMetaPayload = {
+  task_type?: TaskType;
+  direction_ids?: string[];
 };
 
 export type ForgotPasswordPayload = {
@@ -247,6 +256,11 @@ export const apiService = {
     return extractProject(response.data);
   },
 
+  async getDirections(projectId: string): Promise<DirectionTag[]> {
+    const response = await apiClient.get(endpoints.directions(projectId));
+    return extractDirections(response.data);
+  },
+
   async getStages(projectId: string): Promise<Stage[]> {
     const response = await apiClient.get(endpoints.stages(projectId));
     return extractStages(response.data);
@@ -287,6 +301,8 @@ export const apiService = {
       id: `task-${Date.now()}`,
       title: payload.title,
       done: false,
+      taskType: 'task',
+      directionIds: [],
       raw: {},
     };
   },
@@ -306,6 +322,15 @@ export const apiService = {
 
   async assignTask(projectId: string, stageId: string, taskId: string, payload: AssignTaskPayload): Promise<void> {
     await apiClient.patch(endpoints.assignTask(projectId, stageId, taskId), payload);
+  },
+
+  async patchTaskMeta(
+    projectId: string,
+    stageId: string,
+    taskId: string,
+    payload: PatchTaskMetaPayload,
+  ): Promise<void> {
+    await apiClient.patch(endpoints.patchTaskMeta(projectId, stageId, taskId), payload);
   },
 
   async deleteTask(projectId: string, stageId: string, taskId: string): Promise<void> {
@@ -328,6 +353,8 @@ export const apiService = {
       id: `task-${Date.now()}`,
       title: payload.title,
       done: false,
+      taskType: 'task',
+      directionIds: [],
       raw: {},
     };
   },
@@ -342,6 +369,10 @@ export const apiService = {
 
   async assignProjectTask(projectId: string, taskId: string, payload: AssignTaskPayload): Promise<void> {
     await apiClient.patch(endpoints.assignProjectTask(projectId, taskId), payload);
+  },
+
+  async patchProjectTaskMeta(projectId: string, taskId: string, payload: PatchTaskMetaPayload): Promise<void> {
+    await apiClient.patch(endpoints.patchProjectTaskMeta(projectId, taskId), payload);
   },
 
   async deleteProjectTask(projectId: string, taskId: string): Promise<void> {

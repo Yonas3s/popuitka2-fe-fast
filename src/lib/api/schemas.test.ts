@@ -4,6 +4,7 @@ import {
   extractAdminStat,
   extractApiTokens,
   extractCreatedApiToken,
+  extractDirections,
   extractProjects,
   extractTasks,
   extractTeamActiveInvites,
@@ -240,16 +241,39 @@ describe('task extractors', () => {
   it('parses assignee_user_id for task records', () => {
     const tasks = extractTasks({
       tasks: [
-        { _id: 'task-1', title: 'Assigned', is_done: false, assignee_user_id: 'user-1' },
-        { _id: 'task-2', title: 'Legacy key', done: true, assigneeUserId: 'user-2' },
-        { _id: 'task-3', title: 'Unassigned', done: false, assignee_user_id: null },
+        {
+          _id: 'task-1',
+          title: 'Assigned',
+          is_done: false,
+          assignee_user_id: 'user-1',
+          task_type: 'bug',
+          direction_ids: ['dir-1', 'dir-2'],
+        },
+        { _id: 'task-2', title: 'Legacy key', done: true, assigneeUserId: 'user-2', taskType: 'feature' },
+        { _id: 'task-3', title: 'Unassigned', done: false, assignee_user_id: null, task_type: 'wrong' },
       ],
     });
 
     expect(tasks).toHaveLength(3);
     expect(tasks[0].assigneeUserId).toBe('user-1');
+    expect(tasks[0].taskType).toBe('bug');
+    expect(tasks[0].directionIds).toEqual(['dir-1', 'dir-2']);
     expect(tasks[1].assigneeUserId).toBe('user-2');
+    expect(tasks[1].taskType).toBe('feature');
     expect(tasks[2].assigneeUserId).toBeUndefined();
+    expect(tasks[2].taskType).toBe('task');
+  });
+});
+
+describe('direction extractors', () => {
+  it('parses project directions payload', () => {
+    const directions = extractDirections({
+      data: [{ _id: 'dir-1', name: 'Backend' }, { _id: 'dir-2', name: 'Frontend' }],
+    });
+
+    expect(directions).toHaveLength(2);
+    expect(directions[0].id).toBe('dir-1');
+    expect(directions[0].name).toBe('Backend');
   });
 });
 

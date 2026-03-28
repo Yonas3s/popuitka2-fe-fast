@@ -100,6 +100,12 @@ export type TeamMember = {
   raw: Record<string, unknown>;
 };
 
+export type DirectionTag = {
+  id: string;
+  name: string;
+  raw: Record<string, unknown>;
+};
+
 export type TeamActiveInvite = {
   id: string;
   email: string;
@@ -147,6 +153,7 @@ export type CreatedApiToken = {
 };
 
 export type WorkflowType = 'stages' | 'flat';
+export type TaskType = 'task' | 'bug' | 'feature' | 'improvement' | 'chore';
 
 export type Project = {
   id: string;
@@ -173,6 +180,8 @@ export type Task = {
   id: string;
   title: string;
   done: boolean;
+  taskType: TaskType;
+  directionIds: string[];
   assigneeUserId?: string;
   raw: Record<string, unknown>;
 };

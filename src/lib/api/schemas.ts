@@ -8,10 +8,12 @@ import type {
   ApiToken,
   AuthProfile,
   CreatedApiToken,
+  DirectionTag,
   Project,
   PublicSharePayload,
   Stage,
   Task,
+  TaskType,
   Team,
   TeamActiveInvite,
   TeamDetails,
@@ -64,10 +66,16 @@ const taskSchema = z
     done: z.boolean().optional(),
     is_done: z.boolean().optional(),
     completed: z.boolean().optional(),
+    task_type: z.string().optional(),
+    taskType: z.string().optional(),
+    direction_ids: z.array(z.unknown()).optional(),
+    directionIds: z.array(z.unknown()).optional(),
     assignee_user_id: z.string().nullable().optional(),
     assigneeUserId: z.string().nullable().optional(),
   })
   .passthrough();
+
+const taskTypeValues: TaskType[] = ['task', 'bug', 'feature', 'improvement', 'chore'];
 
 const meSchema = z
   .object({
@@ -270,6 +278,14 @@ const teamMemberSchema = z
   })
   .passthrough();
 
+const directionSchema = z
+  .object({
+    _id: z.string().optional(),
+    id: z.string().optional(),
+    name: z.string().optional(),
+  })
+  .passthrough();
+
 const apiTokenSchema = z
   .object({
     _id: z.string().optional(),
@@ -428,14 +444,63 @@ export const normalizeTask = (value: unknown, index = 0): Task => {
     (typeof record.completed === 'boolean' && record.completed) ||
     false;
 
+  const taskTypeCandidate =
+    (typeof record.task_type === 'string' && record.task_type) ||
+    (typeof record.taskType === 'string' && record.taskType) ||
+    '';
+  const normalizedTaskType = taskTypeCandidate.trim().toLowerCase();
+  const taskType = taskTypeValues.includes(normalizedTaskType as TaskType)
+    ? (normalizedTaskType as TaskType)
+    : 'task';
+
+  const directionSource = Array.isArray(record.direction_ids)
+    ? record.direction_ids
+    : Array.isArray(record.directionIds)
+      ? record.directionIds
+      : [];
+  const directionIds = Array.from(
+    new Set(
+      directionSource
+        .map((item) => {
+          if (typeof item === 'string') {
+            return item;
+          }
+          const nested = asRecord(item);
+          if (typeof nested._id === 'string' && nested._id) {
+            return nested._id;
+          }
+          if (typeof nested.id === 'string' && nested.id) {
+            return nested.id;
+          }
+          return '';
+        })
+        .filter((value): value is string => value.length > 0),
+    ),
+  );
+
   return {
     id: normalizeId(record, `task-${index}`),
     title: typeof record.title === 'string' && record.title ? record.title : 'Без названия задачи',
     done,
+    taskType,
+    directionIds,
     assigneeUserId:
       (typeof record.assignee_user_id === 'string' && record.assignee_user_id) ||
       (typeof record.assigneeUserId === 'string' && record.assigneeUserId) ||
       undefined,
+    raw: record,
+  };
+};
+
+export const normalizeDirection = (value: unknown, index = 0): DirectionTag => {
+  const parsed = directionSchema.safeParse(value);
+  const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
+  const name =
+    (typeof record.name === 'string' && record.name.trim()) || `Направление ${index + 1}`;
+
+  return {
+    id: normalizeId(record, `direction-${index}`),
+    name,
     raw: record,
   };
 };
@@ -921,6 +986,9 @@ export const extractStages = (value: unknown): Stage[] =>
 
 export const extractTasks = (value: unknown): Task[] =>
   normalizeCollection(value, ['tasks', 'data', 'items'], normalizeTask);
+
+export const extractDirections = (value: unknown): DirectionTag[] =>
+  normalizeCollection(value, ['directions', 'data', 'items'], normalizeDirection);
 
 export const extractTeams = (value: unknown): Team[] => {
   if (Array.isArray(value)) {

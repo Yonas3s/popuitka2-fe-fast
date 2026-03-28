@@ -90,6 +90,8 @@ describe('api service flow', () => {
 
     const fullProject = await apiService.getProject(createdProject.id);
     expect(fullProject.id).toBe(createdProject.id);
+    const projectDirections = await apiService.getDirections('p1');
+    expect(projectDirections.length).toBeGreaterThan(0);
 
     const createdStage = await apiService.createStage(createdProject.id, {
       stage_name: 'Frontend MVP',
@@ -121,13 +123,19 @@ describe('api service flow', () => {
     expect(tasks.length).toBeGreaterThan(0);
 
     const firstTask = tasks[0];
+    await apiService.patchTaskMeta(createdProject.id, createdStage.id, firstTask.id, {
+      task_type: 'bug',
+      direction_ids: [],
+    });
+    const tasksAfterMeta = await apiService.getTasks(createdProject.id, createdStage.id);
+    expect(tasksAfterMeta[0]?.taskType).toBe('bug');
     await apiService.assignTask(createdProject.id, createdStage.id, firstTask.id, {
-      assignee_user_id: 'teammate-1',
+      user_id: 'teammate-1',
     });
     const tasksAfterAssign = await apiService.getTasks(createdProject.id, createdStage.id);
     expect(tasksAfterAssign[0]?.assigneeUserId).toBe('teammate-1');
     await apiService.assignTask(createdProject.id, createdStage.id, firstTask.id, {
-      assignee_user_id: null,
+      user_id: null,
     });
     await apiService.toggleTask(createdProject.id, createdStage.id, firstTask.id);
     await apiService.editTaskTitle(createdProject.id, createdStage.id, firstTask.id, {
@@ -229,13 +237,19 @@ describe('api service flow', () => {
     expect(tasks.length).toBeGreaterThan(0);
 
     const firstTask = tasks[0];
+    await apiService.patchProjectTaskMeta(flatProject.id, firstTask.id, {
+      task_type: 'feature',
+      direction_ids: [],
+    });
+    const tasksAfterMeta = await apiService.getProjectTasks(flatProject.id);
+    expect(tasksAfterMeta[0]?.taskType).toBe('feature');
     await apiService.assignProjectTask(flatProject.id, firstTask.id, {
-      assignee_user_id: 'teammate-1',
+      user_id: 'teammate-1',
     });
     const tasksAfterAssign = await apiService.getProjectTasks(flatProject.id);
     expect(tasksAfterAssign[0]?.assigneeUserId).toBe('teammate-1');
     await apiService.assignProjectTask(flatProject.id, firstTask.id, {
-      assignee_user_id: null,
+      user_id: null,
     });
     await apiService.toggleProjectTask(flatProject.id, firstTask.id);
     await apiService.editProjectTaskTitle(flatProject.id, firstTask.id, {

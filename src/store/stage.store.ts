@@ -4,6 +4,7 @@ import {
   type AssignTaskPayload,
   type CreateTaskPayload,
   type EditTaskTitlePayload,
+  type PatchTaskMetaPayload,
   type UpdateStagePayload,
 } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
@@ -31,6 +32,12 @@ type StageState = {
     stageId: string,
     taskId: string,
     payload: AssignTaskPayload,
+  ) => Promise<void>;
+  patchTaskMeta: (
+    projectId: string,
+    stageId: string,
+    taskId: string,
+    payload: PatchTaskMetaPayload,
   ) => Promise<void>;
   deleteTask: (projectId: string, stageId: string, taskId: string) => Promise<void>;
 };
@@ -131,14 +138,38 @@ export const useStageStore = create<StageState>((set, get) => ({
 
   async assignTask(projectId, stageId, taskId, payload) {
     const previous = get().tasks;
+    const nextAssignee = payload.user_id ?? payload.assignee_user_id ?? null;
     const optimistic = previous.map((task) =>
-      task.id === taskId ? { ...task, assigneeUserId: payload.assignee_user_id || undefined } : task,
+      task.id === taskId ? { ...task, assigneeUserId: nextAssignee || undefined } : task,
     );
 
     set({ tasks: optimistic, error: null });
 
     try {
       await apiService.assignTask(projectId, stageId, taskId, payload);
+      await get().fetchTasks(projectId, stageId);
+    } catch (error) {
+      set({ tasks: previous, error: normalizeApiError(error) });
+      throw error;
+    }
+  },
+
+  async patchTaskMeta(projectId, stageId, taskId, payload) {
+    const previous = get().tasks;
+    const optimistic = previous.map((task) =>
+      task.id === taskId
+        ? {
+            ...task,
+            taskType: payload.task_type ?? task.taskType,
+            directionIds: payload.direction_ids ?? task.directionIds,
+          }
+        : task,
+    );
+
+    set({ tasks: optimistic, error: null });
+
+    try {
+      await apiService.patchTaskMeta(projectId, stageId, taskId, payload);
       await get().fetchTasks(projectId, stageId);
     } catch (error) {
       set({ tasks: previous, error: normalizeApiError(error) });

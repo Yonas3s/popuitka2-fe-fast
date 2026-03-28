@@ -22,6 +22,7 @@ export const endpoints = {
   teamInviteAccept: (token: string) => `/team-invites/${token}/accept`,
   projects: () => '/projects',
   projectById: (projectId: string) => `/projects/${projectId}`,
+  directions: (projectId: string) => `/projects/${projectId}/directions`,
   stages: (projectId: string) => `/projects/${projectId}/stages`,
   stageById: (projectId: string, stageId: string) => `/projects/${projectId}/stages/${stageId}`,
   tasks: (projectId: string, stageId: string) => `/projects/${projectId}/stages/${stageId}/tasks`,
@@ -31,12 +32,15 @@ export const endpoints = {
     `/projects/${projectId}/stages/${stageId}/tasks/${taskId}/title`,
   assignTask: (projectId: string, stageId: string, taskId: string) =>
     `/projects/${projectId}/stages/${stageId}/tasks/${taskId}/assign`,
+  patchTaskMeta: (projectId: string, stageId: string, taskId: string) =>
+    `/projects/${projectId}/stages/${stageId}/tasks/${taskId}/meta`,
   deleteTask: (projectId: string, stageId: string, taskId: string) =>
     `/projects/${projectId}/stages/${stageId}/tasks/${taskId}`,
   projectTasks: (projectId: string) => `/projects/${projectId}/tasks`,
   toggleProjectTask: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}/toggle`,
   editProjectTaskTitle: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}/title`,
   assignProjectTask: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}/assign`,
+  patchProjectTaskMeta: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}/meta`,
   deleteProjectTask: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}`,
   shareLink: (projectId: string) => `/projects/${projectId}/share-link`,
   requestReview: (projectId: string, stageId: string) =>

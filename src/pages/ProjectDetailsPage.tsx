@@ -8,11 +8,19 @@ import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { FRONTEND_BASE_URL } from '../lib/config/env';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
-import type { ApiError, Stage, Task, TeamMember } from '../types/models';
+import type { ApiError, DirectionTag, Stage, Task, TaskType, TeamMember } from '../types/models';
 
 type StageForm = {
   stage_name: string;
   description: string;
+};
+
+const taskTypeLabels: Record<TaskType, string> = {
+  task: 'Задача',
+  bug: 'Баг',
+  feature: 'Фича',
+  improvement: 'Улучшение',
+  chore: 'Техдолг',
 };
 
 export const ProjectDetailsPage = () => {
@@ -38,6 +46,10 @@ export const ProjectDetailsPage = () => {
   const [flatTaskEdits, setFlatTaskEdits] = useState<Record<string, string>>({});
   const [assignableMembers, setAssignableMembers] = useState<TeamMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [directions, setDirections] = useState<DirectionTag[]>([]);
+  const [directionsLoading, setDirectionsLoading] = useState(false);
+  const [flatTypeFilter, setFlatTypeFilter] = useState<'all' | TaskType>('all');
+  const [flatDirectionFilter, setFlatDirectionFilter] = useState<'all' | string>('all');
 
   const {
     register,
@@ -168,6 +180,38 @@ export const ProjectDetailsPage = () => {
     };
   }, [project?.teamId]);
 
+  useEffect(() => {
+    if (!projectId) {
+      setDirections([]);
+      return;
+    }
+
+    let cancelled = false;
+    setDirectionsLoading(true);
+
+    void apiService
+      .getDirections(projectId)
+      .then((items) => {
+        if (!cancelled) {
+          setDirections(items);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDirections([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setDirectionsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
   const onSubmit = handleSubmit(async (values) => {
     if (isFlatWorkflow) {
       pushToast('В режиме flat создание стадий недоступно.', 'info');
@@ -289,7 +333,7 @@ export const ProjectDetailsPage = () => {
 
     try {
       await apiService.assignProjectTask(projectId, taskId, {
-        assignee_user_id: assigneeUserId,
+        user_id: assigneeUserId,
       });
       pushToast(assigneeUserId ? 'Исполнитель назначен' : 'Назначение снято', 'success');
       await loadFlatTasks();
@@ -299,6 +343,66 @@ export const ProjectDetailsPage = () => {
       pushToast(normalized.message, 'error');
     }
   };
+
+  const onChangeFlatTaskType = async (taskId: string, taskType: TaskType) => {
+    const previous = flatTasks;
+    const optimistic = previous.map((task) => (task.id === taskId ? { ...task, taskType } : task));
+    setFlatTasks(optimistic);
+
+    try {
+      await apiService.patchProjectTaskMeta(projectId, taskId, {
+        task_type: taskType,
+      });
+      pushToast('Тип задачи обновлен', 'success');
+      await loadFlatTasks();
+    } catch (reason) {
+      setFlatTasks(previous);
+      const normalized = normalizeApiError(reason);
+      pushToast(normalized.message, 'error');
+    }
+  };
+
+  const onToggleFlatDirection = async (taskId: string, directionId: string) => {
+    const current = flatTasks.find((task) => task.id === taskId);
+    if (!current) {
+      return;
+    }
+
+    const nextDirectionIds = current.directionIds.includes(directionId)
+      ? current.directionIds.filter((id) => id !== directionId)
+      : [...current.directionIds, directionId];
+    const previous = flatTasks;
+    const optimistic = previous.map((task) =>
+      task.id === taskId ? { ...task, directionIds: nextDirectionIds } : task,
+    );
+    setFlatTasks(optimistic);
+
+    try {
+      await apiService.patchProjectTaskMeta(projectId, taskId, {
+        direction_ids: nextDirectionIds,
+      });
+      pushToast('Направления обновлены', 'success');
+      await loadFlatTasks();
+    } catch (reason) {
+      setFlatTasks(previous);
+      const normalized = normalizeApiError(reason);
+      pushToast(normalized.message, 'error');
+    }
+  };
+
+  const filteredFlatTasks = useMemo(
+    () =>
+      flatTasks.filter((task) => {
+        if (flatTypeFilter !== 'all' && task.taskType !== flatTypeFilter) {
+          return false;
+        }
+        if (flatDirectionFilter !== 'all' && !task.directionIds.includes(flatDirectionFilter)) {
+          return false;
+        }
+        return true;
+      }),
+    [flatDirectionFilter, flatTasks, flatTypeFilter],
+  );
 
   const userInitials = useMemo(() => {
     const source = user?.username || user?.email || 'UL';
@@ -563,6 +667,42 @@ export const ProjectDetailsPage = () => {
                 <span className="project-v4-flat-chip">Режим: flat</span>
               </div>
 
+              <div className="project-v4-flat-filters">
+                <label>
+                  <span>Тип</span>
+                  <select
+                    value={flatTypeFilter}
+                    onChange={(event) => {
+                      setFlatTypeFilter(event.target.value as 'all' | TaskType);
+                    }}
+                  >
+                    <option value="all">Все типы</option>
+                    <option value="task">Задача</option>
+                    <option value="bug">Баг</option>
+                    <option value="feature">Фича</option>
+                    <option value="improvement">Улучшение</option>
+                    <option value="chore">Техдолг</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Направление</span>
+                  <select
+                    value={flatDirectionFilter}
+                    disabled={directionsLoading || directions.length === 0}
+                    onChange={(event) => {
+                      setFlatDirectionFilter(event.target.value as 'all' | string);
+                    }}
+                  >
+                    <option value="all">Все направления</option>
+                    {directions.map((direction) => (
+                      <option key={direction.id} value={direction.id}>
+                        {direction.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
               {flatLoading ? <p className="project-v4-message">Загрузка задач...</p> : null}
               {flatError ? <p className="project-v4-message error">{flatError.message}</p> : null}
               {!flatLoading && !flatError && flatTasks.length === 0 ? (
@@ -570,7 +710,7 @@ export const ProjectDetailsPage = () => {
               ) : null}
 
               <div className="project-v4-flat-list">
-                {flatTasks.map((task) => {
+                {filteredFlatTasks.map((task) => {
                   const value = flatTaskEdits[task.id] ?? task.title;
                   return (
                     <article key={task.id} className={`project-v4-flat-item ${task.done ? 'is-done' : ''}`}>
@@ -596,6 +736,24 @@ export const ProjectDetailsPage = () => {
                           }}
                         />
                         <div className="project-v4-flat-meta">
+                          <label className="project-v4-flat-type">
+                            <span>Тип</span>
+                            <select
+                              value={task.taskType}
+                              onChange={(event) => {
+                                void onChangeFlatTaskType(task.id, event.target.value as TaskType);
+                              }}
+                            >
+                              <option value="task">Задача</option>
+                              <option value="bug">Баг</option>
+                              <option value="feature">Фича</option>
+                              <option value="improvement">Улучшение</option>
+                              <option value="chore">Техдолг</option>
+                            </select>
+                          </label>
+                          <span className={`project-v4-flat-type-pill ${task.taskType}`}>
+                            {taskTypeLabels[task.taskType]}
+                          </span>
                           <span className="project-v4-flat-assignee-id">
                             assignee_user_id: {task.assigneeUserId || '—'}
                           </span>
@@ -621,6 +779,26 @@ export const ProjectDetailsPage = () => {
                             <span className="project-v4-flat-assign-note">Личный проект</span>
                           )}
                         </div>
+
+                        {directions.length > 0 ? (
+                          <div className="project-v4-flat-directions">
+                            {directions.map((direction) => {
+                              const active = task.directionIds.includes(direction.id);
+                              return (
+                                <button
+                                  key={direction.id}
+                                  type="button"
+                                  className={active ? 'active' : ''}
+                                  onClick={() => {
+                                    void onToggleFlatDirection(task.id, direction.id);
+                                  }}
+                                >
+                                  {direction.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : null}
                       </div>
 
                       <div className="project-v4-flat-actions">
@@ -645,6 +823,10 @@ export const ProjectDetailsPage = () => {
                   );
                 })}
               </div>
+
+              {!flatLoading && !flatError && flatTasks.length > 0 && filteredFlatTasks.length === 0 ? (
+                <p className="project-v4-message">По выбранным фильтрам задач нет.</p>
+              ) : null}
 
               <div className="project-v4-flat-create">
                 <input

@@ -22,7 +22,15 @@ type TaskRecord = {
   _id: string;
   title: string;
   done: boolean;
+  task_type: 'task' | 'bug' | 'feature' | 'improvement' | 'chore';
+  direction_ids: string[];
   assignee_user_id?: string | null;
+};
+
+type DirectionRecord = {
+  _id: string;
+  project_id: string;
+  name: string;
 };
 
 type TeamRecord = {
@@ -89,11 +97,26 @@ const state = {
   stagesByProject: {
     p1: [{ _id: 's1', stage_name: 'Init', description: 'Start stage', status: 'active' }],
   } as Record<string, StageRecord[]>,
+  directionsByProject: {
+    p1: [
+      { _id: 'dir-1', project_id: 'p1', name: 'Backend' },
+      { _id: 'dir-2', project_id: 'p1', name: 'Frontend' },
+    ],
+  } as Record<string, DirectionRecord[]>,
   tasksByProject: {
     p1: [],
   } as Record<string, TaskRecord[]>,
   tasksByStage: {
-    s1: [{ _id: 't1', title: 'First task', done: false, assignee_user_id: null }],
+    s1: [
+      {
+        _id: 't1',
+        title: 'First task',
+        done: false,
+        task_type: 'task',
+        direction_ids: ['dir-1'],
+        assignee_user_id: null,
+      },
+    ],
   } as Record<string, TaskRecord[]>,
   shareByToken: {
     'public-token-1': { projectId: 'p1', approved: false },
@@ -623,6 +646,7 @@ export const handlers = [
 
     state.projects.push(project);
     state.stagesByProject[project._id] = [];
+    state.directionsByProject[project._id] = [];
     state.tasksByProject[project._id] = [];
     return HttpResponse.json(project, { status: 201 });
   }),
@@ -639,6 +663,20 @@ export const handlers = [
     }
 
     return HttpResponse.json(project);
+  }),
+
+  http.get(/.*\/projects\/([^/]+)\/directions$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+
+    return HttpResponse.json(state.directionsByProject[projectId] || []);
   }),
 
   http.get(/.*\/projects\/([^/]+)\/stages$/, async ({ params, request }) => {
@@ -797,6 +835,8 @@ export const handlers = [
       _id: randomId('t'),
       title: body.title || 'Task',
       done: false,
+      task_type: 'task',
+      direction_ids: [],
       assignee_user_id: null,
     };
 
@@ -878,7 +918,7 @@ export const handlers = [
 
     const stageId = String(params[1]);
     const taskId = String(params[2]);
-    const body = (await request.json()) as { assignee_user_id?: string | null };
+    const body = (await request.json()) as { assignee_user_id?: string | null; user_id?: string | null };
     const tasks = state.tasksByStage[stageId] || [];
     const index = tasks.findIndex((task) => task._id === taskId);
     if (index < 0) {
@@ -887,7 +927,54 @@ export const handlers = [
 
     tasks[index] = {
       ...tasks[index],
-      assignee_user_id: typeof body.assignee_user_id === 'string' && body.assignee_user_id ? body.assignee_user_id : null,
+      assignee_user_id:
+        (typeof body.user_id === 'string' && body.user_id) ||
+        (typeof body.assignee_user_id === 'string' && body.assignee_user_id) ||
+        null,
+    };
+    state.tasksByStage[stageId] = tasks;
+    return HttpResponse.json(tasks[index]);
+  }),
+
+  http.patch(/.*\/projects\/([^/]+)\/stages\/([^/]+)\/tasks\/([^/]+)\/meta$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'flat') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
+
+    const stageId = String(params[1]);
+    const taskId = String(params[2]);
+    const body = (await request.json()) as {
+      task_type?: TaskRecord['task_type'];
+      direction_ids?: string[];
+    };
+    const tasks = state.tasksByStage[stageId] || [];
+    const index = tasks.findIndex((task) => task._id === taskId);
+    if (index < 0) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+
+    const nextTaskType =
+      typeof body.task_type === 'string' &&
+      ['task', 'bug', 'feature', 'improvement', 'chore'].includes(body.task_type)
+        ? (body.task_type as TaskRecord['task_type'])
+        : tasks[index].task_type;
+    const nextDirectionIds = Array.isArray(body.direction_ids)
+      ? body.direction_ids.filter((id) => typeof id === 'string')
+      : tasks[index].direction_ids;
+
+    tasks[index] = {
+      ...tasks[index],
+      task_type: nextTaskType,
+      direction_ids: nextDirectionIds,
     };
     state.tasksByStage[stageId] = tasks;
     return HttpResponse.json(tasks[index]);
@@ -951,6 +1038,8 @@ export const handlers = [
       _id: randomId('pt'),
       title: body.title || 'Task',
       done: false,
+      task_type: 'task',
+      direction_ids: [],
       assignee_user_id: null,
     };
     state.tasksByProject[projectId] = [...(state.tasksByProject[projectId] || []), task];
@@ -1025,7 +1114,7 @@ export const handlers = [
       return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
     }
 
-    const body = (await request.json()) as { assignee_user_id?: string | null };
+    const body = (await request.json()) as { assignee_user_id?: string | null; user_id?: string | null };
     const tasks = state.tasksByProject[projectId] || [];
     const index = tasks.findIndex((task) => task._id === taskId);
     if (index < 0) {
@@ -1034,7 +1123,53 @@ export const handlers = [
 
     tasks[index] = {
       ...tasks[index],
-      assignee_user_id: typeof body.assignee_user_id === 'string' && body.assignee_user_id ? body.assignee_user_id : null,
+      assignee_user_id:
+        (typeof body.user_id === 'string' && body.user_id) ||
+        (typeof body.assignee_user_id === 'string' && body.assignee_user_id) ||
+        null,
+    };
+    state.tasksByProject[projectId] = tasks;
+    return HttpResponse.json(tasks[index]);
+  }),
+
+  http.patch(/.*\/projects\/([^/]+)\/tasks\/([^/]+)\/meta$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const projectId = String(params[0]);
+    const taskId = String(params[1]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'stages') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
+
+    const body = (await request.json()) as {
+      task_type?: TaskRecord['task_type'];
+      direction_ids?: string[];
+    };
+    const tasks = state.tasksByProject[projectId] || [];
+    const index = tasks.findIndex((task) => task._id === taskId);
+    if (index < 0) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+
+    const nextTaskType =
+      typeof body.task_type === 'string' &&
+      ['task', 'bug', 'feature', 'improvement', 'chore'].includes(body.task_type)
+        ? (body.task_type as TaskRecord['task_type'])
+        : tasks[index].task_type;
+    const nextDirectionIds = Array.isArray(body.direction_ids)
+      ? body.direction_ids.filter((id) => typeof id === 'string')
+      : tasks[index].direction_ids;
+
+    tasks[index] = {
+      ...tasks[index],
+      task_type: nextTaskType,
+      direction_ids: nextDirectionIds,
     };
     state.tasksByProject[projectId] = tasks;
     return HttpResponse.json(tasks[index]);
