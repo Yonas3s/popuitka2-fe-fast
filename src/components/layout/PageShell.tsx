@@ -2,7 +2,7 @@ import { useEffect, useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { APP_TITLE } from '../../lib/config/env';
 import { useAuthStore } from '../../store/auth.store';
-import { BrandIcon } from '../ui/BrandIcon';
+import { UnifiedHeader } from './UnifiedHeader';
 
 type PageShellProps = {
   children: ReactNode;
@@ -29,7 +29,7 @@ export const PageShell = ({ children, title, subtitle }: PageShellProps) => {
     if (provider === 'github') {
       return 'GitHub';
     }
-    return 'Local';
+    return 'Локальный';
   }, [user?.authProvider]);
 
   const memberSince = useMemo(() => {
@@ -53,19 +53,18 @@ export const PageShell = ({ children, title, subtitle }: PageShellProps) => {
     <>
       <div className="grid" />
       <main className="wrap page-shell">
-        <header className="topbar fade-up">
-          <Link to="/" className="brand">
-            <BrandIcon className="brand-icon" />
-            <span className="brand-text">{APP_TITLE}</span>
-          </Link>
-
-          <nav className="topnav">
-            {isAuthenticated ? (
+        <UnifiedHeader
+          className="topbar fade-up"
+          brandClassName="brand"
+          brandContent={<span className="brand-text">{APP_TITLE}</span>}
+          rightClassName="topnav"
+          rightContent={
+            isAuthenticated ? (
               <>
                 <div className="account-pill" aria-label="Текущий аккаунт">
                   <span className="account-dot" />
                   <div className="account-meta">
-                    <strong>@{user?.username || 'account'}</strong>
+                    <strong>@{user?.username || 'аккаунт'}</strong>
                     <span>
                       {meLoading
                         ? 'Загружаем профиль...'
@@ -107,9 +106,9 @@ export const PageShell = ({ children, title, subtitle }: PageShellProps) => {
                   Регистрация
                 </Link>
               </>
-            )}
-          </nav>
-        </header>
+            )
+          }
+        />
 
         {(title || subtitle) && (
           <section className="page-hero fade-up delay-1">

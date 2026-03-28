@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
+  extractAdminActionLogs,
+  extractAdminStat,
+  extractApiTokens,
+  extractCreatedApiToken,
   extractProjects,
+  extractTasks,
   extractTeamActiveInvites,
   extractTeamDetails,
   extractTeamMembers,
   extractTeamProjects,
   extractTeams,
+  parseApiTokenContract,
+  parseCreatedApiTokenContract,
 } from './schemas';
 
 describe('extractTeams', () => {
@@ -165,5 +172,162 @@ describe('team details and members extractors', () => {
     expect(projects).toHaveLength(1);
     expect(projects[0].id).toBe('p5');
     expect(projects[0].projectName).toBe('Nested Project');
+  });
+});
+
+describe('admin extractors', () => {
+  it('parses admin stat with action audit blocks', () => {
+    const stat = extractAdminStat({
+      users: 10,
+      dev_users: 6,
+      admin_users: 2,
+      local_users: 5,
+      gh_users: 5,
+      projects: 7,
+      active_projects: 4,
+      completed_projects: 3,
+      stages: 12,
+      waiting_stages: 3,
+      active_stages: 4,
+      review_stages: 2,
+      completed_stages: 3,
+      actions_total: 25,
+      actions_by_source: [
+        { source: 'web', count: 10 },
+        { source: 'cli', count: 7 },
+      ],
+      actions_by_auth: [
+        { auth_type: 'jwt', count: 15 },
+        { auth_type: 'pat', count: 10 },
+      ],
+      recent_actions: [
+        {
+          id: 'act-1',
+          source: 'web',
+          auth_type: 'jwt',
+          method: 'GET',
+          path: '/projects',
+        },
+      ],
+    });
+
+    expect(stat.actionsTotal).toBe(25);
+    expect(stat.actionsBySource[0].source).toBe('web');
+    expect(stat.actionsByAuth[1].authType).toBe('pat');
+    expect(stat.recentActions[0].id).toBe('act-1');
+  });
+
+  it('parses /stat/actions payload with filters metadata', () => {
+    const payload = extractAdminActionLogs({
+      status: 'ok',
+      limit: 20,
+      count: 2,
+      data: [
+        { id: 'act-1', source: 'web', auth_type: 'jwt', method: 'GET', path: '/projects' },
+        { id: 'act-2', source: 'cli', auth_type: 'pat', method: 'POST', path: '/projects' },
+      ],
+    });
+
+    expect(payload.limit).toBe(20);
+    expect(payload.count).toBe(2);
+    expect(payload.data).toHaveLength(2);
+    expect(payload.data[1].authType).toBe('pat');
+    expect(payload.data[1].source).toBe('cli');
+  });
+});
+
+describe('task extractors', () => {
+  it('parses assignee_user_id for task records', () => {
+    const tasks = extractTasks({
+      tasks: [
+        { _id: 'task-1', title: 'Assigned', is_done: false, assignee_user_id: 'user-1' },
+        { _id: 'task-2', title: 'Legacy key', done: true, assigneeUserId: 'user-2' },
+        { _id: 'task-3', title: 'Unassigned', done: false, assignee_user_id: null },
+      ],
+    });
+
+    expect(tasks).toHaveLength(3);
+    expect(tasks[0].assigneeUserId).toBe('user-1');
+    expect(tasks[1].assigneeUserId).toBe('user-2');
+    expect(tasks[2].assigneeUserId).toBeUndefined();
+  });
+});
+
+describe('api token schemas', () => {
+  it('parses token list payload from settings endpoint', () => {
+    const tokens = extractApiTokens({
+      status: 'ok',
+      data: [
+        {
+          _id: 'tok-1',
+          name: 'MCP token',
+          token_prefix: 'ul_live_123',
+          last_used_at: '2026-03-28T10:20:00.000Z',
+          created_at: '2026-03-28T10:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(tokens).toHaveLength(1);
+    expect(tokens[0].id).toBe('tok-1');
+    expect(tokens[0].name).toBe('MCP token');
+    expect(tokens[0].tokenPrefix).toBe('ul_live_123');
+  });
+
+  it('parses created token payload (token shown once for copy)', () => {
+    const created = extractCreatedApiToken({
+      status: 'ok',
+      data: {
+        _id: 'tok-created',
+        name: 'CLI token',
+        token: 'ul_live_once_123',
+        token_prefix: 'ul_live_once',
+        expires_at: '2026-12-31T23:59:59.000Z',
+        created_at: '2026-03-28T10:00:00.000Z',
+      },
+    });
+
+    expect(created.id).toBe('tok-created');
+    expect(created.token).toBe('ul_live_once_123');
+    expect(created.tokenPrefix).toBe('ul_live_once');
+    expect(created.expiresAt).toBe('2026-12-31T23:59:59.000Z');
+  });
+
+  it('accepts nullable datetime fields in ApiToken contract', () => {
+    const token = parseApiTokenContract({
+      _id: 'tok-nullable',
+      name: 'Nullable token',
+      token_prefix: 'ul_nullable_1',
+      last_used_at: null,
+      expires_at: null,
+      revoked_at: null,
+      created_at: '2026-03-28T10:00:00.000Z',
+    });
+
+    expect(token.id).toBe('tok-nullable');
+    expect(token.lastUsedAt).toBeUndefined();
+    expect(token.expiresAt).toBeUndefined();
+    expect(token.revokedAt).toBeUndefined();
+  });
+
+  it('throws clear error for invalid ApiToken contract data', () => {
+    expect(() =>
+      parseApiTokenContract({
+        _id: 'tok-invalid',
+        name: '',
+        token_prefix: 'bad-prefix',
+      }),
+    ).toThrowError(/Invalid ApiToken payload/i);
+  });
+
+  it('throws clear error for invalid CreatedApiToken contract data', () => {
+    expect(() =>
+      parseCreatedApiTokenContract({
+        _id: 'tok-created-invalid',
+        name: 'Broken',
+        token_prefix: 'ul_ok',
+        token: '',
+      }),
+    ).toThrowError(/Invalid CreatedApiToken payload/i);
   });
 });

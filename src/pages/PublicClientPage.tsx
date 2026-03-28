@@ -7,18 +7,18 @@ import { EmptyState } from '../components/feedback/EmptyState';
 import { ErrorState } from '../components/feedback/ErrorState';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
-import type { PublicSharePayload, Stage } from '../types/models';
+import type { PublicSharePayload, Stage, Task } from '../types/models';
 import { useUiStore } from '../store/ui.store';
 
 type Status = 'idle' | 'loading' | 'error';
 type StageStatus = NonNullable<Stage['status']> | 'unknown';
 
 const stageStatusLabel: Record<StageStatus, string> = {
-  active: 'in progress',
-  waiting: 'waiting',
-  review: 'waiting for review',
-  completed: 'completed',
-  unknown: 'unknown',
+  active: 'в работе',
+  waiting: 'ожидание',
+  review: 'ожидает ревью',
+  completed: 'завершено',
+  unknown: 'неизвестно',
 };
 
 const stagePriority: Record<StageStatus, number> = {
@@ -82,6 +82,10 @@ export const PublicClientPage = () => {
     });
   };
 
+  const sortTasks = (tasks: Task[]): Task[] => {
+    return [...tasks].sort((a, b) => Number(a.done) - Number(b.done));
+  };
+
   const getProjectStatus = (data: PublicSharePayload): StageStatus => {
     if (data.approved) {
       return 'completed';
@@ -102,8 +106,24 @@ export const PublicClientPage = () => {
     return 'waiting';
   };
 
+  const getFlatProjectStatus = (data: PublicSharePayload): StageStatus => {
+    if (data.approved) {
+      return 'completed';
+    }
+
+    if (data.tasks.length === 0) {
+      return 'waiting';
+    }
+
+    if (data.tasks.every((task) => task.done)) {
+      return 'completed';
+    }
+
+    return 'active';
+  };
+
   return (
-    <PageShell title="Клиентский просмотр" subtitle="Публичная ссылка для проверки и approve стадии.">
+    <PageShell title="Клиентский просмотр" subtitle="Публичная ссылка для проверки и подтверждения стадии.">
       <GlassPanel className="client-panel">
         {status === 'loading' ? <p>Загрузка...</p> : null}
 
@@ -112,67 +132,105 @@ export const PublicClientPage = () => {
         ) : null}
 
         {status === 'idle' && payload ? (
-          (() => {
-            const projectName = payload.project?.projectName || 'Project Name';
-            const projectStatus = getProjectStatus(payload);
-            const sortedStages = sortStages(payload.stages);
+          <div className="client-canvas">
+            <p className="client-caption">Для заказчика</p>
+            <div className="client-flow">
+              <p className="client-breadcrumb">
+                {(payload.project?.projectName || 'Название проекта') + ' -> Заказчик'}
+              </p>
 
-            return (
-              <div className="client-canvas">
-                <p className="client-caption">Для заказчика</p>
-                <div className="client-flow">
-                  <p className="client-breadcrumb">{projectName} -&gt; Customer</p>
+              {payload.workflowType === 'flat' ? (
+                (() => {
+                  const projectStatus = getFlatProjectStatus(payload);
+                  const sortedTasks = sortTasks(payload.tasks);
 
-                  <div className="client-column">
-                    <article className="client-card client-project-card">
-                      <h3>{projectName}</h3>
-                      <p className={`client-state state-${projectStatus}`}>
-                        <span className="state-dot" />
-                        {stageStatusLabel[projectStatus]}
-                      </p>
-                    </article>
+                  return (
+                    <div className="client-column">
+                      <article className="client-card client-project-card">
+                        <h3>{payload.project?.projectName || 'Название проекта'}</h3>
+                        <p className={`client-state state-${projectStatus}`}>
+                          <span className="state-dot" />
+                          {stageStatusLabel[projectStatus]}
+                        </p>
+                        <p className="client-description">Режим flat: отображается общий список задач проекта.</p>
+                      </article>
 
-                    {sortedStages.length === 0 ? (
-                      <EmptyState title="Стадии не найдены" description="Для этой ссылки нет доступных стадий." />
-                    ) : (
-                      sortedStages.map((stage) => {
-                        const stageStatus: StageStatus = stage.status ?? 'unknown';
-                        const showApprove = stage.status === 'review' && !payload.approved;
+                      {sortedTasks.length === 0 ? (
+                        <EmptyState title="Задачи не найдены" description="Для этой ссылки нет задач проекта." />
+                      ) : (
+                        sortedTasks.map((task) => {
+                          const taskStatus: StageStatus = task.done ? 'completed' : 'active';
+                          return (
+                            <article key={task.id} className={`client-card client-stage-card stage-${taskStatus}`}>
+                              <p className="client-stage-title">{task.title}</p>
+                              <p className={`client-state state-${taskStatus}`}>
+                                <span className="state-dot" />
+                                {task.done ? 'выполнено' : 'в работе'}
+                              </p>
+                            </article>
+                          );
+                        })
+                      )}
+                    </div>
+                  );
+                })()
+              ) : (
+                (() => {
+                  const projectStatus = getProjectStatus(payload);
+                  const sortedStages = sortStages(payload.stages);
 
-                        return (
-                          <article key={stage.id} className={`client-card client-stage-card stage-${stageStatus}`}>
-                            <p className="client-stage-title">{stage.stageName}</p>
-                            <p className={`client-state state-${stageStatus}`}>
-                              <span className="state-dot" />
-                              {stageStatusLabel[stageStatus]}
-                            </p>
+                  return (
+                    <div className="client-column">
+                      <article className="client-card client-project-card">
+                        <h3>{payload.project?.projectName || 'Название проекта'}</h3>
+                        <p className={`client-state state-${projectStatus}`}>
+                          <span className="state-dot" />
+                          {stageStatusLabel[projectStatus]}
+                        </p>
+                      </article>
 
-                            {stage.description ? <p className="client-description">{stage.description}</p> : null}
+                      {sortedStages.length === 0 ? (
+                        <EmptyState title="Стадии не найдены" description="Для этой ссылки нет доступных стадий." />
+                      ) : (
+                        sortedStages.map((stage) => {
+                          const stageStatus: StageStatus = stage.status ?? 'unknown';
+                          const showApprove = stage.status === 'review' && !payload.approved;
 
-                            {stage.workLink ? (
-                              <a href={stage.workLink} className="client-link-pill" target="_blank" rel="noreferrer">
-                                {stage.workLink}
-                              </a>
-                            ) : null}
+                          return (
+                            <article key={stage.id} className={`client-card client-stage-card stage-${stageStatus}`}>
+                              <p className="client-stage-title">{stage.stageName}</p>
+                              <p className={`client-state state-${stageStatus}`}>
+                                <span className="state-dot" />
+                                {stageStatusLabel[stageStatus]}
+                              </p>
 
-                            {showApprove ? (
-                              <GradientButton type="button" onClick={onApprove}>
-                                Approve stage -&gt;
-                              </GradientButton>
-                            ) : null}
+                              {stage.description ? <p className="client-description">{stage.description}</p> : null}
 
-                            {payload.approved && stage.status === 'completed' ? (
-                              <p className="success-text">Approved</p>
-                            ) : null}
-                          </article>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })()
+                              {stage.workLink ? (
+                                <a href={stage.workLink} className="client-link-pill" target="_blank" rel="noreferrer">
+                                  {stage.workLink}
+                                </a>
+                              ) : null}
+
+                              {showApprove ? (
+                                <GradientButton type="button" onClick={onApprove}>
+                                  Подтвердить этап -&gt;
+                                </GradientButton>
+                              ) : null}
+
+                              {payload.approved && stage.status === 'completed' ? (
+                                <p className="success-text">Одобрено</p>
+                              ) : null}
+                            </article>
+                          );
+                        })
+                      )}
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+          </div>
         ) : null}
       </GlassPanel>
     </PageShell>

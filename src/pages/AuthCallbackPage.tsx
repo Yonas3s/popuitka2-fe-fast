@@ -49,13 +49,13 @@ export const AuthCallbackPage = () => {
     sessionStorage.setItem(OAUTH_CALLBACK_REDIRECT_KEY, redirectTarget);
     sessionStorage.removeItem(OAUTH_POST_LOGIN_REDIRECT_KEY);
 
-    // Remove token from browser history/address before navigating to a private page.
+    // Убираем токен из истории и адресной строки до перехода в приватный раздел.
     window.history.replaceState({}, document.title, '/auth/callback');
     navigate(redirectTarget, { replace: true });
   }, [navigate, pushToast, setToken]);
 
   return (
-    <PageShell title="GitHub OAuth" subtitle="Завершаем авторизацию.">
+    <PageShell title="Вход через GitHub" subtitle="Завершаем вход.">
       <GlassPanel className="auth-panel">
         <p className="muted">Входим...</p>
       </GlassPanel>

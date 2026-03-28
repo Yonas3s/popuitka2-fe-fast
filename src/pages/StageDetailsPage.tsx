@@ -1,29 +1,38 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { PageShell } from '../components/layout/PageShell';
-import { GlassPanel } from '../components/ui/GlassPanel';
-import { GradientButton } from '../components/ui/GradientButton';
-import { TextInput } from '../components/ui/TextInput';
-import { EmptyState } from '../components/feedback/EmptyState';
-import { ErrorState } from '../components/feedback/ErrorState';
+import { useProjectsStore } from '../store/projects.store';
 import { useStageStore } from '../store/stage.store';
+import { useAuthStore } from '../store/auth.store';
 import { useUiStore } from '../store/ui.store';
-
-type StagePatchForm = {
-  work_link: string;
-};
-
-type TaskForm = {
-  title: string;
-};
+import { apiService } from '../lib/api/service';
+import { normalizeApiError } from '../lib/api/errors';
+import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
+import type { TeamMember } from '../types/models';
 
 type EditState = {
   [taskId: string]: string;
 };
 
+const statusToTab = (status?: string): 'draft' | 'progress' | 'review' | 'done' => {
+  if (status === 'completed') {
+    return 'done';
+  }
+  if (status === 'review') {
+    return 'review';
+  }
+  if (status === 'active') {
+    return 'progress';
+  }
+  return 'draft';
+};
+
 export const StageDetailsPage = () => {
   const { projectId = '', stageId = '' } = useParams();
+
+  const user = useAuthStore((state) => state.user);
+  const project = useProjectsStore((state) => state.currentProject);
+  const fetchProject = useProjectsStore((state) => state.fetchProject);
+
   const currentStage = useStageStore((state) => state.currentStage);
   const tasks = useStageStore((state) => state.tasks);
   const loading = useStageStore((state) => state.loading);
@@ -35,93 +44,233 @@ export const StageDetailsPage = () => {
   const createTask = useStageStore((state) => state.createTask);
   const toggleTask = useStageStore((state) => state.toggleTask);
   const editTaskTitle = useStageStore((state) => state.editTaskTitle);
+  const assignTask = useStageStore((state) => state.assignTask);
   const deleteTask = useStageStore((state) => state.deleteTask);
 
   const pushToast = useUiStore((state) => state.pushToast);
   const openConfirm = useUiStore((state) => state.openConfirm);
 
   const [editValues, setEditValues] = useState<EditState>({});
-
-  const {
-    register: registerStage,
-    handleSubmit: handleStageSubmit,
-    formState: { isSubmitting: isStageSubmitting },
-    reset: resetStageForm,
-  } = useForm<StagePatchForm>();
-
-  const {
-    register: registerTask,
-    handleSubmit: handleTaskSubmit,
-    formState: { errors: taskErrors, isSubmitting: isTaskSubmitting },
-    reset: resetTaskForm,
-  } = useForm<TaskForm>();
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [contextDraft, setContextDraft] = useState('');
+  const [workLinkDraft, setWorkLinkDraft] = useState('');
+  const [savingContext, setSavingContext] = useState(false);
+  const [requestingReview, setRequestingReview] = useState(false);
+  const [assignableMembers, setAssignableMembers] = useState<TeamMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const quickTaskInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!projectId || !stageId) {
       return;
     }
 
+    void fetchProject(projectId);
     void fetchStage(projectId, stageId);
     void fetchTasks(projectId, stageId);
-  }, [fetchStage, fetchTasks, projectId, stageId]);
+  }, [fetchProject, fetchStage, fetchTasks, projectId, stageId]);
 
   useEffect(() => {
-    if (currentStage?.workLink) {
-      resetStageForm({ work_link: currentStage.workLink });
-    }
-  }, [currentStage?.workLink, resetStageForm]);
+    setContextDraft(currentStage?.description ?? '');
+    setWorkLinkDraft(currentStage?.workLink ?? '');
+  }, [currentStage?.description, currentStage?.workLink]);
 
-  const onPatchStage = handleStageSubmit(async (values) => {
-    try {
-      await patchStage(projectId, stageId, values);
-      pushToast('Стадия обновлена', 'success');
-    } catch {
-      pushToast('Ошибка при обновлении стадии', 'error');
+  useEffect(() => {
+    if (!project?.teamId) {
+      setAssignableMembers([]);
+      return;
     }
-  });
+
+    let cancelled = false;
+    setMembersLoading(true);
+
+    void apiService
+      .getTeamMembers(project.teamId)
+      .then((members) => {
+        if (!cancelled) {
+          setAssignableMembers(members);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAssignableMembers([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setMembersLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [project?.teamId]);
+
+  const stageTab = statusToTab(currentStage?.status);
+
+  const stageVersion = useMemo(() => {
+    const raw = (currentStage?.raw ?? {}) as Record<string, unknown>;
+    const value =
+      (typeof raw.version === 'string' && raw.version) ||
+      (typeof raw.release_version === 'string' && raw.release_version) ||
+      (typeof raw.releaseVersion === 'string' && raw.releaseVersion) ||
+      '';
+    if (!value) {
+      return 'v1.0.0';
+    }
+    return value.startsWith('v') ? value : `v${value}`;
+  }, [currentStage?.raw]);
+
+  const stageRawId = useMemo(() => {
+    const raw = (currentStage?.raw ?? {}) as Record<string, unknown>;
+    return (
+      (typeof raw._id === 'string' && raw._id) ||
+      (typeof raw.id === 'string' && raw.id) ||
+      stageId ||
+      'stage'
+    );
+  }, [currentStage?.raw, stageId]);
+
+  const stageCreatedLabel = useMemo(() => {
+    const raw = (currentStage?.raw ?? {}) as Record<string, unknown>;
+    const value =
+      (typeof raw.createdAt === 'string' && raw.createdAt) ||
+      (typeof raw.created_at === 'string' && raw.created_at) ||
+      '';
+  if (!value) {
+      return 'недавно';
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return 'недавно';
+    }
+    const diffHours = Math.max(1, Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60)));
+    if (diffHours < 24) {
+      return `${diffHours} ч назад`;
+    }
+    return `${Math.floor(diffHours / 24)} дн назад`;
+  }, [currentStage?.raw]);
+
+  const completedTasks = useMemo(() => tasks.filter((task) => task.done).length, [tasks]);
+  const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
+
+  const ensureStageRoute = () => {
+    if (!projectId || !stageId) {
+      pushToast('Неверный путь стадии', 'error');
+      return false;
+    }
+    return true;
+  };
+
+  const onSaveContext = async () => {
+    if (!ensureStageRoute()) {
+      return;
+    }
+
+    setSavingContext(true);
+    try {
+      await patchStage(projectId, stageId, {
+        description: contextDraft.trim(),
+        work_link: workLinkDraft.trim(),
+      });
+      pushToast('Контекст стадии обновлен', 'success');
+    } catch (reason) {
+      pushToast(normalizeApiError(reason).message, 'error');
+    } finally {
+      setSavingContext(false);
+    }
+  };
+
+  const onPreviewBuild = () => {
+    if (!workLinkDraft.trim()) {
+      pushToast('Укажите ссылку для предпросмотра', 'info');
+      return;
+    }
+
+    try {
+      window.open(workLinkDraft.trim(), '_blank', 'noopener,noreferrer');
+    } catch {
+      pushToast('Неверная ссылка предпросмотра', 'error');
+    }
+  };
 
   const onRequestReview = async () => {
+    if (!ensureStageRoute()) {
+      return;
+    }
+
+    if (currentStage?.status === 'completed') {
+      pushToast('Стадия уже завершена', 'info');
+      return;
+    }
+
+    setRequestingReview(true);
     try {
       await requestReview(projectId, stageId);
+      await fetchStage(projectId, stageId);
       pushToast('Запрос на ревью отправлен', 'success');
-    } catch {
-      pushToast('Не удалось запросить ревью', 'error');
+    } catch (reason) {
+      pushToast(normalizeApiError(reason).message, 'error');
+    } finally {
+      setRequestingReview(false);
     }
   };
 
-  const onCreateTask = handleTaskSubmit(async (values) => {
-    try {
-      await createTask(projectId, stageId, values);
-      pushToast('Задача добавлена', 'success');
-      resetTaskForm();
-    } catch {
-      pushToast('Ошибка при создании задачи', 'error');
+  const onCreateTask = async () => {
+    if (!ensureStageRoute()) {
+      return;
     }
-  });
 
-  const onToggleTask = async (taskId: string) => {
-    try {
-      await toggleTask(projectId, stageId, taskId);
-    } catch {
-      pushToast('Не удалось переключить статус задачи', 'error');
-    }
-  };
-
-  const onSaveTaskTitle = async (taskId: string) => {
-    const title = editValues[taskId]?.trim();
+    const title = newTaskTitle.trim();
     if (!title) {
       return;
     }
 
     try {
-      await editTaskTitle(projectId, stageId, taskId, { title });
-      pushToast('Заголовок задачи обновлен', 'success');
-    } catch {
-      pushToast('Не удалось обновить задачу', 'error');
+      await createTask(projectId, stageId, { title });
+      setNewTaskTitle('');
+      pushToast('Задача добавлена', 'success');
+      quickTaskInputRef.current?.focus();
+    } catch (reason) {
+      pushToast(normalizeApiError(reason).message, 'error');
+    }
+  };
+
+  const onToggleTask = async (taskId: string) => {
+    if (!ensureStageRoute()) {
+      return;
+    }
+    try {
+      await toggleTask(projectId, stageId, taskId);
+    } catch (reason) {
+      pushToast(normalizeApiError(reason).message, 'error');
+    }
+  };
+
+  const onSaveTaskTitle = async (taskId: string) => {
+    if (!ensureStageRoute()) {
+      return;
+    }
+
+    const original = tasks.find((task) => task.id === taskId)?.title ?? '';
+    const nextTitle = (editValues[taskId] ?? original).trim();
+    if (!nextTitle || nextTitle === original) {
+      return;
+    }
+
+    try {
+      await editTaskTitle(projectId, stageId, taskId, { title: nextTitle });
+      pushToast('Задача обновлена', 'success');
+    } catch (reason) {
+      pushToast(normalizeApiError(reason).message, 'error');
     }
   };
 
   const onDeleteTask = (taskId: string) => {
+    if (!ensureStageRoute()) {
+      return;
+    }
     openConfirm({
       title: 'Удалить задачу?',
       description: 'Операция необратима.',
@@ -129,121 +278,286 @@ export const StageDetailsPage = () => {
         try {
           await deleteTask(projectId, stageId, taskId);
           pushToast('Задача удалена', 'success');
-        } catch {
-          pushToast('Не удалось удалить задачу', 'error');
+        } catch (reason) {
+          pushToast(normalizeApiError(reason).message, 'error');
         }
       },
     });
   };
 
-  const statusLabel = (status?: string): string => {
-    if (!status) {
-      return 'unknown';
+  const onAssignTask = async (taskId: string, assigneeUserId: string | null) => {
+    if (!ensureStageRoute()) {
+      return;
     }
 
-    const labels: Record<string, string> = {
-      active: 'active',
-      waiting: 'waiting',
-      review: 'review',
-      completed: 'completed',
-    };
-
-    return labels[status] ?? status;
+    try {
+      await assignTask(projectId, stageId, taskId, {
+        assignee_user_id: assigneeUserId,
+      });
+      pushToast(assigneeUserId ? 'Исполнитель назначен' : 'Назначение снято', 'success');
+    } catch (reason) {
+      pushToast(normalizeApiError(reason).message, 'error');
+    }
   };
 
-  const canRequestReview = currentStage?.status !== 'completed';
+  const stageStatusPill = useMemo(() => {
+    if (currentStage?.status === 'completed') {
+      return { label: 'Готово', className: 'stage-v5-pill done' };
+    }
+    if (currentStage?.status === 'review') {
+      return { label: 'Ревью', className: 'stage-v5-pill review' };
+    }
+    if (currentStage?.status === 'active') {
+      return { label: 'В работе', className: 'stage-v5-pill progress' };
+    }
+    return { label: 'Черновик', className: 'stage-v5-pill draft' };
+  }, [currentStage?.status]);
+
+  const canGoStage = Boolean(projectId && stageId);
 
   return (
-    <PageShell
-      title={currentStage ? `Стадия: ${currentStage.stageName}` : 'Стадия'}
-      subtitle="Управляйте ссылкой работы, review и задачами."
-    >
-      {currentStage ? (
-        <div className="status-row">
-          <span className={`status-badge status-${currentStage.status ?? 'unknown'}`}>
-            Статус: {statusLabel(currentStage.status)}
-          </span>
-        </div>
-      ) : null}
-      <div className="content-grid">
-        <GlassPanel>
-          <h2>Параметры стадии</h2>
-          <form className="form-grid" onSubmit={onPatchStage}>
-            <TextInput
-              label="Ссылка на работу"
-              inputProps={{
-                placeholder: 'https://...',
-                ...registerStage('work_link'),
-              }}
-            />
-            <GradientButton type="submit" disabled={isStageSubmitting}>
-              {isStageSubmitting ? 'Сохраняем...' : 'Сохранить'}
-            </GradientButton>
-          </form>
+    <div className="stage-v5-page">
+      <WorkspaceHeader activeTab="projects" />
 
-          {canRequestReview ? (
-            <button type="button" className="ghost-link" onClick={onRequestReview}>
-              Запросить ревью у клиента
+      <main className="stage-v5-main">
+        <section className="stage-v5-hero">
+          <div className="stage-v5-hero-left">
+            <div className="stage-v5-title-row">
+              <span className="stage-v5-live-dot" />
+              <h1>{currentStage?.stageName || 'Этап'}</h1>
+              <span className="stage-v5-version">{stageVersion}</span>
+            </div>
+            <div className="stage-v5-meta">
+              <span className="mono">ID: {stageRawId}</span>
+              <span>Создано {stageCreatedLabel}</span>
+              <span>Владелец: @{user?.username || 'владелец'}</span>
+            </div>
+          </div>
+
+          <div className="stage-v5-hero-right">
+            <div className="stage-v5-status-tabs" aria-label="Статус этапа">
+              <button type="button" className={stageTab === 'draft' ? 'active' : ''}>
+                Черновик
+              </button>
+              <button type="button" className={stageTab === 'progress' ? 'active' : ''}>
+                В работе
+              </button>
+              <button type="button" className={stageTab === 'review' ? 'active' : ''}>
+                Ревью
+              </button>
+              <button type="button" className={stageTab === 'done' ? 'active' : ''}>
+                Готово
+              </button>
+            </div>
+
+            <button className="stage-v5-secondary-btn" type="button" onClick={onPreviewBuild}>
+              Предпросмотр
             </button>
-          ) : (
-            <p className="muted">Стадия завершена, повторный запрос ревью недоступен.</p>
-          )}
-        </GlassPanel>
+            <button
+              className="stage-v5-primary-btn"
+              type="button"
+              disabled={requestingReview || !canGoStage}
+              onClick={onRequestReview}
+            >
+              {requestingReview ? 'Отправляем...' : 'Запросить ревью'}
+            </button>
+          </div>
+        </section>
 
-        <GlassPanel>
-          <h2>Новая задача</h2>
-          <form className="form-grid" onSubmit={onCreateTask}>
-            <TextInput
-              label="Заголовок"
-              error={taskErrors.title?.message}
-              inputProps={{
-                placeholder: 'Реализовать страницу stages',
-                ...registerTask('title', {
-                  required: 'Введите заголовок задачи',
-                }),
-              }}
-            />
-            <GradientButton type="submit" disabled={isTaskSubmitting}>
-              {isTaskSubmitting ? 'Добавляем...' : 'Добавить задачу'}
-            </GradientButton>
-          </form>
-        </GlassPanel>
-      </div>
+        <section className="stage-v5-layout">
+          <div className="stage-v5-main-column">
+            <article className="stage-v5-card">
+              <header className="stage-v5-card-head">
+                <h3>Задачи</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    quickTaskInputRef.current?.focus();
+                  }}
+                >
+                  + Добавить задачу
+                </button>
+              </header>
 
-      <GlassPanel>
-        <h2>Задачи</h2>
-        {loading ? <p>Загрузка...</p> : null}
-        {error ? <ErrorState message={error.message} /> : null}
-        {!loading && tasks.length === 0 ? (
-          <EmptyState title="Задач нет" description="Добавьте первую задачу в форме выше." />
-        ) : null}
+              {loading && tasks.length === 0 ? <p className="stage-v5-message">Загрузка задач...</p> : null}
+              {error ? <p className="stage-v5-message error">{error.message}</p> : null}
 
-        <ul className="task-list">
-          {tasks.map((task) => (
-            <li key={task.id} className="task-item">
-              <input type="checkbox" checked={task.done} onChange={() => void onToggleTask(task.id)} />
+              <div className="stage-v5-task-list">
+                {tasks.map((task) => {
+                  const value = editValues[task.id] ?? task.title;
+                  return (
+                    <div className={`stage-v5-task-row ${task.done ? 'done' : ''}`} key={task.id}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={task.done}
+                          onChange={() => {
+                            void onToggleTask(task.id);
+                          }}
+                        />
+                      </label>
+                      <div className="stage-v5-task-main">
+                        <input
+                          value={value}
+                          onChange={(event) => {
+                            setEditValues((prev) => ({ ...prev, [task.id]: event.target.value }));
+                          }}
+                          onBlur={() => {
+                            void onSaveTaskTitle(task.id);
+                          }}
+                        />
+                        <div className="stage-v5-task-meta">
+                          <span className="stage-v5-task-assignee-id">
+                            assignee_user_id: {task.assigneeUserId || '—'}
+                          </span>
 
-              <input
-                className={`input task-input ${task.done ? 'task-done' : ''}`}
-                value={editValues[task.id] ?? task.title}
-                onChange={(event) => {
-                  setEditValues((prev) => ({
-                    ...prev,
-                    [task.id]: event.target.value,
-                  }));
-                }}
-              />
+                          {project?.teamId ? (
+                            <label className="stage-v5-task-assign">
+                              <span>Исполнитель</span>
+                              <select
+                                value={task.assigneeUserId ?? ''}
+                                disabled={membersLoading}
+                                onChange={(event) => {
+                                  void onAssignTask(task.id, event.target.value || null);
+                                }}
+                              >
+                                <option value="">Без исполнителя</option>
+                                {assignableMembers.map((member) => (
+                                  <option key={member.id} value={member.id}>
+                                    @{member.username} ({member.email})
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          ) : (
+                            <span className="stage-v5-task-assign-note">Личный проект</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="stage-v5-task-actions">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void onSaveTaskTitle(task.id);
+                          }}
+                        >
+                          ✎
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onDeleteTask(task.id);
+                          }}
+                        >
+                          🗑
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
 
-              <button type="button" className="ghost-link" onClick={() => void onSaveTaskTitle(task.id)}>
-                Сохранить
-              </button>
-              <button type="button" className="ghost-link danger" onClick={() => onDeleteTask(task.id)}>
-                Удалить
-              </button>
-            </li>
-          ))}
-        </ul>
-      </GlassPanel>
-    </PageShell>
+                <div className="stage-v5-task-input-row">
+                  <input
+                    ref={quickTaskInputRef}
+                    placeholder="+ Добавить новую задачу..."
+                    value={newTaskTitle}
+                    onChange={(event) => {
+                      setNewTaskTitle(event.target.value);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        void onCreateTask();
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </article>
+
+            <article className="stage-v5-card">
+              <header className="stage-v5-card-head">
+                <h3>Системная активность</h3>
+                <div className="stage-v5-card-head-links">
+                  <button type="button">Фильтр</button>
+                  <button type="button">Экспорт</button>
+                </div>
+              </header>
+
+              <div className="stage-v5-log-list">
+                <div className="stage-v5-log-row">
+                  <span>{new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <p>
+                    <strong>@{user?.username || 'владелец'}</strong> обновил статус на{' '}
+                    <span className={stageStatusPill.className}>{stageStatusPill.label.toUpperCase()}</span>
+                  </p>
+                </div>
+                <div className="stage-v5-log-row">
+                  <span>{new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <p>
+                    Системная проверка: <strong>выполнение задач {progress}%</strong>.
+                  </p>
+                </div>
+                <div className="stage-v5-log-row">
+                  <span>Ранее</span>
+                  <p>
+                    Этап загружен из <strong>{project?.projectName || 'проекта'}</strong>.
+                  </p>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <aside className="stage-v5-side-column">
+            <article className="stage-v5-card">
+              <header className="stage-v5-card-head">
+                <h3>Контекст</h3>
+                <button type="button" onClick={() => void onSaveContext()}>
+                  {savingContext ? 'Сохраняем...' : 'Сохранить'}
+                </button>
+              </header>
+
+              <div className="stage-v5-context-body">
+                <label>Описание</label>
+                <textarea
+                  value={contextDraft}
+                  onChange={(event) => {
+                    setContextDraft(event.target.value);
+                  }}
+                  rows={6}
+                />
+
+                <label>Ссылка на результат / предпросмотр</label>
+                <input
+                  value={workLinkDraft}
+                  onChange={(event) => {
+                    setWorkLinkDraft(event.target.value);
+                  }}
+                  placeholder="https://..."
+                />
+
+                <div className="stage-v5-objectives">
+                  <h4>Цели</h4>
+                  <ul>
+                    <li>Проверка интеграции OAuth2</li>
+                    <li>Проверка устойчивости сессий</li>
+                    <li>Аудит совместимости устаревших эндпоинтов</li>
+                  </ul>
+                </div>
+              </div>
+            </article>
+
+            <article className="stage-v5-insight">
+              <h4>ИИ-аналитика</h4>
+              <p>
+                Этот этап идет медленнее среднего. Попробуйте разбить критичные задачи на более мелкие для лучшей
+                пропускной способности.
+              </p>
+              <button type="button">Открыть подробный анализ</button>
+            </article>
+          </aside>
+        </section>
+      </main>
+    </div>
   );
 };

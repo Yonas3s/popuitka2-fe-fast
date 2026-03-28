@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import {
   apiService,
+  type AssignTaskPayload,
   type CreateTaskPayload,
   type EditTaskTitlePayload,
   type UpdateStagePayload,
@@ -24,6 +25,12 @@ type StageState = {
     stageId: string,
     taskId: string,
     payload: EditTaskTitlePayload,
+  ) => Promise<void>;
+  assignTask: (
+    projectId: string,
+    stageId: string,
+    taskId: string,
+    payload: AssignTaskPayload,
   ) => Promise<void>;
   deleteTask: (projectId: string, stageId: string, taskId: string) => Promise<void>;
 };
@@ -115,6 +122,23 @@ export const useStageStore = create<StageState>((set, get) => ({
 
     try {
       await apiService.editTaskTitle(projectId, stageId, taskId, payload);
+      await get().fetchTasks(projectId, stageId);
+    } catch (error) {
+      set({ tasks: previous, error: normalizeApiError(error) });
+      throw error;
+    }
+  },
+
+  async assignTask(projectId, stageId, taskId, payload) {
+    const previous = get().tasks;
+    const optimistic = previous.map((task) =>
+      task.id === taskId ? { ...task, assigneeUserId: payload.assignee_user_id || undefined } : task,
+    );
+
+    set({ tasks: optimistic, error: null });
+
+    try {
+      await apiService.assignTask(projectId, stageId, taskId, payload);
       await get().fetchTasks(projectId, stageId);
     } catch (error) {
       set({ tasks: previous, error: normalizeApiError(error) });

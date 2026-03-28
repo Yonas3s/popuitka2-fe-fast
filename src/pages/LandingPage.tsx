@@ -2,10 +2,11 @@ import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { apiService } from '../lib/api/service';
 import { APP_TITLE } from '../lib/config/env';
+import { UnifiedHeader } from '../components/layout/UnifiedHeader';
 
 export const LandingPage = () => {
   const [health, setHealth] = useState<'loading' | 'online' | 'offline'>('loading');
-  const liveLabel = health === 'online' ? 'v1.0.4 Live' : 'v1.0.4 Checking';
+  const liveLabel = health === 'online' ? 'v1.0.4 Онлайн' : 'v1.0.4 Проверка';
   const healthClass = `health-${health}`;
   const year = useMemo(() => new Date().getFullYear(), []);
 
@@ -32,29 +33,38 @@ export const LandingPage = () => {
 
   return (
     <div className="stitch-landing">
-      <nav className="stitch-nav">
-        <div className="stitch-container stitch-nav-row">
-          <Link to="/" className="stitch-brand">
-            <span>
-              unit-labs
-              <em>_</em>
-            </span>
-          </Link>
-          <div className="stitch-nav-links">
-            <a href="#features">Features</a>
-            <a href="#workflow">Workflow</a>
-            <a href="#pricing">Pricing</a>
-          </div>
-          <div className="stitch-nav-actions">
+      <UnifiedHeader
+        as="nav"
+        className="stitch-nav"
+        containerClassName="stitch-container stitch-nav-row"
+        brandClassName="stitch-brand"
+        brandContent={
+          <span>
+            unit-labs
+            <em>_</em>
+          </span>
+        }
+        centerClassName="stitch-nav-links"
+        centerContent={
+          <>
+            <a href="#features">Возможности</a>
+            <a href="#workflow">Процесс</a>
+            <a href="#workflow">CLI</a>
+            <a href="#mcp">MCP</a>
+          </>
+        }
+        rightClassName="stitch-nav-actions"
+        rightContent={
+          <>
             <Link to="/signin" className="stitch-link-button">
-              Log in
+              Войти
             </Link>
             <Link to="/signup" className="stitch-solid-button">
-              Get Started
+              Начать
             </Link>
-          </div>
-        </div>
-      </nav>
+          </>
+        }
+      />
 
       <main className="stitch-main">
         <div className="stitch-main-bg" />
@@ -67,21 +77,21 @@ export const LandingPage = () => {
           </div>
 
           <h1 className="stitch-title">
-            Manage the release,
+            Управляйте релизом,
             <br />
-            <span>not the chaos.</span>
+            <span>а не хаосом.</span>
           </h1>
 
-          <p className="stitch-gradient-title">From backlog to approve client.</p>
+          <p className="stitch-gradient-title">От бэклога до апрува клиента.</p>
 
           <p className="stitch-subtitle">
-            Unit-labs creates order in your deployment cycle. A minimalist tool for engineering teams who value
-            clarity over complexity.
+            Unit-labs наводит порядок в цикле поставки. Минималистичный инструмент для инженерных команд, которым
+            важны прозрачность и контроль.
           </p>
 
           <div className="stitch-hero-actions">
             <Link to="/signup" className="stitch-ghost-cta">
-              Start
+              Начать
             </Link>
           </div>
 
@@ -106,21 +116,21 @@ export const LandingPage = () => {
                       <span className="box" />
                       <div className="line w72" />
                     </div>
-                    <span className="badge ok">approved</span>
+                    <span className="badge ok">одобрено</span>
                   </article>
                   <article>
                     <div className="task-left">
                       <span className="box" />
                       <div className="line w56" />
                     </div>
-                    <span className="badge review">review</span>
+                    <span className="badge review">ревью</span>
                   </article>
                   <article>
                     <div className="task-left">
                       <span className="box" />
                       <div className="line w64" />
                     </div>
-                    <span className="badge wait">active</span>
+                    <span className="badge wait">активно</span>
                   </article>
                 </div>
               </div>
@@ -132,14 +142,14 @@ export const LandingPage = () => {
       <section className="stitch-section" id="features">
         <div className="stitch-container">
           <div className="stitch-section-head">
-            <h2>Orchestrate the flow</h2>
-            <p>Three simple stages to maintain sanity in your deployment pipeline.</p>
+            <h2>Управляйте процессом</h2>
+            <p>Три простых этапа, чтобы держать релизный пайплайн под контролем.</p>
           </div>
           <div className="stitch-features-grid">
             <article className="stitch-feature-card">
               <div className="stitch-feature-icon">B</div>
-              <h3>Structured Backlog</h3>
-              <p>Capture issues and features in a distraction-free list. Prioritize with drag-and-drop simplicity.</p>
+              <h3>Структурный бэклог</h3>
+              <p>Фиксируйте задачи и фичи в чистом списке. Приоритизируйте быстро и без лишнего шума.</p>
               <div className="stitch-feature-visual list">
                 <span />
                 <span />
@@ -147,8 +157,8 @@ export const LandingPage = () => {
             </article>
             <article className="stitch-feature-card">
               <div className="stitch-feature-icon">S</div>
-              <h3>Release Stages</h3>
-              <p>Move items through customizable environments. Dev, Staging, Production - visualized clearly.</p>
+              <h3>Этапы релиза</h3>
+              <p>Проводите работу через настраиваемые среды: разработка, предпрод и продакшн с понятной визуализацией.</p>
               <div className="stitch-feature-visual flow">
                 <span />
                 <span />
@@ -157,10 +167,10 @@ export const LandingPage = () => {
             </article>
             <article className="stitch-feature-card">
               <div className="stitch-feature-icon">A</div>
-              <h3>Client Approval</h3>
-              <p>Invite stakeholders to review specific builds. Collect approvals and feedback in one place.</p>
+              <h3>Апрув клиента</h3>
+              <p>Приглашайте клиентов смотреть нужные сборки и собирайте подтверждения с фидбеком в одном месте.</p>
               <div className="stitch-feature-visual approve">
-                <span>Approved</span>
+                <span>Одобрено</span>
               </div>
             </article>
           </div>
@@ -171,28 +181,83 @@ export const LandingPage = () => {
         <div className="stitch-container stitch-dev-grid">
           <div className="stitch-dev-copy">
             <h2>
-              <span>&lt;</span>Developer<span>/&gt;</span> Focused.
+              <span>&lt;</span>Разработчик<span>/&gt;</span> в фокусе.
             </h2>
-            <p>
-              Built with the stack you love. Integrates seamlessly with GitHub, GitLab, and Jira. No more context
-              switching.
-            </p>
+            <p>Собрано на привычном стеке. Работайте через CLI и ускоряйте ежедневные действия без лишних переходов.</p>
             <div className="stitch-dev-tags">
-              <span>git push</span>
-              <span>jira-sync</span>
+              <span>npm i -g @yokio42/unit-labs-cli</span>
+              <span>unit-labs auth login</span>
+              <span>unit-labs auth whoami</span>
             </div>
+            <a
+              className="stitch-dev-doc-link"
+              href="https://www.npmjs.com/package/@yokio42/unit-labs-cli?activeTab=readme"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Открыть документацию CLI
+            </a>
           </div>
-          <pre className="stitch-dev-code">{`const release = await unit.create({
-  version: '2.0.4',
-  stage: 'staging',
-  features: [
-    'auth-flow',
-    'dark-mode-fix'
-  ]
-});
+          <pre className="stitch-dev-code">{`# Установка
+npm install -g @yokio42/unit-labs-cli
 
-// Syncs automatically with your board
-await release.notifyClients();`}</pre>
+# Быстрый старт
+unit-labs auth login
+unit-labs auth whoami`}</pre>
+        </div>
+      </section>
+
+      <section className="stitch-cli" id="mcp">
+        <div className="stitch-container stitch-cli-grid">
+          <div className="stitch-cli-copy">
+            <h2>MCP сервер для Unit Labs</h2>
+            <p>Подключайте Unit Labs в любой MCP-совместимый клиент и работайте с проектами/задачами прямо из агента.</p>
+            <p className="stitch-cli-subtitle">Что это дает</p>
+            <ul className="stitch-cli-list">
+              <li>единый доступ к данным проекта через MCP-инструменты</li>
+              <li>без ручных запросов к API в повседневной работе</li>
+              <li>быстрое подключение через `npx` и PAT из настроек</li>
+            </ul>
+            <div className="stitch-cli-pills">
+              <span>npx -y @yokio42/unit-labs-mcp</span>
+              <span>UNIT_LABS_API</span>
+              <span>UNIT_LABS_TOKEN</span>
+            </div>
+            <a
+              className="stitch-dev-doc-link"
+              href="https://www.npmjs.com/package/@yokio42/unit-labs-mcp"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Открыть документацию MCP
+            </a>
+          </div>
+
+          <div className="stitch-cli-side">
+            <article className="stitch-cli-card">
+              <h3>Конфиг MCP</h3>
+              <pre>{`{
+  "mcpServers": {
+    "unit-labs": {
+      "command": "npx",
+      "args": ["-y", "@yokio42/unit-labs-mcp"],
+      "env": {
+        "UNIT_LABS_API": "https://popuitka2-be.onrender.com",
+        "UNIT_LABS_TOKEN": "ul_..."
+      }
+    }
+  }
+}`}</pre>
+            </article>
+
+            <article className="stitch-cli-card">
+              <h3>Где взять токен</h3>
+              <pre>{`Настройки → API токены
+1) Создать токен
+2) Скопировать (показывается один раз)
+3) Подставить в UNIT_LABS_TOKEN`}</pre>
+            </article>
+          </div>
         </div>
       </section>
 
@@ -202,9 +267,9 @@ await release.notifyClients();`}</pre>
             © {year} {APP_TITLE}
           </p>
           <div>
-            <a href="#features">Features</a>
-            <a href="#workflow">Workflow</a>
-            <a href="#pricing">Pricing</a>
+            <a href="#features">Возможности</a>
+            <a href="#workflow">Процесс</a>
+            <a href="#mcp">MCP</a>
           </div>
         </div>
       </footer>

@@ -1,8 +1,11 @@
 import { apiClient } from './client';
 import { endpoints } from './endpoints';
 import {
+  extractAdminActionLogs,
   extractProject,
   extractProjects,
+  extractApiTokens,
+  extractCreatedApiToken,
   extractPublicShare,
   extractShareLink,
   extractTeams,
@@ -21,8 +24,13 @@ import {
   extractToken,
 } from './schemas';
 import type {
+  AdminActionAuthType,
+  AdminActionLogsPayload,
+  AdminActionSource,
   AdminStat,
+  ApiToken,
   AuthProfile,
+  CreatedApiToken,
   Project,
   PublicSharePayload,
   ShareLinkResponse,
@@ -34,6 +42,7 @@ import type {
   TeamMember,
   TeamInvitePreview,
   TeamProjectsPayload,
+  WorkflowType,
 } from '../../types/models';
 
 export type SignUpPayload = {
@@ -50,6 +59,7 @@ export type SignInPayload = {
 export type CreateProjectPayload = {
   project_name: string;
   team_id?: string;
+  workflow_type?: WorkflowType;
 };
 
 export type CreateStagePayload = {
@@ -68,6 +78,10 @@ export type CreateTaskPayload = {
 
 export type EditTaskTitlePayload = {
   title: string;
+};
+
+export type AssignTaskPayload = {
+  assignee_user_id?: string | null;
 };
 
 export type ForgotPasswordPayload = {
@@ -93,6 +107,17 @@ export type InviteToTeamPayload = {
   email: string;
 };
 
+export type CreateApiTokenPayload = {
+  name: string;
+  expires_at?: string;
+};
+
+export type GetAdminActionLogsParams = {
+  source?: AdminActionSource;
+  authType?: AdminActionAuthType;
+  limit?: number;
+};
+
 export const apiService = {
   async health(): Promise<string> {
     const response = await apiClient.get(endpoints.health());
@@ -107,6 +132,17 @@ export const apiService = {
   async getAdminStat(): Promise<AdminStat> {
     const response = await apiClient.get(endpoints.stat());
     return extractAdminStat(response.data);
+  },
+
+  async getAdminActionLogs(params?: GetAdminActionLogsParams): Promise<AdminActionLogsPayload> {
+    const response = await apiClient.get(endpoints.statActions(), {
+      params: {
+        ...(params?.source ? { source: params.source } : {}),
+        ...(params?.authType ? { auth_type: params.authType } : {}),
+        ...(typeof params?.limit === 'number' ? { limit: params.limit } : {}),
+      },
+    });
+    return extractAdminActionLogs(response.data);
   },
 
   async signup(payload: SignUpPayload): Promise<void> {
@@ -128,6 +164,20 @@ export const apiService = {
 
   async resetPassword(payload: ResetPasswordPayload): Promise<void> {
     await apiClient.post(endpoints.resetPassword(), payload);
+  },
+
+  async getApiTokens(): Promise<ApiToken[]> {
+    const response = await apiClient.get(endpoints.settingsTokens());
+    return extractApiTokens(response.data);
+  },
+
+  async createApiToken(payload: CreateApiTokenPayload): Promise<CreatedApiToken> {
+    const response = await apiClient.post(endpoints.settingsTokens(), payload);
+    return extractCreatedApiToken(response.data);
+  },
+
+  async revokeApiToken(tokenId: string): Promise<void> {
+    await apiClient.delete(endpoints.settingsTokenById(tokenId));
   },
 
   async createTeam(payload: CreateTeamPayload): Promise<Team> {
@@ -254,8 +304,48 @@ export const apiService = {
     await apiClient.patch(endpoints.editTaskTitle(projectId, stageId, taskId), payload);
   },
 
+  async assignTask(projectId: string, stageId: string, taskId: string, payload: AssignTaskPayload): Promise<void> {
+    await apiClient.patch(endpoints.assignTask(projectId, stageId, taskId), payload);
+  },
+
   async deleteTask(projectId: string, stageId: string, taskId: string): Promise<void> {
     await apiClient.delete(endpoints.deleteTask(projectId, stageId, taskId));
+  },
+
+  async getProjectTasks(projectId: string): Promise<Task[]> {
+    const response = await apiClient.get(endpoints.projectTasks(projectId));
+    return extractTasks(response.data);
+  },
+
+  async createProjectTask(projectId: string, payload: CreateTaskPayload): Promise<Task> {
+    const response = await apiClient.post(endpoints.projectTasks(projectId), payload);
+    const list = extractTasks(response.data);
+    if (list.length > 0) {
+      return list[0];
+    }
+
+    return {
+      id: `task-${Date.now()}`,
+      title: payload.title,
+      done: false,
+      raw: {},
+    };
+  },
+
+  async toggleProjectTask(projectId: string, taskId: string): Promise<void> {
+    await apiClient.patch(endpoints.toggleProjectTask(projectId, taskId));
+  },
+
+  async editProjectTaskTitle(projectId: string, taskId: string, payload: EditTaskTitlePayload): Promise<void> {
+    await apiClient.patch(endpoints.editProjectTaskTitle(projectId, taskId), payload);
+  },
+
+  async assignProjectTask(projectId: string, taskId: string, payload: AssignTaskPayload): Promise<void> {
+    await apiClient.patch(endpoints.assignProjectTask(projectId, taskId), payload);
+  },
+
+  async deleteProjectTask(projectId: string, taskId: string): Promise<void> {
+    await apiClient.delete(endpoints.deleteProjectTask(projectId, taskId));
   },
 
   async createShareLink(projectId: string): Promise<ShareLinkResponse> {

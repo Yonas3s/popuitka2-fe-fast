@@ -10,6 +10,7 @@ import {
 import { normalizeApiError } from '../lib/api/errors';
 import { API_BASE_URL } from '../lib/config/env';
 import { useUiStore } from '../store/ui.store';
+import { UnifiedHeader } from '../components/layout/UnifiedHeader';
 
 type SignUpForm = {
   username: string;
@@ -63,16 +64,19 @@ export const SignUpPage = () => {
         <span className="signin-v2-dot dot-b" />
       </div>
 
-      <nav className="signin-v2-nav">
-        <div className="signin-v2-nav-wrap">
-          <Link to="/" className="signin-v2-brand">
-            <span className="signin-v2-brand-text">
-              unit-labs<em>_</em>
-            </span>
-          </Link>
-          <span className="signin-v2-env">env: production</span>
-        </div>
-      </nav>
+      <UnifiedHeader
+        as="nav"
+        className="signin-v2-nav"
+        containerClassName="signin-v2-nav-wrap"
+        brandClassName="signin-v2-brand"
+        brandContent={
+          <span className="signin-v2-brand-text">
+            unit-labs<em>_</em>
+          </span>
+        }
+        envLabel="окружение: прод"
+        envClassName="signin-v2-env"
+      />
 
       <main className="signin-v2-main signin-v2-main-scroll">
         <section className="signin-v2-card">
@@ -80,7 +84,7 @@ export const SignUpPage = () => {
           <div className="signin-v2-body">
             <header className="signin-v2-head">
               <h1>Создать аккаунт</h1>
-              <p>system.create(user)</p>
+              <p>система.создание(пользователь)</p>
             </header>
 
             <a
@@ -93,18 +97,18 @@ export const SignUpPage = () => {
               <svg className="signin-v2-github-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
                 <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.66 7.66 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
               </svg>
-              <span>Continue with GitHub</span>
+              <span>Продолжить через GitHub</span>
             </a>
 
-            <div className="signin-v2-divider" role="separator" aria-label="or">
-              <span>or</span>
+            <div className="signin-v2-divider" role="separator" aria-label="или">
+              <span>или</span>
             </div>
 
             <form className="signin-v2-form signin-v2-form-compact" onSubmit={onSubmit}>
               <label className="signin-v2-field">
                 <span>Имя</span>
                 <input
-                  placeholder="John Doe"
+                  placeholder="Иван Петров"
                   autoComplete="username"
                   {...register('username', { required: 'Введите имя пользователя' })}
                 />
@@ -112,7 +116,7 @@ export const SignUpPage = () => {
               </label>
 
               <label className="signin-v2-field">
-                <span>Email</span>
+                <span>Почта</span>
                 <input
                   type="email"
                   placeholder="name@company.com"
@@ -201,7 +205,7 @@ export const SignUpPage = () => {
           </footer>
         </section>
 
-        <p className="signin-v2-copyright">© 2024 unit-labs inc. All protocols secure.</p>
+        <p className="signin-v2-copyright">© 2024 unit-labs inc. Все протоколы защищены.</p>
       </main>
     </div>
   );

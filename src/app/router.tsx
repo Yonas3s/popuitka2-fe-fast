@@ -12,8 +12,10 @@ import { StageDetailsPage } from '../pages/StageDetailsPage';
 import { PublicClientPage } from '../pages/PublicClientPage';
 import { AuthCallbackPage } from '../pages/AuthCallbackPage';
 import { TeamsPage } from '../pages/TeamsPage';
+import { TeamDetailsPage } from '../pages/TeamDetailsPage';
 import { TeamInvitePage } from '../pages/TeamInvitePage';
 import { AdminPage } from '../pages/AdminPage';
+import { SettingsPage } from '../pages/SettingsPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
 export const AppRoutes = () => {
@@ -37,7 +39,9 @@ export const AppRoutes = () => {
 
       <Route element={<RequireAuth />}>
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/teams" element={<TeamsPage />} />
+        <Route path="/teams/:teamId" element={<TeamDetailsPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
         <Route path="/projects/:projectId/stages/:stageId" element={<StageDetailsPage />} />

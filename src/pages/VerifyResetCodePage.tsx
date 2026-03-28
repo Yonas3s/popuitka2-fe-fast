@@ -5,6 +5,7 @@ import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { useUiStore } from '../store/ui.store';
 import { useResetFlowStore } from '../store/reset-flow.store';
+import { UnifiedHeader } from '../components/layout/UnifiedHeader';
 
 const CODE_LENGTH = 6;
 
@@ -111,16 +112,19 @@ export const VerifyResetCodePage = () => {
         <span className="signin-v2-dot dot-b" />
       </div>
 
-      <nav className="signin-v2-nav">
-        <div className="signin-v2-nav-wrap">
-          <Link to="/" className="signin-v2-brand">
-            <span className="signin-v2-brand-text">
-              unit-labs<em>_</em>
-            </span>
-          </Link>
-          <span className="signin-v2-env">env: production</span>
-        </div>
-      </nav>
+      <UnifiedHeader
+        as="nav"
+        className="signin-v2-nav"
+        containerClassName="signin-v2-nav-wrap"
+        brandClassName="signin-v2-brand"
+        brandContent={
+          <span className="signin-v2-brand-text">
+            unit-labs<em>_</em>
+          </span>
+        }
+        envLabel="окружение: прод"
+        envClassName="signin-v2-env"
+      />
 
       <main className="signin-v2-main">
         <section className="signin-v2-card signin-v2-card-wide">
@@ -128,7 +132,7 @@ export const VerifyResetCodePage = () => {
           <div className="signin-v2-body">
             <header className="signin-v2-head">
               <h1>Введите код</h1>
-              <p>security.verify_code(sent_to_email)</p>
+              <p>безопасность.проверка_кода(отправлено_на_почту)</p>
             </header>
 
             <form className="signin-v2-form" onSubmit={onSubmit}>
@@ -173,13 +177,13 @@ export const VerifyResetCodePage = () => {
               <span />
               <span />
             </div>
-            <small>TOKEN: REQ-2024-X8</small>
+            <small>ТОКЕН: REQ-2024-X8</small>
           </footer>
         </section>
 
         <div className="signin-v2-bottom-links">
           <Link to="/signin">← Вернуться ко входу</Link>
-          <p className="signin-v2-copyright">© 2024 unit-labs inc. All protocols secure.</p>
+          <p className="signin-v2-copyright">© 2024 unit-labs inc. Все протоколы защищены.</p>
         </div>
       </main>
     </div>

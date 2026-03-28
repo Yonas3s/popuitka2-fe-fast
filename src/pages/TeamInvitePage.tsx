@@ -114,12 +114,12 @@ export const TeamInvitePage = () => {
 
       {isAuthenticated && !loading && !error && invite ? (
         <GlassPanel className="auth-panel team-invite-panel">
-          <p className="team-invite-kicker">unit-labs team</p>
+          <p className="team-invite-kicker">команда unit-labs</p>
           <h2>Тебя пригласили в команду «{invite.teamName}»</h2>
           <p className="muted">
             {invite.inviterName ? `${invite.inviterName} отправил(а) тебе приглашение.` : 'Тебе отправили приглашение в команду.'}
           </p>
-          {invite.email ? <p className="muted">Email приглашения: {invite.email}</p> : null}
+          {invite.email ? <p className="muted">Почта приглашения: {invite.email}</p> : null}
           {invite.expiresAt ? (
             <p className="muted">
               Действует до:{' '}

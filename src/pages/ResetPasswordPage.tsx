@@ -6,6 +6,7 @@ import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { useUiStore } from '../store/ui.store';
 import { useResetFlowStore } from '../store/reset-flow.store';
+import { UnifiedHeader } from '../components/layout/UnifiedHeader';
 
 type ResetForm = {
   password: string;
@@ -68,16 +69,19 @@ export const ResetPasswordPage = () => {
         <span className="signin-v2-dot dot-b" />
       </div>
 
-      <nav className="signin-v2-nav">
-        <div className="signin-v2-nav-wrap">
-          <Link to="/" className="signin-v2-brand">
-            <span className="signin-v2-brand-text">
-              unit-labs<em>_</em>
-            </span>
-          </Link>
-          <span className="signin-v2-env">env: production</span>
-        </div>
-      </nav>
+      <UnifiedHeader
+        as="nav"
+        className="signin-v2-nav"
+        containerClassName="signin-v2-nav-wrap"
+        brandClassName="signin-v2-brand"
+        brandContent={
+          <span className="signin-v2-brand-text">
+            unit-labs<em>_</em>
+          </span>
+        }
+        envLabel="окружение: прод"
+        envClassName="signin-v2-env"
+      />
 
       <main className="signin-v2-main">
         <section className="signin-v2-card">
@@ -85,7 +89,7 @@ export const ResetPasswordPage = () => {
           <div className="signin-v2-body">
             <header className="signin-v2-head">
               <h1>Новый пароль</h1>
-              <p>system.update_credentials(user)</p>
+              <p>система.обновление_данных(учетные_данные)</p>
             </header>
 
             <form className="signin-v2-form" onSubmit={onSubmit}>
@@ -159,11 +163,11 @@ export const ResetPasswordPage = () => {
               <span />
               <span />
             </div>
-            <small>Step 3/3</small>
+            <small>Шаг 3/3</small>
           </footer>
         </section>
 
-        <p className="signin-v2-copyright">© 2024 unit-labs inc. All protocols secure.</p>
+        <p className="signin-v2-copyright">© 2024 unit-labs inc. Все протоколы защищены.</p>
       </main>
     </div>
   );

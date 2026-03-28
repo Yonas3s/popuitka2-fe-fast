@@ -28,7 +28,11 @@ const stringifyUnknown = (value: unknown): string => {
 export const normalizeApiError = (error: unknown): ApiError => {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
-    const message = stringifyUnknown(error.response?.data ?? error.message);
+    const fallbackMessage = stringifyUnknown(error.response?.data ?? error.message);
+    const message =
+      status === 409
+        ? 'Действие недоступно для текущего режима проекта. Проверьте режим: stages или flat.'
+        : fallbackMessage;
 
     return {
       status,

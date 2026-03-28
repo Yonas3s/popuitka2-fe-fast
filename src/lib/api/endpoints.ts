@@ -2,11 +2,14 @@ export const endpoints = {
   health: () => '/health',
   me: () => '/me',
   stat: () => '/stat',
+  statActions: () => '/stat/actions',
   signup: () => '/signup',
   signin: () => '/signin',
   forgotPassword: () => '/forgot-password',
   verifyResetCode: () => '/verify-reset-code',
   resetPassword: () => '/reset-password',
+  settingsTokens: () => '/settings/tokens',
+  settingsTokenById: (tokenId: string) => `/settings/tokens/${tokenId}`,
   teams: () => '/teams',
   teamById: (teamId: string) => `/teams/${teamId}`,
   teamProjects: (teamId: string) => `/teams/${teamId}/projects`,
@@ -26,8 +29,15 @@ export const endpoints = {
     `/projects/${projectId}/stages/${stageId}/tasks/${taskId}/toggle`,
   editTaskTitle: (projectId: string, stageId: string, taskId: string) =>
     `/projects/${projectId}/stages/${stageId}/tasks/${taskId}/title`,
+  assignTask: (projectId: string, stageId: string, taskId: string) =>
+    `/projects/${projectId}/stages/${stageId}/tasks/${taskId}/assign`,
   deleteTask: (projectId: string, stageId: string, taskId: string) =>
     `/projects/${projectId}/stages/${stageId}/tasks/${taskId}`,
+  projectTasks: (projectId: string) => `/projects/${projectId}/tasks`,
+  toggleProjectTask: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}/toggle`,
+  editProjectTaskTitle: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}/title`,
+  assignProjectTask: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}/assign`,
+  deleteProjectTask: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}`,
   shareLink: (projectId: string) => `/projects/${projectId}/share-link`,
   requestReview: (projectId: string, stageId: string) =>
     `/projects/${projectId}/stages/${stageId}/request-review`,

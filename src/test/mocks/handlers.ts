@@ -5,6 +5,7 @@ type ProjectRecord = {
   project_name: string;
   team_id?: string;
   status?: 'active' | 'completed';
+  workflow_type?: 'stages' | 'flat';
   share_link?: string;
 };
 
@@ -21,6 +22,7 @@ type TaskRecord = {
   _id: string;
   title: string;
   done: boolean;
+  assignee_user_id?: string | null;
 };
 
 type TeamRecord = {
@@ -48,13 +50,50 @@ type TeamMemberRecord = {
   role: string;
 };
 
+type ApiTokenRecord = {
+  _id: string;
+  name: string;
+  token_prefix: string;
+  token?: string;
+  last_used_at?: string;
+  expires_at?: string;
+  revoked_at?: string;
+  created_at: string;
+};
+
+type ActionLogRecord = {
+  _id: string;
+  created_at: string;
+  source: 'web' | 'cli' | 'mcp' | 'unknown';
+  auth_type: 'jwt' | 'pat';
+  method: string;
+  path: string;
+  status_code: number;
+  duration_ms: number;
+  ip?: string;
+  user_agent?: string;
+  user?: {
+    id: string;
+    email: string;
+    username: string;
+  } | null;
+  token?: {
+    id: string;
+    name: string;
+    token_prefix: string;
+  } | null;
+};
+
 const state = {
-  projects: [{ _id: 'p1', project_name: 'Demo Project', status: 'active' }] as ProjectRecord[],
+  projects: [{ _id: 'p1', project_name: 'Demo Project', status: 'active', workflow_type: 'stages' }] as ProjectRecord[],
   stagesByProject: {
     p1: [{ _id: 's1', stage_name: 'Init', description: 'Start stage', status: 'active' }],
   } as Record<string, StageRecord[]>,
+  tasksByProject: {
+    p1: [],
+  } as Record<string, TaskRecord[]>,
   tasksByStage: {
-    s1: [{ _id: 't1', title: 'First task', done: false }],
+    s1: [{ _id: 't1', title: 'First task', done: false, assignee_user_id: null }],
   } as Record<string, TaskRecord[]>,
   shareByToken: {
     'public-token-1': { projectId: 'p1', approved: false },
@@ -77,12 +116,65 @@ const state = {
     ],
   } as Record<string, TeamMemberRecord[]>,
   teamInvites: {} as Record<string, TeamInviteRecord>,
+  apiTokens: [
+    {
+      _id: 'tok-1',
+      name: 'Deploy CI',
+      token_prefix: 'ul_live_deploy',
+      last_used_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+  ] as ApiTokenRecord[],
+  actionLogs: [
+    {
+      _id: 'act-1',
+      created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+      source: 'web',
+      auth_type: 'jwt',
+      method: 'GET',
+      path: '/projects',
+      status_code: 200,
+      duration_ms: 44,
+      ip: '127.0.0.1',
+      user_agent: 'Mozilla/5.0',
+      user: {
+        id: '698b1202cb65b668e76f6c88',
+        email: 'gud.pro2018@yandex.ru',
+        username: 'yokio4242',
+      },
+      token: null,
+    },
+    {
+      _id: 'act-2',
+      created_at: new Date(Date.now() - 3 * 60 * 1000).toISOString(),
+      source: 'cli',
+      auth_type: 'pat',
+      method: 'POST',
+      path: '/projects',
+      status_code: 201,
+      duration_ms: 89,
+      ip: '127.0.0.1',
+      user_agent: 'unit-labs-cli/1.0.0',
+      user: {
+        id: '698b1202cb65b668e76f6c88',
+        email: 'gud.pro2018@yandex.ru',
+        username: 'yokio4242',
+      },
+      token: {
+        id: 'tok-1',
+        name: 'Deploy CI',
+        token_prefix: 'ul_live_deploy',
+      },
+    },
+  ] as ActionLogRecord[],
 };
 
 const isAuthorized = (request: Request): boolean => Boolean(request.headers.get('authorization'));
 const randomId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
 
 const getProjectById = (projectId: string) => state.projects.find((project) => project._id === projectId);
+const getWorkflowType = (project?: ProjectRecord): 'stages' | 'flat' =>
+  project?.workflow_type === 'flat' ? 'flat' : 'stages';
 
 export const handlers = [
   http.get(/.*\/health$/, () => HttpResponse.json('ok')),
@@ -116,6 +208,15 @@ export const handlers = [
       return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
     }
 
+    const actionsBySource = ['web', 'cli', 'mcp', 'unknown'].map((source) => ({
+      source,
+      count: state.actionLogs.filter((log) => log.source === source).length,
+    }));
+    const actionsByAuth = ['jwt', 'pat'].map((auth_type) => ({
+      auth_type,
+      count: state.actionLogs.filter((log) => log.auth_type === auth_type).length,
+    }));
+
     return HttpResponse.json({
       users: 2,
       dev_users: 0,
@@ -130,6 +231,34 @@ export const handlers = [
       active_stages: 2,
       review_stages: 0,
       completed_stages: 3,
+      actions_total: state.actionLogs.length,
+      actions_by_source: actionsBySource,
+      actions_by_auth: actionsByAuth,
+      recent_actions: state.actionLogs.slice(0, 30),
+    });
+  }),
+
+  http.get(/.*\/stat\/actions$/, async ({ request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const url = new URL(request.url);
+    const source = url.searchParams.get('source') || '';
+    const authType = url.searchParams.get('auth_type') || '';
+    const requestedLimit = Number(url.searchParams.get('limit') || 50);
+    const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 50;
+
+    const filtered = state.actionLogs
+      .filter((log) => (source ? log.source === source : true))
+      .filter((log) => (authType ? log.auth_type === authType : true))
+      .slice(0, limit);
+
+    return HttpResponse.json({
+      status: 'ok',
+      limit,
+      count: filtered.length,
+      data: filtered,
     });
   }),
 
@@ -151,6 +280,85 @@ export const handlers = [
     }
 
     return HttpResponse.json({ ok: true });
+  }),
+
+  http.get(/.*\/settings\/tokens$/, async ({ request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    return HttpResponse.json({
+      status: 'ok',
+      data: state.apiTokens.map((token) => ({
+        _id: token._id,
+        name: token.name,
+        token_prefix: token.token_prefix,
+        last_used_at: token.last_used_at,
+        expires_at: token.expires_at,
+        revoked_at: token.revoked_at,
+        created_at: token.created_at,
+      })),
+    });
+  }),
+
+  http.post(/.*\/settings\/tokens$/, async ({ request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const body = (await request.json()) as { name?: string; expires_at?: string };
+    const name = body.name?.trim();
+    if (!name) {
+      return HttpResponse.json({ message: 'name required' }, { status: 400 });
+    }
+
+    const createdAt = new Date().toISOString();
+    const suffix = Math.random().toString(36).slice(2, 10);
+    const tokenPrefix = `ul_${suffix.slice(0, 6)}`;
+    const token: ApiTokenRecord = {
+      _id: randomId('tok'),
+      name,
+      token_prefix: tokenPrefix,
+      token: `ul_${suffix}${Math.random().toString(36).slice(2, 14)}`,
+      expires_at: body.expires_at,
+      created_at: createdAt,
+    };
+
+    state.apiTokens.unshift(token);
+
+    return HttpResponse.json(
+      {
+        status: 'ok',
+        data: {
+          _id: token._id,
+          name: token.name,
+          token_prefix: token.token_prefix,
+          token: token.token,
+          expires_at: token.expires_at,
+          created_at: token.created_at,
+        },
+      },
+      { status: 201 },
+    );
+  }),
+
+  http.delete(/.*\/settings\/tokens\/([^/]+)$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const tokenId = String(params[0]);
+    const tokenIndex = state.apiTokens.findIndex((token) => token._id === tokenId);
+    if (tokenIndex < 0) {
+      return HttpResponse.json({ message: 'token not found' }, { status: 404 });
+    }
+
+    state.apiTokens[tokenIndex] = {
+      ...state.apiTokens[tokenIndex],
+      revoked_at: new Date().toISOString(),
+    };
+
+    return HttpResponse.json({ status: 'ok' });
   }),
 
   http.post(/.*\/teams$/, async ({ request }) => {
@@ -399,16 +607,23 @@ export const handlers = [
       return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
     }
 
-    const body = (await request.json()) as { project_name?: string; team_id?: string };
+    const body = (await request.json()) as {
+      project_name?: string;
+      team_id?: string;
+      workflow_type?: 'stages' | 'flat';
+    };
+    const workflowType = body.workflow_type === 'flat' ? 'flat' : 'stages';
     const project: ProjectRecord = {
       _id: randomId('p'),
       project_name: body.project_name || 'New project',
       team_id: body.team_id,
       status: 'active',
+      workflow_type: workflowType,
     };
 
     state.projects.push(project);
     state.stagesByProject[project._id] = [];
+    state.tasksByProject[project._id] = [];
     return HttpResponse.json(project, { status: 201 });
   }),
 
@@ -432,6 +647,13 @@ export const handlers = [
     }
 
     const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'flat') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
     return HttpResponse.json(state.stagesByProject[projectId] || []);
   }),
 
@@ -441,6 +663,13 @@ export const handlers = [
     }
 
     const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'flat') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
     const body = (await request.json()) as { stage_name?: string; description?: string };
 
     const stage: StageRecord = {
@@ -461,6 +690,13 @@ export const handlers = [
     }
 
     const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'flat') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
     const stageId = String(params[1]);
     const stage = (state.stagesByProject[projectId] || []).find((item) => item._id === stageId);
 
@@ -477,6 +713,13 @@ export const handlers = [
     }
 
     const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'flat') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
     const stageId = String(params[1]);
     const patch = (await request.json()) as Partial<StageRecord>;
     const stages = state.stagesByProject[projectId] || [];
@@ -498,6 +741,13 @@ export const handlers = [
     }
 
     const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'flat') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
     const stageId = String(params[1]);
     const stages = state.stagesByProject[projectId] || [];
     const stageIndex = stages.findIndex((stage) => stage._id === stageId);
@@ -514,6 +764,15 @@ export const handlers = [
       return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
     }
 
+    const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'flat') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
+
     const stageId = String(params[1]);
     return HttpResponse.json(state.tasksByStage[stageId] || []);
   }),
@@ -523,12 +782,22 @@ export const handlers = [
       return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
     }
 
+    const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'flat') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
+
     const stageId = String(params[1]);
     const body = (await request.json()) as { title?: string };
     const task: TaskRecord = {
       _id: randomId('t'),
       title: body.title || 'Task',
       done: false,
+      assignee_user_id: null,
     };
 
     state.tasksByStage[stageId] = [...(state.tasksByStage[stageId] || []), task];
@@ -538,6 +807,15 @@ export const handlers = [
   http.patch(/.*\/projects\/([^/]+)\/stages\/([^/]+)\/tasks\/([^/]+)\/toggle$/, async ({ params, request }) => {
     if (!isAuthorized(request)) {
       return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'flat') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
     }
 
     const stageId = String(params[1]);
@@ -559,6 +837,15 @@ export const handlers = [
       return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
     }
 
+    const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'flat') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
+
     const stageId = String(params[1]);
     const taskId = String(params[2]);
     const body = (await request.json()) as { title?: string };
@@ -575,15 +862,201 @@ export const handlers = [
     return HttpResponse.json(tasks[index]);
   }),
 
+  http.patch(/.*\/projects\/([^/]+)\/stages\/([^/]+)\/tasks\/([^/]+)\/assign$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'flat') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
+
+    const stageId = String(params[1]);
+    const taskId = String(params[2]);
+    const body = (await request.json()) as { assignee_user_id?: string | null };
+    const tasks = state.tasksByStage[stageId] || [];
+    const index = tasks.findIndex((task) => task._id === taskId);
+    if (index < 0) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+
+    tasks[index] = {
+      ...tasks[index],
+      assignee_user_id: typeof body.assignee_user_id === 'string' && body.assignee_user_id ? body.assignee_user_id : null,
+    };
+    state.tasksByStage[stageId] = tasks;
+    return HttpResponse.json(tasks[index]);
+  }),
+
   http.delete(/.*\/projects\/([^/]+)\/stages\/([^/]+)\/tasks\/([^/]+)$/, async ({ params, request }) => {
     if (!isAuthorized(request)) {
       return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'flat') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
     }
 
     const stageId = String(params[1]);
     const taskId = String(params[2]);
     const tasks = state.tasksByStage[stageId] || [];
     state.tasksByStage[stageId] = tasks.filter((task) => task._id !== taskId);
+
+    return HttpResponse.json({ ok: true });
+  }),
+
+  http.get(/.*\/projects\/([^/]+)\/tasks$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'stages') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
+
+    return HttpResponse.json(state.tasksByProject[projectId] || []);
+  }),
+
+  http.post(/.*\/projects\/([^/]+)\/tasks$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'stages') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
+
+    const body = (await request.json()) as { title?: string };
+    const task: TaskRecord = {
+      _id: randomId('pt'),
+      title: body.title || 'Task',
+      done: false,
+      assignee_user_id: null,
+    };
+    state.tasksByProject[projectId] = [...(state.tasksByProject[projectId] || []), task];
+    return HttpResponse.json(task, { status: 201 });
+  }),
+
+  http.patch(/.*\/projects\/([^/]+)\/tasks\/([^/]+)\/toggle$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const projectId = String(params[0]);
+    const taskId = String(params[1]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'stages') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
+
+    const tasks = state.tasksByProject[projectId] || [];
+    const index = tasks.findIndex((task) => task._id === taskId);
+    if (index < 0) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+
+    tasks[index] = { ...tasks[index], done: !tasks[index].done };
+    state.tasksByProject[projectId] = tasks;
+    return HttpResponse.json(tasks[index]);
+  }),
+
+  http.patch(/.*\/projects\/([^/]+)\/tasks\/([^/]+)\/title$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const projectId = String(params[0]);
+    const taskId = String(params[1]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'stages') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
+
+    const body = (await request.json()) as { title?: string };
+    const tasks = state.tasksByProject[projectId] || [];
+    const index = tasks.findIndex((task) => task._id === taskId);
+    if (index < 0) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+
+    tasks[index] = { ...tasks[index], title: body.title || tasks[index].title };
+    state.tasksByProject[projectId] = tasks;
+    return HttpResponse.json(tasks[index]);
+  }),
+
+  http.patch(/.*\/projects\/([^/]+)\/tasks\/([^/]+)\/assign$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const projectId = String(params[0]);
+    const taskId = String(params[1]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'stages') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
+
+    const body = (await request.json()) as { assignee_user_id?: string | null };
+    const tasks = state.tasksByProject[projectId] || [];
+    const index = tasks.findIndex((task) => task._id === taskId);
+    if (index < 0) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+
+    tasks[index] = {
+      ...tasks[index],
+      assignee_user_id: typeof body.assignee_user_id === 'string' && body.assignee_user_id ? body.assignee_user_id : null,
+    };
+    state.tasksByProject[projectId] = tasks;
+    return HttpResponse.json(tasks[index]);
+  }),
+
+  http.delete(/.*\/projects\/([^/]+)\/tasks\/([^/]+)$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const projectId = String(params[0]);
+    const taskId = String(params[1]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+    if (getWorkflowType(project) === 'stages') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
+    }
+
+    const tasks = state.tasksByProject[projectId] || [];
+    state.tasksByProject[projectId] = tasks.filter((task) => task._id !== taskId);
 
     return HttpResponse.json({ ok: true });
   }),
@@ -611,10 +1084,14 @@ export const handlers = [
     }
 
     const project = getProjectById(entry.projectId);
-    const stages = state.stagesByProject[entry.projectId] || [];
+    const workflowType = getWorkflowType(project);
+    const stages = workflowType === 'stages' ? state.stagesByProject[entry.projectId] || [] : [];
+    const tasks = workflowType === 'flat' ? state.tasksByProject[entry.projectId] || [] : [];
     return HttpResponse.json({
       project,
+      workflow_type: workflowType,
       stages,
+      tasks,
       approved: entry.approved,
     });
   }),
@@ -624,6 +1101,11 @@ export const handlers = [
     const entry = state.shareByToken[token];
     if (!entry) {
       return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+
+    const project = getProjectById(entry.projectId);
+    if (getWorkflowType(project) === 'flat') {
+      return HttpResponse.json({ message: 'workflow mismatch' }, { status: 409 });
     }
 
     const stages = state.stagesByProject[entry.projectId] || [];

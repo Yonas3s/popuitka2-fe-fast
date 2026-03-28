@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import type {
+  AdminActionAuthType,
+  AdminActionLog,
+  AdminActionLogsPayload,
+  AdminActionSource,
   AdminStat,
+  ApiToken,
   AuthProfile,
+  CreatedApiToken,
   Project,
   PublicSharePayload,
   Stage,
@@ -30,6 +36,8 @@ const projectSchema = z
     shareLink: z.string().optional(),
     client_url: z.string().optional(),
     clientUrl: z.string().optional(),
+    workflow_type: z.enum(['stages', 'flat']).optional(),
+    workflowType: z.enum(['stages', 'flat']).optional(),
   })
   .passthrough();
 
@@ -56,6 +64,8 @@ const taskSchema = z
     done: z.boolean().optional(),
     is_done: z.boolean().optional(),
     completed: z.boolean().optional(),
+    assignee_user_id: z.string().nullable().optional(),
+    assigneeUserId: z.string().nullable().optional(),
   })
   .passthrough();
 
@@ -89,6 +99,70 @@ const adminStatSchema = z
     active_stages: z.number().optional(),
     review_stages: z.number().optional(),
     completed_stages: z.number().optional(),
+    actions_total: z.number().optional(),
+    actions_by_source: z
+      .array(
+        z
+          .object({
+            source: z.string().optional(),
+            count: z.number().optional(),
+          })
+          .passthrough(),
+      )
+      .optional(),
+    actions_by_auth: z
+      .array(
+        z
+          .object({
+            auth_type: z.string().optional(),
+            count: z.number().optional(),
+          })
+          .passthrough(),
+      )
+      .optional(),
+    recent_actions: z.array(z.unknown()).optional(),
+  })
+  .passthrough();
+
+const adminActionLogSchema = z
+  .object({
+    _id: z.string().optional(),
+    id: z.string().optional(),
+    created_at: z.string().optional(),
+    createdAt: z.string().optional(),
+    source: z.string().optional(),
+    auth_type: z.string().optional(),
+    authType: z.string().optional(),
+    method: z.string().optional(),
+    path: z.string().optional(),
+    status_code: z.number().optional(),
+    statusCode: z.number().optional(),
+    duration_ms: z.number().optional(),
+    durationMs: z.number().optional(),
+    ip: z.string().optional(),
+    user_agent: z.string().optional(),
+    userAgent: z.string().optional(),
+    user: z
+      .object({
+        _id: z.string().optional(),
+        id: z.string().optional(),
+        username: z.string().optional(),
+        email: z.string().optional(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+    token: z
+      .object({
+        _id: z.string().optional(),
+        id: z.string().optional(),
+        name: z.string().optional(),
+        token_prefix: z.string().optional(),
+        tokenPrefix: z.string().optional(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
   })
   .passthrough();
 
@@ -196,6 +270,41 @@ const teamMemberSchema = z
   })
   .passthrough();
 
+const apiTokenSchema = z
+  .object({
+    _id: z.string().optional(),
+    id: z.string().optional(),
+    name: z.string().optional(),
+    token_prefix: z.string().optional(),
+    tokenPrefix: z.string().optional(),
+    token: z.string().optional(),
+    last_used_at: z.string().optional(),
+    lastUsedAt: z.string().optional(),
+    expires_at: z.string().optional(),
+    expiresAt: z.string().optional(),
+    revoked_at: z.string().optional(),
+    revokedAt: z.string().optional(),
+    created_at: z.string().optional(),
+    createdAt: z.string().optional(),
+  })
+  .passthrough();
+
+const isoDateTimeNullableSchema = z.string().datetime({ offset: true }).nullable().optional();
+
+const apiTokenContractSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  tokenPrefix: z.string().regex(/^ul_[a-z0-9_-]+$/i),
+  lastUsedAt: isoDateTimeNullableSchema,
+  expiresAt: isoDateTimeNullableSchema,
+  revokedAt: isoDateTimeNullableSchema,
+  createdAt: z.string().datetime({ offset: true }).optional(),
+});
+
+const createdApiTokenContractSchema = apiTokenContractSchema.extend({
+  token: z.string().regex(/^ul_[a-z0-9_-]+$/i),
+});
+
 const asRecord = (value: unknown): Record<string, unknown> => {
   const parsed = recordSchema.safeParse(value);
   return parsed.success ? parsed.data : {};
@@ -256,6 +365,10 @@ export const normalizeProject = (value: unknown, index = 0): Project => {
     (typeof record.client_url === 'string' && record.client_url) ||
     (typeof record.clientUrl === 'string' && record.clientUrl) ||
     undefined;
+  const workflowType =
+    (record.workflow_type === 'stages' || record.workflow_type === 'flat' ? record.workflow_type : undefined) ||
+    (record.workflowType === 'stages' || record.workflowType === 'flat' ? record.workflowType : undefined) ||
+    'stages';
 
   return {
     id: normalizeId(record, `project-${index}`),
@@ -267,6 +380,7 @@ export const normalizeProject = (value: unknown, index = 0): Project => {
       ['active', 'completed'].includes(record.status)
         ? (record.status as 'active' | 'completed')
         : undefined,
+    workflowType,
     shareLink,
     raw: record,
   };
@@ -318,6 +432,10 @@ export const normalizeTask = (value: unknown, index = 0): Task => {
     id: normalizeId(record, `task-${index}`),
     title: typeof record.title === 'string' && record.title ? record.title : 'Без названия задачи',
     done,
+    assigneeUserId:
+      (typeof record.assignee_user_id === 'string' && record.assignee_user_id) ||
+      (typeof record.assigneeUserId === 'string' && record.assigneeUserId) ||
+      undefined,
     raw: record,
   };
 };
@@ -358,9 +476,77 @@ const getNumber = (record: Record<string, unknown>, key: string): number => {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 };
 
+const toAdminActionSource = (value: unknown): AdminActionSource => {
+  const normalized = typeof value === 'string' ? value.toLowerCase() : '';
+  return normalized === 'web' || normalized === 'cli' || normalized === 'mcp' || normalized === 'unknown'
+    ? (normalized as AdminActionSource)
+    : 'unknown';
+};
+
+const toAdminActionAuthType = (value: unknown): AdminActionAuthType => {
+  const normalized = typeof value === 'string' ? value.toLowerCase() : '';
+  return normalized === 'pat' ? 'pat' : 'jwt';
+};
+
+export const normalizeAdminActionLog = (value: unknown, index = 0): AdminActionLog => {
+  const parsed = adminActionLogSchema.safeParse(value);
+  const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
+  const userRecord = pickRecordFromPossibleKeys(record, ['user']);
+  const tokenRecord = pickRecordFromPossibleKeys(record, ['token']);
+
+  return {
+    id: normalizeId(record, `action-${index}`),
+    createdAt:
+      (typeof record.created_at === 'string' && record.created_at) ||
+      (typeof record.createdAt === 'string' && record.createdAt) ||
+      undefined,
+    source: toAdminActionSource(record.source),
+    authType: toAdminActionAuthType(record.auth_type ?? record.authType),
+    method: typeof record.method === 'string' ? record.method : 'GET',
+    path: typeof record.path === 'string' ? record.path : '/',
+    statusCode:
+      (typeof record.status_code === 'number' && Number.isFinite(record.status_code) ? record.status_code : undefined) ||
+      (typeof record.statusCode === 'number' && Number.isFinite(record.statusCode) ? record.statusCode : undefined),
+    durationMs:
+      (typeof record.duration_ms === 'number' && Number.isFinite(record.duration_ms) ? record.duration_ms : undefined) ||
+      (typeof record.durationMs === 'number' && Number.isFinite(record.durationMs) ? record.durationMs : undefined),
+    ip: typeof record.ip === 'string' ? record.ip : undefined,
+    userAgent:
+      (typeof record.user_agent === 'string' && record.user_agent) ||
+      (typeof record.userAgent === 'string' && record.userAgent) ||
+      undefined,
+    user: userRecord
+      ? {
+          id: typeof userRecord.id === 'string' ? userRecord.id : typeof userRecord._id === 'string' ? userRecord._id : undefined,
+          email: typeof userRecord.email === 'string' ? userRecord.email : undefined,
+          username: typeof userRecord.username === 'string' ? userRecord.username : undefined,
+        }
+      : null,
+    token: tokenRecord
+      ? {
+          id:
+            typeof tokenRecord.id === 'string'
+              ? tokenRecord.id
+              : typeof tokenRecord._id === 'string'
+                ? tokenRecord._id
+                : undefined,
+          name: typeof tokenRecord.name === 'string' ? tokenRecord.name : undefined,
+          tokenPrefix:
+            (typeof tokenRecord.token_prefix === 'string' && tokenRecord.token_prefix) ||
+            (typeof tokenRecord.tokenPrefix === 'string' && tokenRecord.tokenPrefix) ||
+            undefined,
+        }
+      : null,
+    raw: record,
+  };
+};
+
 export const normalizeAdminStat = (value: unknown): AdminStat => {
   const parsed = adminStatSchema.safeParse(value);
   const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
+  const actionsBySourceRaw = Array.isArray(record.actions_by_source) ? record.actions_by_source : [];
+  const actionsByAuthRaw = Array.isArray(record.actions_by_auth) ? record.actions_by_auth : [];
+  const recentActionsRaw = Array.isArray(record.recent_actions) ? record.recent_actions : [];
 
   return {
     users: getNumber(record, 'users'),
@@ -376,6 +562,22 @@ export const normalizeAdminStat = (value: unknown): AdminStat => {
     activeStages: getNumber(record, 'active_stages'),
     reviewStages: getNumber(record, 'review_stages'),
     completedStages: getNumber(record, 'completed_stages'),
+    actionsTotal: getNumber(record, 'actions_total'),
+    actionsBySource: actionsBySourceRaw.map((item) => {
+      const asObj = asRecord(item);
+      return {
+        source: toAdminActionSource(asObj.source),
+        count: getNumber(asObj, 'count'),
+      };
+    }),
+    actionsByAuth: actionsByAuthRaw.map((item) => {
+      const asObj = asRecord(item);
+      return {
+        authType: toAdminActionAuthType(asObj.auth_type),
+        count: getNumber(asObj, 'count'),
+      };
+    }),
+    recentActions: recentActionsRaw.map(normalizeAdminActionLog),
     raw: record,
   };
 };
@@ -561,6 +763,119 @@ export const normalizeTeamActiveInvite = (value: unknown, index = 0): TeamActive
   };
 };
 
+export const normalizeApiToken = (value: unknown, index = 0): ApiToken => {
+  const parsed = apiTokenSchema.safeParse(value);
+  const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
+
+  const tokenPrefix =
+    (typeof record.token_prefix === 'string' && record.token_prefix) ||
+    (typeof record.tokenPrefix === 'string' && record.tokenPrefix) ||
+    '';
+  const lastUsedAt =
+    (typeof record.last_used_at === 'string' && record.last_used_at) ||
+    (typeof record.lastUsedAt === 'string' && record.lastUsedAt) ||
+    undefined;
+  const expiresAt =
+    (typeof record.expires_at === 'string' && record.expires_at) ||
+    (typeof record.expiresAt === 'string' && record.expiresAt) ||
+    undefined;
+  const revokedAt =
+    (typeof record.revoked_at === 'string' && record.revoked_at) ||
+    (typeof record.revokedAt === 'string' && record.revokedAt) ||
+    undefined;
+  const createdAt =
+    (typeof record.created_at === 'string' && record.created_at) ||
+    (typeof record.createdAt === 'string' && record.createdAt) ||
+    undefined;
+
+  return {
+    id: normalizeId(record, `token-${index}`),
+    name: typeof record.name === 'string' && record.name ? record.name : `Токен ${index + 1}`,
+    tokenPrefix,
+    lastUsedAt,
+    expiresAt,
+    revokedAt,
+    createdAt,
+    raw: record,
+  };
+};
+
+export const normalizeCreatedApiToken = (value: unknown): CreatedApiToken => {
+  const parsed = apiTokenSchema.safeParse(value);
+  const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
+
+  const tokenPrefix =
+    (typeof record.token_prefix === 'string' && record.token_prefix) ||
+    (typeof record.tokenPrefix === 'string' && record.tokenPrefix) ||
+    '';
+  const expiresAt =
+    (typeof record.expires_at === 'string' && record.expires_at) ||
+    (typeof record.expiresAt === 'string' && record.expiresAt) ||
+    undefined;
+  const createdAt =
+    (typeof record.created_at === 'string' && record.created_at) ||
+    (typeof record.createdAt === 'string' && record.createdAt) ||
+    undefined;
+
+  return {
+    id: normalizeId(record, 'token'),
+    name: typeof record.name === 'string' && record.name ? record.name : 'Новый токен',
+    token: typeof record.token === 'string' ? record.token : '',
+    tokenPrefix,
+    expiresAt,
+    createdAt,
+    raw: record,
+  };
+};
+
+const formatContractIssues = (issues: z.ZodIssue[]): string => {
+  return issues
+    .map((issue) => {
+      const field = issue.path.join('.') || 'payload';
+      return `${field}: ${issue.message}`;
+    })
+    .join('; ');
+};
+
+export const parseApiTokenContract = (value: unknown): ApiToken => {
+  const normalized = normalizeApiToken(value);
+  const payload = {
+    id: normalized.id,
+    name: normalized.name,
+    tokenPrefix: normalized.tokenPrefix,
+    lastUsedAt: normalized.lastUsedAt ?? null,
+    expiresAt: normalized.expiresAt ?? null,
+    revokedAt: normalized.revokedAt ?? null,
+    createdAt: normalized.createdAt,
+  };
+
+  const parsed = apiTokenContractSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new Error(`Invalid ApiToken payload: ${formatContractIssues(parsed.error.issues)}`);
+  }
+
+  return normalized;
+};
+
+export const parseCreatedApiTokenContract = (value: unknown): CreatedApiToken => {
+  const normalized = normalizeCreatedApiToken(value);
+  const payload = {
+    id: normalized.id,
+    name: normalized.name,
+    token: normalized.token,
+    tokenPrefix: normalized.tokenPrefix,
+    expiresAt: normalized.expiresAt ?? null,
+    createdAt: normalized.createdAt,
+  };
+
+  const parsed = createdApiTokenContractSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new Error(`Invalid CreatedApiToken payload: ${formatContractIssues(parsed.error.issues)}`);
+  }
+
+  return normalized;
+};
+
 const normalizeCollection = <T>(
   value: unknown,
   keys: string[],
@@ -699,6 +1014,34 @@ export const extractTeamActiveInvites = (value: unknown): TeamActiveInvite[] => 
   return [];
 };
 
+export const extractApiTokens = (value: unknown): ApiToken[] => {
+  if (Array.isArray(value)) {
+    return value.map(normalizeApiToken);
+  }
+
+  const asObj = asRecord(value);
+  const nested = pickRecordFromPossibleKeys(asObj, ['data']);
+  const source = nested ?? asObj;
+
+  const directArray = pickArrayFromPossibleKeys(source, ['tokens', 'items', 'data']);
+  if (directArray.length > 0) {
+    return directArray.map(normalizeApiToken);
+  }
+
+  const fallbackArray = pickFirstArrayValue(source);
+  if (fallbackArray.length > 0) {
+    return fallbackArray.map(normalizeApiToken);
+  }
+
+  return [];
+};
+
+export const extractCreatedApiToken = (value: unknown): CreatedApiToken => {
+  const asObj = asRecord(value);
+  const nested = pickRecordFromPossibleKeys(asObj, ['data', 'token']);
+  return normalizeCreatedApiToken(nested ?? asObj);
+};
+
 export const extractTeamProjects = (value: unknown): TeamProjectsPayload => {
   const asObj = asRecord(value);
   const nested = pickRecordFromPossibleKeys(asObj, ['data']);
@@ -796,6 +1139,24 @@ export const extractAdminStat = (value: unknown): AdminStat => {
   return normalizeAdminStat(nested ?? asObj);
 };
 
+export const extractAdminActionLogs = (value: unknown): AdminActionLogsPayload => {
+  const asObj = asRecord(value);
+  const nested = pickRecordFromPossibleKeys(asObj, ['data']);
+  const dataSource = nested ?? asObj;
+  const rows = Array.isArray(dataSource.data)
+    ? dataSource.data
+    : Array.isArray(asObj.data)
+      ? asObj.data
+      : [];
+
+  return {
+    limit: getNumber(asObj, 'limit') || 50,
+    count: getNumber(asObj, 'count') || rows.length,
+    data: rows.map(normalizeAdminActionLog),
+    raw: asObj,
+  };
+};
+
 export const extractTeamInvitePreview = (value: unknown): TeamInvitePreview => {
   const asObj = asRecord(value);
   const nested = pickRecordFromPossibleKeys(asObj, ['invite', 'data', 'team_invite']);
@@ -820,15 +1181,42 @@ export const extractInviteUrl = (value: unknown): string => {
 
 export const extractPublicShare = (value: unknown, shareToken: string): PublicSharePayload => {
   const asObj = asRecord(value);
-  const projectCandidate = pickRecordFromPossibleKeys(asObj, ['project', 'data']);
+  const isProjectLike = (record: Record<string, unknown>): boolean =>
+    typeof record.project_name === 'string' ||
+    typeof record.name === 'string' ||
+    typeof record._id === 'string' ||
+    typeof record.id === 'string' ||
+    typeof record.workflow_type === 'string' ||
+    typeof record.workflowType === 'string';
 
-  const stages = extractStages(value);
-  const approved = typeof asObj.approved === 'boolean' ? asObj.approved : undefined;
+  const directProject = pickRecordFromPossibleKeys(asObj, ['project']);
+  const dataCandidate = pickRecordFromPossibleKeys(asObj, ['data']);
+  const nestedProject = dataCandidate ? pickRecordFromPossibleKeys(dataCandidate, ['project']) : null;
+  const projectSource = directProject ?? nestedProject ?? (dataCandidate && isProjectLike(dataCandidate) ? dataCandidate : null);
+  const project = projectSource ? normalizeProject(projectSource) : undefined;
+  const rootWorkflowType =
+    asObj.workflow_type === 'stages' || asObj.workflow_type === 'flat'
+      ? asObj.workflow_type
+      : asObj.workflowType === 'stages' || asObj.workflowType === 'flat'
+        ? asObj.workflowType
+        : undefined;
+  const workflowType = rootWorkflowType || project?.workflowType || 'stages';
+  const collectionSource = dataCandidate ?? asObj;
+  const stages = workflowType === 'stages' ? extractStages(collectionSource) : [];
+  const tasks = workflowType === 'flat' ? extractTasks(collectionSource) : [];
+  const approved =
+    typeof asObj.approved === 'boolean'
+      ? asObj.approved
+      : typeof collectionSource.approved === 'boolean'
+        ? collectionSource.approved
+        : undefined;
 
   return {
     shareToken,
-    project: projectCandidate ? normalizeProject(projectCandidate) : undefined,
+    project,
+    workflowType,
     stages,
+    tasks,
     approved,
     raw: asObj,
   };

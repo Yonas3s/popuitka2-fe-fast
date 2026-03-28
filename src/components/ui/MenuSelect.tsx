@@ -48,7 +48,7 @@ export const MenuSelect = ({ label, value, options, onChange, disabled }: MenuSe
   }, []);
 
   return (
-    <label className="field">
+    <div className="field">
       <span className="field-label">{label}</span>
       <div className="menu-select" ref={rootRef}>
         <button
@@ -78,7 +78,9 @@ export const MenuSelect = ({ label, value, options, onChange, disabled }: MenuSe
                   className={`menu-select-option ${active ? 'active' : ''}`}
                   role="option"
                   aria-selected={active}
-                  onClick={() => {
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
                     onChange(option.value);
                     setOpen(false);
                   }}
@@ -91,6 +93,6 @@ export const MenuSelect = ({ label, value, options, onChange, disabled }: MenuSe
           </div>
         ) : null}
       </div>
-    </label>
+    </div>
   );
 };
