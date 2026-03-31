@@ -1,7 +1,10 @@
 import { apiClient } from './client';
 import { endpoints } from './endpoints';
 import {
+  extractAgentRun,
+  extractAgentRuns,
   extractAdminActionLogs,
+  extractDirection,
   extractDirections,
   extractProject,
   extractProjects,
@@ -25,6 +28,7 @@ import {
   extractToken,
 } from './schemas';
 import type {
+  AgentRun,
   AdminActionAuthType,
   AdminActionLogsPayload,
   AdminActionSource,
@@ -81,6 +85,7 @@ export type CreateTaskPayload = {
 
 export type CreateDirectionPayload = {
   name: string;
+  direction_name?: string;
 };
 
 export type EditTaskTitlePayload = {
@@ -95,6 +100,11 @@ export type AssignTaskPayload = {
 export type PatchTaskMetaPayload = {
   task_type?: TaskType;
   direction_ids?: string[];
+  description?: string;
+};
+
+export type CreateAgentRunPayload = {
+  prompt: string;
 };
 
 export type ForgotPasswordPayload = {
@@ -266,16 +276,14 @@ export const apiService = {
   },
 
   async addDirection(projectId: string, payload: CreateDirectionPayload): Promise<DirectionTag> {
-    const response = await apiClient.post(endpoints.directions(projectId), payload);
-    const directions = extractDirections(response.data);
-    if (directions.length > 0) {
-      return directions[0];
-    }
-    return {
-      id: `direction-${Date.now()}`,
-      name: payload.name,
-      raw: {},
-    };
+    const normalizedName = payload.name.trim();
+    const response = await apiClient.post(endpoints.directions(projectId), {
+      ...payload,
+      name: normalizedName,
+      // Backward compatibility for old BE contract.
+      direction_name: normalizedName,
+    });
+    return extractDirection(response.data);
   },
 
   async getStages(projectId: string): Promise<Stage[]> {
@@ -320,6 +328,7 @@ export const apiService = {
       done: false,
       taskType: 'task',
       directionIds: [],
+      issueKey: undefined,
       raw: {},
     };
   },
@@ -372,6 +381,7 @@ export const apiService = {
       done: false,
       taskType: 'task',
       directionIds: [],
+      issueKey: undefined,
       raw: {},
     };
   },
@@ -394,6 +404,25 @@ export const apiService = {
 
   async deleteProjectTask(projectId: string, taskId: string): Promise<void> {
     await apiClient.delete(endpoints.deleteProjectTask(projectId, taskId));
+  },
+
+  async getAgentRuns(projectId: string, limit = 20): Promise<AgentRun[]> {
+    const response = await apiClient.get(endpoints.agentRuns(projectId), {
+      params: {
+        limit,
+      },
+    });
+    return extractAgentRuns(response.data);
+  },
+
+  async createAgentRun(projectId: string, payload: CreateAgentRunPayload): Promise<AgentRun> {
+    const response = await apiClient.post(endpoints.agentRuns(projectId), payload);
+    return extractAgentRun(response.data);
+  },
+
+  async getAgentRun(projectId: string, runId: string): Promise<AgentRun> {
+    const response = await apiClient.get(endpoints.agentRunById(projectId, runId));
+    return extractAgentRun(response.data);
   },
 
   async createShareLink(projectId: string): Promise<ShareLinkResponse> {

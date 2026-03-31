@@ -21,10 +21,24 @@ type StageRecord = {
 type TaskRecord = {
   _id: string;
   title: string;
+  issue_key?: string;
+  description?: string;
   done: boolean;
   task_type: 'task' | 'bug' | 'feature' | 'improvement' | 'chore';
   direction_ids: string[];
   assignee_user_id?: string | null;
+};
+
+type AgentRunRecord = {
+  _id: string;
+  prompt: string;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  output_text?: string;
+  error_message?: string;
+  created_at: string;
+  updated_at: string;
+  poll_count: number;
+  finish_status: 'completed' | 'failed';
 };
 
 type DirectionRecord = {
@@ -106,11 +120,16 @@ const state = {
   tasksByProject: {
     p1: [],
   } as Record<string, TaskRecord[]>,
+  agentRunsByProject: {
+    p1: [],
+  } as Record<string, AgentRunRecord[]>,
   tasksByStage: {
     s1: [
       {
         _id: 't1',
         title: 'First task',
+        issue_key: 'ul-1',
+        description: 'Первое описание задачи',
         done: false,
         task_type: 'task',
         direction_ids: ['dir-1'],
@@ -648,6 +667,7 @@ export const handlers = [
     state.stagesByProject[project._id] = [];
     state.directionsByProject[project._id] = [];
     state.tasksByProject[project._id] = [];
+    state.agentRunsByProject[project._id] = [];
     return HttpResponse.json(project, { status: 201 });
   }),
 
@@ -865,6 +885,8 @@ export const handlers = [
     const task: TaskRecord = {
       _id: randomId('t'),
       title: body.title || 'Task',
+      issue_key: `ul-${(state.tasksByStage[stageId] || []).length + 1}`,
+      description: '',
       done: false,
       task_type: 'task',
       direction_ids: [],
@@ -986,6 +1008,7 @@ export const handlers = [
     const body = (await request.json()) as {
       task_type?: TaskRecord['task_type'];
       direction_ids?: string[];
+      description?: string;
     };
     const tasks = state.tasksByStage[stageId] || [];
     const index = tasks.findIndex((task) => task._id === taskId);
@@ -1001,11 +1024,16 @@ export const handlers = [
     const nextDirectionIds = Array.isArray(body.direction_ids)
       ? body.direction_ids.filter((id) => typeof id === 'string')
       : tasks[index].direction_ids;
+    const nextDescription =
+      typeof body.description === 'string'
+        ? body.description
+        : tasks[index].description ?? '';
 
     tasks[index] = {
       ...tasks[index],
       task_type: nextTaskType,
       direction_ids: nextDirectionIds,
+      description: nextDescription,
     };
     state.tasksByStage[stageId] = tasks;
     return HttpResponse.json(tasks[index]);
@@ -1068,6 +1096,8 @@ export const handlers = [
     const task: TaskRecord = {
       _id: randomId('pt'),
       title: body.title || 'Task',
+      issue_key: `ul-${(state.tasksByProject[projectId] || []).length + 1}`,
+      description: '',
       done: false,
       task_type: 'task',
       direction_ids: [],
@@ -1181,6 +1211,7 @@ export const handlers = [
     const body = (await request.json()) as {
       task_type?: TaskRecord['task_type'];
       direction_ids?: string[];
+      description?: string;
     };
     const tasks = state.tasksByProject[projectId] || [];
     const index = tasks.findIndex((task) => task._id === taskId);
@@ -1196,11 +1227,16 @@ export const handlers = [
     const nextDirectionIds = Array.isArray(body.direction_ids)
       ? body.direction_ids.filter((id) => typeof id === 'string')
       : tasks[index].direction_ids;
+    const nextDescription =
+      typeof body.description === 'string'
+        ? body.description
+        : tasks[index].description ?? '';
 
     tasks[index] = {
       ...tasks[index],
       task_type: nextTaskType,
       direction_ids: nextDirectionIds,
+      description: nextDescription,
     };
     state.tasksByProject[projectId] = tasks;
     return HttpResponse.json(tasks[index]);
@@ -1225,6 +1261,104 @@ export const handlers = [
     state.tasksByProject[projectId] = tasks.filter((task) => task._id !== taskId);
 
     return HttpResponse.json({ ok: true });
+  }),
+
+  http.get(/.*\/projects\/([^/]+)\/agent\/runs$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+
+    const runs = state.agentRunsByProject[projectId] || [];
+    return HttpResponse.json({
+      data: runs,
+    });
+  }),
+
+  http.post(/.*\/projects\/([^/]+)\/agent\/runs$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const projectId = String(params[0]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+
+    const body = (await request.json()) as { prompt?: string };
+    const prompt = String(body.prompt || '').trim();
+    if (!prompt) {
+      return HttpResponse.json({ message: 'prompt required' }, { status: 400 });
+    }
+
+    const shouldFail = /fail|ошиб/i.test(prompt);
+    const now = new Date().toISOString();
+    const run: AgentRunRecord = {
+      _id: randomId('run'),
+      prompt,
+      status: 'running',
+      created_at: now,
+      updated_at: now,
+      poll_count: 0,
+      finish_status: shouldFail ? 'failed' : 'completed',
+      output_text: shouldFail ? '' : `Агент выполнил задачу: ${prompt}`,
+      error_message: shouldFail ? 'Агент не смог выполнить задачу' : '',
+    };
+
+    state.agentRunsByProject[projectId] = [run, ...(state.agentRunsByProject[projectId] || [])];
+    return HttpResponse.json({
+      data: run,
+    }, { status: 201 });
+  }),
+
+  http.get(/.*\/projects\/([^/]+)\/agent\/runs\/([^/]+)$/, async ({ params, request }) => {
+    if (!isAuthorized(request)) {
+      return HttpResponse.json({ message: 'unauthorized' }, { status: 401 });
+    }
+
+    const projectId = String(params[0]);
+    const runId = String(params[1]);
+    const project = getProjectById(projectId);
+    if (!project) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+
+    const runs = state.agentRunsByProject[projectId] || [];
+    const runIndex = runs.findIndex((item) => item._id === runId);
+    if (runIndex < 0) {
+      return HttpResponse.json({ message: 'not found' }, { status: 404 });
+    }
+
+    const current = runs[runIndex];
+    if (current.status === 'queued' || current.status === 'running') {
+      const nextPollCount = current.poll_count + 1;
+      if (nextPollCount >= 2) {
+        runs[runIndex] = {
+          ...current,
+          poll_count: nextPollCount,
+          status: current.finish_status,
+          updated_at: new Date().toISOString(),
+        };
+      } else {
+        runs[runIndex] = {
+          ...current,
+          poll_count: nextPollCount,
+          status: 'running',
+          updated_at: new Date().toISOString(),
+        };
+      }
+      state.agentRunsByProject[projectId] = runs;
+    }
+
+    return HttpResponse.json({
+      data: state.agentRunsByProject[projectId][runIndex],
+    });
   }),
 
   http.post(/.*\/projects\/([^/]+)\/share-link$/, async ({ params, request }) => {

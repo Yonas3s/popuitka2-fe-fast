@@ -162,6 +162,7 @@ export const useStageStore = create<StageState>((set, get) => ({
             ...task,
             taskType: payload.task_type ?? task.taskType,
             directionIds: payload.direction_ids ?? task.directionIds,
+            description: payload.description ?? task.description,
           }
         : task,
     );

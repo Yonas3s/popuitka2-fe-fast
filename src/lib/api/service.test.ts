@@ -90,6 +90,11 @@ describe('api service flow', () => {
 
     const fullProject = await apiService.getProject(createdProject.id);
     expect(fullProject.id).toBe(createdProject.id);
+    const createdDirection = await apiService.addDirection(createdProject.id, { name: 'QA' });
+    expect(createdDirection.id).toMatch(/^dir-/);
+    expect(createdDirection.name).toBe('QA');
+    const createdProjectDirections = await apiService.getDirections(createdProject.id);
+    expect(createdProjectDirections.some((direction) => direction.id === createdDirection.id)).toBe(true);
     const projectDirections = await apiService.getDirections('p1');
     expect(projectDirections.length).toBeGreaterThan(0);
 
@@ -121,14 +126,17 @@ describe('api service flow', () => {
 
     const tasks = await apiService.getTasks(createdProject.id, createdStage.id);
     expect(tasks.length).toBeGreaterThan(0);
+    expect(tasks[0]?.issueKey).toBeTruthy();
 
     const firstTask = tasks[0];
     await apiService.patchTaskMeta(createdProject.id, createdStage.id, firstTask.id, {
       task_type: 'bug',
       direction_ids: [],
+      description: 'Stage task description',
     });
     const tasksAfterMeta = await apiService.getTasks(createdProject.id, createdStage.id);
     expect(tasksAfterMeta[0]?.taskType).toBe('bug');
+    expect(tasksAfterMeta[0]?.description).toBe('Stage task description');
     await apiService.assignTask(createdProject.id, createdStage.id, firstTask.id, {
       user_id: 'teammate-1',
     });
@@ -235,14 +243,17 @@ describe('api service flow', () => {
 
     const tasks = await apiService.getProjectTasks(flatProject.id);
     expect(tasks.length).toBeGreaterThan(0);
+    expect(tasks[0]?.issueKey).toBeTruthy();
 
     const firstTask = tasks[0];
     await apiService.patchProjectTaskMeta(flatProject.id, firstTask.id, {
       task_type: 'feature',
       direction_ids: [],
+      description: 'Flat task description',
     });
     const tasksAfterMeta = await apiService.getProjectTasks(flatProject.id);
     expect(tasksAfterMeta[0]?.taskType).toBe('feature');
+    expect(tasksAfterMeta[0]?.description).toBe('Flat task description');
     await apiService.assignProjectTask(flatProject.id, firstTask.id, {
       user_id: 'teammate-1',
     });
@@ -264,5 +275,40 @@ describe('api service flow', () => {
     expect(publicPayload.stages).toHaveLength(0);
 
     await expect(apiService.approvePublicProject(shareToken)).rejects.toBeTruthy();
+  });
+
+  it('supports agent runs flow (create/list/poll completed and failed)', async () => {
+    const token = await apiService.signin({
+      email: 'test@example.com',
+      password: 'password123',
+    });
+    useAuthStore.getState().setToken(token);
+
+    const project = await apiService.createProject({
+      project_name: 'Agent Project',
+      workflow_type: 'flat',
+    });
+
+    const created = await apiService.createAgentRun(project.id, {
+      prompt: 'Сгенерируй план релиза',
+    });
+    expect(created.id).toBeTruthy();
+    expect(['queued', 'running', 'completed']).toContain(created.status);
+
+    const list = await apiService.getAgentRuns(project.id, 20);
+    expect(list.length).toBeGreaterThan(0);
+
+    let completed = await apiService.getAgentRun(project.id, created.id);
+    completed = await apiService.getAgentRun(project.id, created.id);
+    expect(completed.status).toBe('completed');
+    expect(completed.outputText).toBeTruthy();
+
+    const failedRun = await apiService.createAgentRun(project.id, {
+      prompt: 'please fail this run',
+    });
+    await apiService.getAgentRun(project.id, failedRun.id);
+    const failedStatus = await apiService.getAgentRun(project.id, failedRun.id);
+    expect(failedStatus.status).toBe('failed');
+    expect(failedStatus.errorMessage).toBeTruthy();
   });
 });

@@ -29,6 +29,8 @@ const stagePriority: Record<StageStatus, number> = {
   unknown: 4,
 };
 
+const formatIssueKey = (value?: string) => (value ? value.toUpperCase() : null);
+
 export const PublicClientPage = () => {
   const { shareToken = '' } = useParams();
   const [status, setStatus] = useState<Status>('idle');
@@ -162,6 +164,7 @@ export const PublicClientPage = () => {
                           const taskStatus: StageStatus = task.done ? 'completed' : 'active';
                           return (
                             <article key={task.id} className={`client-card client-stage-card stage-${taskStatus}`}>
+                              {task.issueKey ? <p className="client-issue-key">{formatIssueKey(task.issueKey)}</p> : null}
                               <p className="client-stage-title">{task.title}</p>
                               <p className={`client-state state-${taskStatus}`}>
                                 <span className="state-dot" />

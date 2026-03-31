@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  extractAgentRun,
+  extractAgentRuns,
   extractAdminActionLogs,
   extractAdminStat,
   extractApiTokens,
   extractCreatedApiToken,
+  extractDirection,
   extractDirections,
   extractProjects,
   extractTasks,
@@ -244,6 +247,7 @@ describe('task extractors', () => {
         {
           _id: 'task-1',
           title: 'Assigned',
+          issue_key: 'ul-101',
           is_done: false,
           assignee_user_id: 'user-1',
           task_type: 'bug',
@@ -255,6 +259,7 @@ describe('task extractors', () => {
     });
 
     expect(tasks).toHaveLength(3);
+    expect(tasks[0].issueKey).toBe('ul-101');
     expect(tasks[0].assigneeUserId).toBe('user-1');
     expect(tasks[0].taskType).toBe('bug');
     expect(tasks[0].directionIds).toEqual(['dir-1', 'dir-2']);
@@ -262,6 +267,42 @@ describe('task extractors', () => {
     expect(tasks[1].taskType).toBe('feature');
     expect(tasks[2].assigneeUserId).toBeUndefined();
     expect(tasks[2].taskType).toBe('task');
+  });
+});
+
+describe('agent run extractors', () => {
+  it('parses runs list from nested payload', () => {
+    const runs = extractAgentRuns({
+      status: 'ok',
+      data: [
+        {
+          _id: 'run-1',
+          status: 'running',
+          prompt: 'Сделай задачу',
+          created_at: '2026-03-31T10:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(runs).toHaveLength(1);
+    expect(runs[0].id).toBe('run-1');
+    expect(runs[0].status).toBe('running');
+    expect(runs[0].prompt).toBe('Сделай задачу');
+  });
+
+  it('parses single run payload', () => {
+    const run = extractAgentRun({
+      data: {
+        _id: 'run-2',
+        status: 'failed',
+        prompt: 'fail this',
+        error_message: 'Boom',
+      },
+    });
+
+    expect(run.id).toBe('run-2');
+    expect(run.status).toBe('failed');
+    expect(run.errorMessage).toBe('Boom');
   });
 });
 
@@ -274,6 +315,28 @@ describe('direction extractors', () => {
     expect(directions).toHaveLength(2);
     expect(directions[0].id).toBe('dir-1');
     expect(directions[0].name).toBe('Backend');
+  });
+
+  it('parses single direction object response', () => {
+    const direction = extractDirection({
+      _id: 'dir-single',
+      name: 'Mobile',
+    });
+
+    expect(direction.id).toBe('dir-single');
+    expect(direction.name).toBe('Mobile');
+  });
+
+  it('parses wrapped single direction response', () => {
+    const direction = extractDirection({
+      data: {
+        _id: 'dir-wrapped',
+        name: 'Security',
+      },
+    });
+
+    expect(direction.id).toBe('dir-wrapped');
+    expect(direction.name).toBe('Security');
   });
 });
 

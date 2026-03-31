@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type {
+  AgentRun,
   AdminActionAuthType,
   AdminActionLog,
   AdminActionLogsPayload,
@@ -63,15 +64,46 @@ const taskSchema = z
     _id: z.string().optional(),
     id: z.string().optional(),
     title: z.string().optional(),
+    issue_key: z.string().optional(),
+    issueKey: z.string().optional(),
     done: z.boolean().optional(),
     is_done: z.boolean().optional(),
     completed: z.boolean().optional(),
     task_type: z.string().optional(),
     taskType: z.string().optional(),
+    description: z.string().optional(),
+    task_description: z.string().optional(),
     direction_ids: z.array(z.unknown()).optional(),
     directionIds: z.array(z.unknown()).optional(),
     assignee_user_id: z.string().nullable().optional(),
     assigneeUserId: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const agentRunSchema = z
+  .object({
+    _id: z.string().optional(),
+    id: z.string().optional(),
+    run_id: z.string().optional(),
+    runId: z.string().optional(),
+    status: z.string().optional(),
+    prompt: z.string().optional(),
+    input: z.string().optional(),
+    output_text: z.string().optional(),
+    outputText: z.string().optional(),
+    result: z.string().optional(),
+    error_message: z.string().optional(),
+    errorMessage: z.string().optional(),
+    created_at: z.string().optional(),
+    createdAt: z.string().optional(),
+    updated_at: z.string().optional(),
+    updatedAt: z.string().optional(),
+    error: z
+      .object({
+        message: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
   })
   .passthrough();
 
@@ -481,6 +513,14 @@ export const normalizeTask = (value: unknown, index = 0): Task => {
   return {
     id: normalizeId(record, `task-${index}`),
     title: typeof record.title === 'string' && record.title ? record.title : 'Без названия задачи',
+    description:
+      (typeof record.description === 'string' && record.description) ||
+      (typeof record.task_description === 'string' && record.task_description) ||
+      undefined,
+    issueKey:
+      (typeof record.issue_key === 'string' && record.issue_key) ||
+      (typeof record.issueKey === 'string' && record.issueKey) ||
+      undefined,
     done,
     taskType,
     directionIds,
@@ -488,6 +528,59 @@ export const normalizeTask = (value: unknown, index = 0): Task => {
       (typeof record.assignee_user_id === 'string' && record.assignee_user_id) ||
       (typeof record.assigneeUserId === 'string' && record.assigneeUserId) ||
       undefined,
+    raw: record,
+  };
+};
+
+const agentRunStatuses = ['queued', 'running', 'completed', 'failed', 'cancelled', 'canceled'] as const;
+
+const toAgentRunStatus = (value: unknown): AgentRun['status'] => {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (agentRunStatuses.includes(normalized as (typeof agentRunStatuses)[number])) {
+    return normalized as AgentRun['status'];
+  }
+  return 'unknown';
+};
+
+export const normalizeAgentRun = (value: unknown, index = 0): AgentRun => {
+  const parsed = agentRunSchema.safeParse(value);
+  const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
+  const errorRecord = pickRecordFromPossibleKeys(record, ['error']) ?? {};
+
+  const idCandidate = record._id ?? record.id ?? record.run_id ?? record.runId;
+  const id = typeof idCandidate === 'string' && idCandidate.length > 0 ? idCandidate : `run-${index}`;
+
+  const prompt =
+    (typeof record.prompt === 'string' && record.prompt) ||
+    (typeof record.input === 'string' && record.input) ||
+    '';
+  const outputText =
+    (typeof record.output_text === 'string' && record.output_text) ||
+    (typeof record.outputText === 'string' && record.outputText) ||
+    (typeof record.result === 'string' && record.result) ||
+    undefined;
+  const errorMessage =
+    (typeof record.error_message === 'string' && record.error_message) ||
+    (typeof record.errorMessage === 'string' && record.errorMessage) ||
+    (typeof errorRecord.message === 'string' && errorRecord.message) ||
+    undefined;
+  const createdAt =
+    (typeof record.created_at === 'string' && record.created_at) ||
+    (typeof record.createdAt === 'string' && record.createdAt) ||
+    undefined;
+  const updatedAt =
+    (typeof record.updated_at === 'string' && record.updated_at) ||
+    (typeof record.updatedAt === 'string' && record.updatedAt) ||
+    undefined;
+
+  return {
+    id,
+    status: toAgentRunStatus(record.status),
+    prompt,
+    outputText,
+    errorMessage,
+    createdAt,
+    updatedAt,
     raw: record,
   };
 };
@@ -987,8 +1080,86 @@ export const extractStages = (value: unknown): Stage[] =>
 export const extractTasks = (value: unknown): Task[] =>
   normalizeCollection(value, ['tasks', 'data', 'items'], normalizeTask);
 
-export const extractDirections = (value: unknown): DirectionTag[] =>
-  normalizeCollection(value, ['directions', 'data', 'items'], normalizeDirection);
+export const extractAgentRuns = (value: unknown): AgentRun[] => {
+  if (Array.isArray(value)) {
+    return value.map(normalizeAgentRun);
+  }
+
+  const asObj = asRecord(value);
+  const nested = pickRecordFromPossibleKeys(asObj, ['data', 'run', 'item']);
+  const source = nested ?? asObj;
+
+  const directArray = pickArrayFromPossibleKeys(source, ['runs', 'data', 'items']);
+  if (directArray.length > 0) {
+    return directArray.map(normalizeAgentRun);
+  }
+
+  const fallbackArray = pickFirstArrayValue(source);
+  if (fallbackArray.length > 0) {
+    return fallbackArray.map(normalizeAgentRun);
+  }
+
+  const likelySingleRun =
+    typeof source._id === 'string' ||
+    typeof source.id === 'string' ||
+    typeof source.run_id === 'string' ||
+    typeof source.runId === 'string';
+
+  if (likelySingleRun) {
+    return [normalizeAgentRun(source)];
+  }
+
+  return [];
+};
+
+export const extractAgentRun = (value: unknown): AgentRun => {
+  const items = extractAgentRuns(value);
+  if (items.length > 0) {
+    return items[0];
+  }
+
+  throw new Error('Invalid agent run payload');
+};
+
+export const extractDirections = (value: unknown): DirectionTag[] => {
+  if (Array.isArray(value)) {
+    return value.map(normalizeDirection);
+  }
+
+  const asObj = asRecord(value);
+  const nested = pickRecordFromPossibleKeys(asObj, ['data', 'direction', 'item']);
+  const source = nested ?? asObj;
+
+  const directArray = pickArrayFromPossibleKeys(source, ['directions', 'data', 'items']);
+  if (directArray.length > 0) {
+    return directArray.map(normalizeDirection);
+  }
+
+  const fallbackArray = pickFirstArrayValue(source);
+  if (fallbackArray.length > 0) {
+    return fallbackArray.map(normalizeDirection);
+  }
+
+  const likelySingleDirection =
+    typeof source._id === 'string' ||
+    typeof source.id === 'string' ||
+    typeof source.name === 'string';
+
+  if (likelySingleDirection) {
+    return [normalizeDirection(source)];
+  }
+
+  return [];
+};
+
+export const extractDirection = (value: unknown): DirectionTag => {
+  const items = extractDirections(value);
+  if (items.length > 0) {
+    return items[0];
+  }
+
+  throw new Error('Invalid direction payload');
+};
 
 export const extractTeams = (value: unknown): Team[] => {
   if (Array.isArray(value)) {

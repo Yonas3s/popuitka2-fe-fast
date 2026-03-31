@@ -7,6 +7,7 @@ import { useUiStore } from '../store/ui.store';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
+import { AgentRunsPanel } from '../components/agent/AgentRunsPanel';
 import type { DirectionTag, TaskType, TeamMember } from '../types/models';
 
 type EditState = {
@@ -33,6 +34,8 @@ const taskTypeLabels: Record<TaskType, string> = {
   improvement: 'Улучшение',
   chore: 'Техдолг',
 };
+
+const formatIssueKey = (value?: string) => (value ? value.toUpperCase() : null);
 
 export const StageDetailsPage = () => {
   const { projectId = '', stageId = '' } = useParams();
@@ -67,12 +70,14 @@ export const StageDetailsPage = () => {
   const [requestingReview, setRequestingReview] = useState(false);
   const [assignableMembers, setAssignableMembers] = useState<TeamMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [membersAccessDenied, setMembersAccessDenied] = useState(false);
   const [directions, setDirections] = useState<DirectionTag[]>([]);
   const [directionsLoading, setDirectionsLoading] = useState(false);
   const [taskTypeFilter, setTaskTypeFilter] = useState<'all' | TaskType>('all');
   const [directionFilter, setDirectionFilter] = useState<'all' | string>('all');
   const [newDirectionName, setNewDirectionName] = useState('');
-  const [activeTaskMetaId, setActiveTaskMetaId] = useState<string | null>(null);
+  const [activeTaskDetailsId, setActiveTaskDetailsId] = useState<string | null>(null);
+  const [taskDescriptionEdits, setTaskDescriptionEdits] = useState<Record<string, string>>({});
   const quickTaskInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -93,6 +98,7 @@ export const StageDetailsPage = () => {
   useEffect(() => {
     if (!project?.teamId) {
       setAssignableMembers([]);
+      setMembersAccessDenied(false);
       return;
     }
 
@@ -104,11 +110,13 @@ export const StageDetailsPage = () => {
       .then((members) => {
         if (!cancelled) {
           setAssignableMembers(members);
+          setMembersAccessDenied(false);
         }
       })
-      .catch(() => {
+      .catch((reason) => {
         if (!cancelled) {
           setAssignableMembers([]);
+          setMembersAccessDenied(normalizeApiError(reason).status === 403);
         }
       })
       .finally(() => {
@@ -362,6 +370,36 @@ export const StageDetailsPage = () => {
     }
   };
 
+  const onSaveTaskDescription = async (taskId: string) => {
+    if (!ensureStageRoute()) {
+      return;
+    }
+
+    const task = tasks.find((item) => item.id === taskId);
+    if (!task) {
+      return;
+    }
+
+    const original = task.description ?? '';
+    const nextDescription = (taskDescriptionEdits[taskId] ?? original).trim();
+    if (nextDescription === original) {
+      return;
+    }
+
+    try {
+      await patchTaskMeta(projectId, stageId, taskId, {
+        description: nextDescription,
+      });
+      setTaskDescriptionEdits((prev) => ({
+        ...prev,
+        [taskId]: nextDescription,
+      }));
+      pushToast('Описание задачи обновлено', 'success');
+    } catch (reason) {
+      pushToast(normalizeApiError(reason).message, 'error');
+    }
+  };
+
   const onDeleteTask = (taskId: string) => {
     if (!ensureStageRoute()) {
       return;
@@ -456,7 +494,34 @@ export const StageDetailsPage = () => {
       setNewDirectionName('');
       pushToast('Направление добавлено', 'success');
     } catch (reason) {
-      pushToast(normalizeApiError(reason).message, 'error');
+      const normalized = normalizeApiError(reason);
+
+      // Backend may return 500 for duplicate/create race cases.
+      if (normalized.status === 409 || normalized.status === 500) {
+        try {
+          const refreshed = await apiService.getDirections(projectId);
+          setDirections(refreshed);
+
+          const existing = refreshed.find(
+            (direction) => direction.name.trim().toLowerCase() === name.toLowerCase(),
+          );
+
+          if (existing) {
+            setNewDirectionName('');
+            pushToast('Направление уже существует', 'info');
+            return;
+          }
+        } catch {
+          // no-op, show original backend error below
+        }
+      }
+
+      if (normalized.status === 403) {
+        pushToast('Нет доступа к направлениям проекта', 'error');
+        return;
+      }
+
+      pushToast(normalized.message, 'error');
     }
   };
 
@@ -557,6 +622,7 @@ export const StageDetailsPage = () => {
                         />
                       </label>
                       <div className="stage-v5-task-main">
+                        {task.issueKey ? <span className="stage-v5-task-issue-key">{formatIssueKey(task.issueKey)}</span> : null}
                         <input
                           value={value}
                           onChange={(event) => {
@@ -586,15 +652,39 @@ export const StageDetailsPage = () => {
                             type="button"
                             className="stage-v5-task-meta-toggle"
                             onClick={() => {
-                              setActiveTaskMetaId((prev) => (prev === task.id ? null : task.id));
+                              setTaskDescriptionEdits((prev) =>
+                                prev[task.id] !== undefined
+                                  ? prev
+                                  : {
+                                      ...prev,
+                                      [task.id]: task.description ?? '',
+                                    },
+                              );
+                              setActiveTaskDetailsId((prev) => (prev === task.id ? null : task.id));
                             }}
                           >
-                            Теги
+                            Детали
                           </button>
                         </div>
 
-                        {activeTaskMetaId === task.id ? (
+                        {activeTaskDetailsId === task.id ? (
                           <div className="stage-v5-task-editor">
+                            <label className="stage-v5-task-description">
+                              <span>Описание</span>
+                              <textarea
+                                rows={3}
+                                value={taskDescriptionEdits[task.id] ?? task.description ?? ''}
+                                placeholder="Добавьте описание задачи"
+                                onChange={(event) => {
+                                  const nextValue = event.target.value;
+                                  setTaskDescriptionEdits((prev) => ({
+                                    ...prev,
+                                    [task.id]: nextValue,
+                                  }));
+                                }}
+                              />
+                            </label>
+
                             <label className="stage-v5-task-type">
                               <span>Тип</span>
                               <select
@@ -611,7 +701,7 @@ export const StageDetailsPage = () => {
                               </select>
                             </label>
 
-                            {project?.teamId ? (
+                            {project?.teamId && !membersAccessDenied ? (
                               <label className="stage-v5-task-assign">
                                 <span>Исполнитель</span>
                                 <select
@@ -629,6 +719,8 @@ export const StageDetailsPage = () => {
                                   ))}
                                 </select>
                               </label>
+                            ) : project?.teamId ? (
+                              <span className="stage-v5-task-assign-note">Исполнители недоступны (нет доступа к команде)</span>
                             ) : (
                               <span className="stage-v5-task-assign-note">Личный проект</span>
                             )}
@@ -655,6 +747,17 @@ export const StageDetailsPage = () => {
                                   Нет направлений. Добавьте в правой колонке.
                                 </span>
                               )}
+                            </div>
+
+                            <div className="stage-v5-task-editor-actions">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  void onSaveTaskDescription(task.id);
+                                }}
+                              >
+                                Сохранить описание
+                              </button>
                             </div>
                           </div>
                         ) : null}
@@ -840,14 +943,7 @@ export const StageDetailsPage = () => {
               </div>
             </article>
 
-            <article className="stage-v5-insight">
-              <h4>ИИ-аналитика</h4>
-              <p>
-                Этот этап идет медленнее среднего. Попробуйте разбить критичные задачи на более мелкие для лучшей
-                пропускной способности.
-              </p>
-              <button type="button">Открыть подробный анализ</button>
-            </article>
+            <AgentRunsPanel projectId={projectId} compact />
           </aside>
         </section>
       </main>

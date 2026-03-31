@@ -42,6 +42,8 @@ export const endpoints = {
   assignProjectTask: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}/assign`,
   patchProjectTaskMeta: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}/meta`,
   deleteProjectTask: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}`,
+  agentRuns: (projectId: string) => `/projects/${projectId}/agent/runs`,
+  agentRunById: (projectId: string, runId: string) => `/projects/${projectId}/agent/runs/${runId}`,
   shareLink: (projectId: string) => `/projects/${projectId}/share-link`,
   requestReview: (projectId: string, stageId: string) =>
     `/projects/${projectId}/stages/${stageId}/request-review`,

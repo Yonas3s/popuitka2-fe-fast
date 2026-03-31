@@ -8,6 +8,7 @@ import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { FRONTEND_BASE_URL } from '../lib/config/env';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
+import { AgentRunsPanel } from '../components/agent/AgentRunsPanel';
 import type { ApiError, DirectionTag, Stage, Task, TaskType, TeamMember } from '../types/models';
 
 type StageForm = {
@@ -22,6 +23,8 @@ const taskTypeLabels: Record<TaskType, string> = {
   improvement: 'Улучшение',
   chore: 'Техдолг',
 };
+
+const formatIssueKey = (value?: string) => (value ? value.toUpperCase() : null);
 
 export const ProjectDetailsPage = () => {
   const { projectId = '' } = useParams();
@@ -44,8 +47,11 @@ export const ProjectDetailsPage = () => {
   const [flatError, setFlatError] = useState<ApiError | null>(null);
   const [flatTaskDraft, setFlatTaskDraft] = useState('');
   const [flatTaskEdits, setFlatTaskEdits] = useState<Record<string, string>>({});
+  const [flatTaskDescriptionEdits, setFlatTaskDescriptionEdits] = useState<Record<string, string>>({});
+  const [activeFlatTaskId, setActiveFlatTaskId] = useState<string | null>(null);
   const [assignableMembers, setAssignableMembers] = useState<TeamMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [membersAccessDenied, setMembersAccessDenied] = useState(false);
   const [directions, setDirections] = useState<DirectionTag[]>([]);
   const [directionsLoading, setDirectionsLoading] = useState(false);
   const [flatTypeFilter, setFlatTypeFilter] = useState<'all' | TaskType>('all');
@@ -151,6 +157,7 @@ export const ProjectDetailsPage = () => {
   useEffect(() => {
     if (!project?.teamId) {
       setAssignableMembers([]);
+      setMembersAccessDenied(false);
       return;
     }
 
@@ -162,11 +169,13 @@ export const ProjectDetailsPage = () => {
       .then((members) => {
         if (!cancelled) {
           setAssignableMembers(members);
+          setMembersAccessDenied(false);
         }
       })
-      .catch(() => {
+      .catch((reason) => {
         if (!cancelled) {
           setAssignableMembers([]);
+          setMembersAccessDenied(normalizeApiError(reason).status === 403);
         }
       })
       .finally(() => {
@@ -305,6 +314,42 @@ export const ProjectDetailsPage = () => {
 
     try {
       await apiService.editProjectTaskTitle(projectId, taskId, { title });
+      await loadFlatTasks();
+    } catch (reason) {
+      setFlatTasks(previous);
+      const normalized = normalizeApiError(reason);
+      pushToast(normalized.message, 'error');
+    }
+  };
+
+  const onSaveFlatTaskDescription = async (taskId: string) => {
+    const current = flatTasks.find((task) => task.id === taskId);
+    if (!current) {
+      return;
+    }
+
+    const description = (flatTaskDescriptionEdits[taskId] ?? current.description ?? '').trim();
+    const original = current.description ?? '';
+    if (description === original) {
+      return;
+    }
+
+    const previous = flatTasks;
+    const optimistic = previous.map((task) =>
+      task.id === taskId
+        ? {
+            ...task,
+            description,
+          }
+        : task,
+    );
+    setFlatTasks(optimistic);
+
+    try {
+      await apiService.patchProjectTaskMeta(projectId, taskId, {
+        description,
+      });
+      pushToast('Описание задачи обновлено', 'success');
       await loadFlatTasks();
     } catch (reason) {
       setFlatTasks(previous);
@@ -569,6 +614,10 @@ export const ProjectDetailsPage = () => {
             </section>
           ) : null}
 
+          <section className="project-v4-agent-section">
+            <AgentRunsPanel projectId={projectId} />
+          </section>
+
           {!isFlatWorkflow && createOpen ? (
             <section className="project-v4-create-stage">
               <form className="project-v4-create-form" onSubmit={onSubmit}>
@@ -752,6 +801,7 @@ export const ProjectDetailsPage = () => {
                       </label>
 
                       <div className="project-v4-flat-main">
+                        {task.issueKey ? <span className="project-v4-flat-issue-key">{formatIssueKey(task.issueKey)}</span> : null}
                         <input
                           className="project-v4-flat-input"
                           value={value}
@@ -784,7 +834,7 @@ export const ProjectDetailsPage = () => {
                           <span className="project-v4-flat-assignee-id">
                             assignee_user_id: {task.assigneeUserId || '—'}
                           </span>
-                          {project?.teamId ? (
+                          {project?.teamId && !membersAccessDenied ? (
                             <label className="project-v4-flat-assign">
                               <span>Исполнитель</span>
                               <select
@@ -802,6 +852,8 @@ export const ProjectDetailsPage = () => {
                                 ))}
                               </select>
                             </label>
+                          ) : project?.teamId ? (
+                            <span className="project-v4-flat-assign-note">Исполнители недоступны (нет доступа к команде)</span>
                           ) : (
                             <span className="project-v4-flat-assign-note">Личный проект</span>
                           )}
@@ -826,9 +878,55 @@ export const ProjectDetailsPage = () => {
                             })}
                           </div>
                         ) : null}
+
+                        {activeFlatTaskId === task.id ? (
+                          <div className="project-v4-flat-details">
+                            <label>
+                              <span>Описание</span>
+                              <textarea
+                                rows={3}
+                                value={flatTaskDescriptionEdits[task.id] ?? task.description ?? ''}
+                                placeholder="Добавьте описание задачи"
+                                onChange={(event) => {
+                                  const nextValue = event.target.value;
+                                  setFlatTaskDescriptionEdits((prev) => ({
+                                    ...prev,
+                                    [task.id]: nextValue,
+                                  }));
+                                }}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              className="project-v4-secondary-btn"
+                              onClick={() => {
+                                void onSaveFlatTaskDescription(task.id);
+                              }}
+                            >
+                              Сохранить описание
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
 
                       <div className="project-v4-flat-actions">
+                        <button
+                          type="button"
+                          title="Открыть детали"
+                          onClick={() => {
+                            setFlatTaskDescriptionEdits((prev) =>
+                              prev[task.id] !== undefined
+                                ? prev
+                                : {
+                                    ...prev,
+                                    [task.id]: task.description ?? '',
+                                  },
+                            );
+                            setActiveFlatTaskId((prev) => (prev === task.id ? null : task.id));
+                          }}
+                        >
+                          ⋯
+                        </button>
                         <button
                           type="button"
                           onClick={() => {

@@ -179,6 +179,8 @@ export type Stage = {
 export type Task = {
   id: string;
   title: string;
+  description?: string;
+  issueKey?: string;
   done: boolean;
   taskType: TaskType;
   directionIds: string[];
@@ -198,6 +200,26 @@ export type PublicSharePayload = {
 
 export type ShareLinkResponse = {
   shareLink: string;
+};
+
+export type AgentRunStatus =
+  | 'queued'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | 'canceled'
+  | 'unknown';
+
+export type AgentRun = {
+  id: string;
+  status: AgentRunStatus;
+  prompt: string;
+  outputText?: string;
+  errorMessage?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  raw: Record<string, unknown>;
 };
 
 export type ToastType = 'success' | 'error' | 'info';
