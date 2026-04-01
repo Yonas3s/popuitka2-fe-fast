@@ -211,10 +211,22 @@ export type AgentRunStatus =
   | 'canceled'
   | 'unknown';
 
+export type AgentCreatedTask = {
+  id?: string;
+  issueKey?: string;
+  title: string;
+};
+
 export type AgentRun = {
   id: string;
   status: AgentRunStatus;
   prompt: string;
+  model?: string;
+  createTasks?: boolean;
+  taskLimit?: number;
+  targetStageId?: string;
+  createdTasksCount?: number;
+  createdTasks: AgentCreatedTask[];
   outputText?: string;
   errorMessage?: string;
   createdAt?: string;

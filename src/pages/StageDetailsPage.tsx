@@ -7,7 +7,6 @@ import { useUiStore } from '../store/ui.store';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
-import { AgentRunsPanel } from '../components/agent/AgentRunsPanel';
 import type { DirectionTag, TaskType, TeamMember } from '../types/models';
 
 type EditState = {
@@ -943,7 +942,6 @@ export const StageDetailsPage = () => {
               </div>
             </article>
 
-            <AgentRunsPanel projectId={projectId} compact />
           </aside>
         </section>
       </main>

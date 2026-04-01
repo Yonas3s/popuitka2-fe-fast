@@ -8,11 +8,19 @@ type AgentState = {
   currentRunId: string | null;
   isPolling: boolean;
   prompt: string;
+  model: string;
+  createTasks: boolean;
+  taskLimit: number;
+  stageId: string | null;
   loadingRuns: boolean;
   loadingCurrent: boolean;
   creatingRun: boolean;
   error: ApiError | null;
   setPrompt: (value: string) => void;
+  setModel: (value: string) => void;
+  setCreateTasks: (value: boolean) => void;
+  setTaskLimit: (value: number) => void;
+  setStageId: (value: string | null) => void;
   setCurrentRunId: (runId: string | null) => void;
   fetchRuns: (projectId: string, limit?: number) => Promise<void>;
   createRun: (projectId: string) => Promise<void>;
@@ -64,6 +72,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   currentRunId: null,
   isPolling: false,
   prompt: '',
+  model: 'gemini-2.5-flash',
+  createTasks: true,
+  taskLimit: 7,
+  stageId: null,
   loadingRuns: false,
   loadingCurrent: false,
   creatingRun: false,
@@ -71,6 +83,23 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
   setPrompt(value) {
     set({ prompt: value });
+  },
+
+  setModel(value) {
+    set({ model: value });
+  },
+
+  setCreateTasks(value) {
+    set({ createTasks: value });
+  },
+
+  setTaskLimit(value) {
+    const clamped = Math.min(20, Math.max(1, Math.floor(value || 1)));
+    set({ taskLimit: clamped });
+  },
+
+  setStageId(value) {
+    set({ stageId: value });
   },
 
   setCurrentRunId(runId) {
@@ -106,6 +135,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
   async createRun(projectId) {
     const prompt = get().prompt.trim();
+    const model = get().model.trim() || 'gemini-2.5-flash';
+    const createTasks = get().createTasks;
+    const taskLimit = Math.min(20, Math.max(1, Math.floor(get().taskLimit || 7)));
+    const stageId = get().stageId;
     if (!prompt) {
       throw new Error('Введите запрос для агента');
     }
@@ -115,6 +148,12 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       id: tempRunId,
       status: 'queued',
       prompt,
+      model,
+      createTasks,
+      taskLimit,
+      targetStageId: stageId || undefined,
+      createdTasksCount: 0,
+      createdTasks: [],
       createdAt: new Date().toISOString(),
       raw: {},
     };
@@ -127,7 +166,13 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     }));
 
     try {
-      const createdRun = await apiService.createAgentRun(projectId, { prompt });
+      const createdRun = await apiService.createAgentRun(projectId, {
+        prompt,
+        model,
+        create_tasks: createTasks,
+        task_limit: taskLimit,
+        stage_id: createTasks && stageId ? stageId : undefined,
+      });
       set((state) => {
         const withoutTemp = state.runs.filter((item) => item.id !== tempRunId);
         return {
@@ -213,6 +258,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       currentRunId: null,
       isPolling: false,
       prompt: '',
+      model: 'gemini-2.5-flash',
+      createTasks: true,
+      taskLimit: 7,
+      stageId: null,
       loadingRuns: false,
       loadingCurrent: false,
       creatingRun: false,
@@ -220,4 +269,3 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     });
   },
 }));
-

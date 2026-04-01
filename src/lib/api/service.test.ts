@@ -291,9 +291,13 @@ describe('api service flow', () => {
 
     const created = await apiService.createAgentRun(project.id, {
       prompt: 'Сгенерируй план релиза',
+      model: 'gpt-5.2',
+      create_tasks: false,
+      task_limit: 7,
     });
     expect(created.id).toBeTruthy();
     expect(['queued', 'running', 'completed']).toContain(created.status);
+    expect(created.model).toBe('gpt-5.2');
 
     const list = await apiService.getAgentRuns(project.id, 20);
     expect(list.length).toBeGreaterThan(0);
@@ -305,10 +309,48 @@ describe('api service flow', () => {
 
     const failedRun = await apiService.createAgentRun(project.id, {
       prompt: 'please fail this run',
+      model: 'gpt-5.2',
+      create_tasks: false,
+      task_limit: 7,
     });
     await apiService.getAgentRun(project.id, failedRun.id);
     const failedStatus = await apiService.getAgentRun(project.id, failedRun.id);
     expect(failedStatus.status).toBe('failed');
     expect(failedStatus.errorMessage).toBeTruthy();
+  });
+
+  it('smoke: create run with create_tasks=true and checks tasks appear after completion', async () => {
+    const token = await apiService.signin({
+      email: 'test@example.com',
+      password: 'password123',
+    });
+    useAuthStore.getState().setToken(token);
+
+    const project = await apiService.createProject({
+      project_name: 'Agent Stages Project',
+      workflow_type: 'stages',
+    });
+    const stage = await apiService.createStage(project.id, {
+      stage_name: 'Agent Stage',
+      description: 'For agent autocreate',
+    });
+
+    const run = await apiService.createAgentRun(project.id, {
+      prompt: 'Создай задачи для этапа',
+      model: 'gpt-5.2',
+      create_tasks: true,
+      task_limit: 3,
+      stage_id: stage.id,
+    });
+
+    await apiService.getAgentRun(project.id, run.id);
+    const completed = await apiService.getAgentRun(project.id, run.id);
+    expect(completed.status).toBe('completed');
+    expect(completed.createdTasksCount).toBe(3);
+    expect(completed.targetStageId).toBe(stage.id);
+
+    const tasks = await apiService.getTasks(project.id, stage.id);
+    expect(tasks.length).toBeGreaterThanOrEqual(3);
+    expect(tasks.some((task) => (task.issueKey || '').toLowerCase().startsWith('ul-agent-'))).toBe(true);
   });
 });

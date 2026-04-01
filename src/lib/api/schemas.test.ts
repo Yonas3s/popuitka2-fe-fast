@@ -279,6 +279,12 @@ describe('agent run extractors', () => {
           _id: 'run-1',
           status: 'running',
           prompt: 'Сделай задачу',
+          model: 'gpt-5.2',
+          create_tasks: true,
+          task_limit: 3,
+          target_stage_id: 'st-1',
+          created_tasks_count: 1,
+          created_tasks: [{ _id: 't-1', issue_key: 'popu-100', title: 'Task 1' }],
           created_at: '2026-03-31T10:00:00.000Z',
         },
       ],
@@ -288,6 +294,12 @@ describe('agent run extractors', () => {
     expect(runs[0].id).toBe('run-1');
     expect(runs[0].status).toBe('running');
     expect(runs[0].prompt).toBe('Сделай задачу');
+    expect(runs[0].model).toBe('gpt-5.2');
+    expect(runs[0].createTasks).toBe(true);
+    expect(runs[0].taskLimit).toBe(3);
+    expect(runs[0].targetStageId).toBe('st-1');
+    expect(runs[0].createdTasksCount).toBe(1);
+    expect(runs[0].createdTasks[0]?.issueKey).toBe('popu-100');
   });
 
   it('parses single run payload', () => {

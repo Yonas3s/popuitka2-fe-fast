@@ -21,6 +21,10 @@ describe('agent store', () => {
     expect(state.currentRunId).toBeNull();
     expect(state.isPolling).toBe(false);
     expect(state.prompt).toBe('');
+    expect(state.model).toBeTruthy();
+    expect(state.createTasks).toBe(true);
+    expect(state.taskLimit).toBe(7);
+    expect(state.stageId).toBeNull();
 
     state.setPrompt('Собери summary по задачам');
     await state.createRun('p1');
@@ -49,4 +53,3 @@ describe('agent store', () => {
     expect(useAgentStore.getState().isPolling).toBe(false);
   });
 });
-

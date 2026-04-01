@@ -8,7 +8,6 @@ import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { FRONTEND_BASE_URL } from '../lib/config/env';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
-import { AgentRunsPanel } from '../components/agent/AgentRunsPanel';
 import type { ApiError, DirectionTag, Stage, Task, TaskType, TeamMember } from '../types/models';
 
 type StageForm = {
@@ -613,10 +612,6 @@ export const ProjectDetailsPage = () => {
               </p>
             </section>
           ) : null}
-
-          <section className="project-v4-agent-section">
-            <AgentRunsPanel projectId={projectId} />
-          </section>
 
           {!isFlatWorkflow && createOpen ? (
             <section className="project-v4-create-stage">

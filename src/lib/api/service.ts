@@ -105,6 +105,10 @@ export type PatchTaskMetaPayload = {
 
 export type CreateAgentRunPayload = {
   prompt: string;
+  model: string;
+  create_tasks: boolean;
+  task_limit: number;
+  stage_id?: string;
 };
 
 export type ForgotPasswordPayload = {

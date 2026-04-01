@@ -92,6 +92,17 @@ const agentRunSchema = z
     output_text: z.string().optional(),
     outputText: z.string().optional(),
     result: z.string().optional(),
+    model: z.string().optional(),
+    create_tasks: z.boolean().optional(),
+    createTasks: z.boolean().optional(),
+    task_limit: z.number().optional(),
+    taskLimit: z.number().optional(),
+    target_stage_id: z.string().optional(),
+    targetStageId: z.string().optional(),
+    created_tasks_count: z.number().optional(),
+    createdTasksCount: z.number().optional(),
+    created_tasks: z.array(z.unknown()).optional(),
+    createdTasks: z.array(z.unknown()).optional(),
     error_message: z.string().optional(),
     errorMessage: z.string().optional(),
     created_at: z.string().optional(),
@@ -546,6 +557,11 @@ export const normalizeAgentRun = (value: unknown, index = 0): AgentRun => {
   const parsed = agentRunSchema.safeParse(value);
   const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
   const errorRecord = pickRecordFromPossibleKeys(record, ['error']) ?? {};
+  const createdTasksSource = Array.isArray(record.created_tasks)
+    ? record.created_tasks
+    : Array.isArray(record.createdTasks)
+      ? record.createdTasks
+      : [];
 
   const idCandidate = record._id ?? record.id ?? record.run_id ?? record.runId;
   const id = typeof idCandidate === 'string' && idCandidate.length > 0 ? idCandidate : `run-${index}`;
@@ -564,6 +580,48 @@ export const normalizeAgentRun = (value: unknown, index = 0): AgentRun => {
     (typeof record.errorMessage === 'string' && record.errorMessage) ||
     (typeof errorRecord.message === 'string' && errorRecord.message) ||
     undefined;
+  const model = typeof record.model === 'string' ? record.model : undefined;
+  const createTasks =
+    (typeof record.create_tasks === 'boolean' && record.create_tasks) ||
+    (typeof record.createTasks === 'boolean' && record.createTasks) ||
+    false;
+  const taskLimit =
+    (typeof record.task_limit === 'number' && Number.isFinite(record.task_limit) ? record.task_limit : undefined) ||
+    (typeof record.taskLimit === 'number' && Number.isFinite(record.taskLimit) ? record.taskLimit : undefined);
+  const targetStageId =
+    (typeof record.target_stage_id === 'string' && record.target_stage_id) ||
+    (typeof record.targetStageId === 'string' && record.targetStageId) ||
+    undefined;
+  const createdTasksCount =
+    (typeof record.created_tasks_count === 'number' && Number.isFinite(record.created_tasks_count)
+      ? record.created_tasks_count
+      : undefined) ||
+    (typeof record.createdTasksCount === 'number' && Number.isFinite(record.createdTasksCount)
+      ? record.createdTasksCount
+      : undefined);
+  const createdTasks = createdTasksSource
+    .map((item) => {
+      const asObj = asRecord(item);
+      const title =
+        (typeof asObj.title === 'string' && asObj.title) ||
+        (typeof asObj.task_title === 'string' && asObj.task_title) ||
+        '';
+      if (!title) {
+        return null;
+      }
+      return {
+        id:
+          (typeof asObj._id === 'string' && asObj._id) ||
+          (typeof asObj.id === 'string' && asObj.id) ||
+          undefined,
+        issueKey:
+          (typeof asObj.issue_key === 'string' && asObj.issue_key) ||
+          (typeof asObj.issueKey === 'string' && asObj.issueKey) ||
+          undefined,
+        title,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
   const createdAt =
     (typeof record.created_at === 'string' && record.created_at) ||
     (typeof record.createdAt === 'string' && record.createdAt) ||
@@ -577,6 +635,12 @@ export const normalizeAgentRun = (value: unknown, index = 0): AgentRun => {
     id,
     status: toAgentRunStatus(record.status),
     prompt,
+    model,
+    createTasks,
+    taskLimit,
+    targetStageId,
+    createdTasksCount: createdTasksCount ?? createdTasks.length,
+    createdTasks,
     outputText,
     errorMessage,
     createdAt,
@@ -1094,11 +1158,6 @@ export const extractAgentRuns = (value: unknown): AgentRun[] => {
     return directArray.map(normalizeAgentRun);
   }
 
-  const fallbackArray = pickFirstArrayValue(source);
-  if (fallbackArray.length > 0) {
-    return fallbackArray.map(normalizeAgentRun);
-  }
-
   const likelySingleRun =
     typeof source._id === 'string' ||
     typeof source.id === 'string' ||
@@ -1107,6 +1166,11 @@ export const extractAgentRuns = (value: unknown): AgentRun[] => {
 
   if (likelySingleRun) {
     return [normalizeAgentRun(source)];
+  }
+
+  const fallbackArray = pickFirstArrayValue(source);
+  if (fallbackArray.length > 0) {
+    return fallbackArray.map(normalizeAgentRun);
   }
 
   return [];

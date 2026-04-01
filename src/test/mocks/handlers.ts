@@ -32,6 +32,16 @@ type TaskRecord = {
 type AgentRunRecord = {
   _id: string;
   prompt: string;
+  model: string;
+  create_tasks: boolean;
+  task_limit: number;
+  target_stage_id?: string;
+  created_tasks_count: number;
+  created_tasks: Array<{
+    _id: string;
+    issue_key: string;
+    title: string;
+  }>;
   status: 'queued' | 'running' | 'completed' | 'failed';
   output_text?: string;
   error_message?: string;
@@ -1291,17 +1301,37 @@ export const handlers = [
       return HttpResponse.json({ message: 'not found' }, { status: 404 });
     }
 
-    const body = (await request.json()) as { prompt?: string };
+    const body = (await request.json()) as {
+      prompt?: string;
+      model?: string;
+      create_tasks?: boolean;
+      task_limit?: number;
+      stage_id?: string;
+    };
     const prompt = String(body.prompt || '').trim();
     if (!prompt) {
       return HttpResponse.json({ message: 'prompt required' }, { status: 400 });
     }
+
+    const createTasks = Boolean(body.create_tasks);
+    const taskLimitRaw = Number(body.task_limit);
+    const taskLimit = Number.isFinite(taskLimitRaw)
+      ? Math.min(20, Math.max(1, Math.floor(taskLimitRaw)))
+      : 7;
+    const model = String(body.model || '').trim() || 'gpt-5.2';
+    const targetStageId = typeof body.stage_id === 'string' && body.stage_id ? body.stage_id : undefined;
 
     const shouldFail = /fail|ошиб/i.test(prompt);
     const now = new Date().toISOString();
     const run: AgentRunRecord = {
       _id: randomId('run'),
       prompt,
+      model,
+      create_tasks: createTasks,
+      task_limit: taskLimit,
+      target_stage_id: targetStageId,
+      created_tasks_count: 0,
+      created_tasks: [],
       status: 'running',
       created_at: now,
       updated_at: now,
@@ -1339,10 +1369,61 @@ export const handlers = [
     if (current.status === 'queued' || current.status === 'running') {
       const nextPollCount = current.poll_count + 1;
       if (nextPollCount >= 2) {
+        let createdTasks = current.created_tasks;
+        let createdTasksCount = current.created_tasks_count;
+
+        if (current.finish_status === 'completed' && current.create_tasks && current.created_tasks_count === 0) {
+          const taskCount = current.task_limit;
+          const created: AgentRunRecord['created_tasks'] = [];
+
+          for (let index = 0; index < taskCount; index += 1) {
+            const issueNumber = index + 1;
+            const createdTask = {
+              _id: randomId('agt'),
+              issue_key: `ul-agent-${issueNumber}`,
+              title: `Agent task ${issueNumber}: ${current.prompt.slice(0, 32)}`,
+            };
+            created.push(createdTask);
+          }
+
+          if (current.target_stage_id) {
+            const existingTasks = state.tasksByStage[current.target_stage_id] || [];
+            const nextTasks: TaskRecord[] = created.map((item) => ({
+              _id: item._id,
+              title: item.title,
+              issue_key: item.issue_key,
+              description: 'Создано агентом',
+              done: false,
+              task_type: 'task',
+              direction_ids: [],
+              assignee_user_id: null,
+            }));
+            state.tasksByStage[current.target_stage_id] = [...existingTasks, ...nextTasks];
+          } else {
+            const existingTasks = state.tasksByProject[projectId] || [];
+            const nextTasks: TaskRecord[] = created.map((item) => ({
+              _id: item._id,
+              title: item.title,
+              issue_key: item.issue_key,
+              description: 'Создано агентом',
+              done: false,
+              task_type: 'task',
+              direction_ids: [],
+              assignee_user_id: null,
+            }));
+            state.tasksByProject[projectId] = [...existingTasks, ...nextTasks];
+          }
+
+          createdTasks = created;
+          createdTasksCount = created.length;
+        }
+
         runs[runIndex] = {
           ...current,
           poll_count: nextPollCount,
           status: current.finish_status,
+          created_tasks: createdTasks,
+          created_tasks_count: createdTasksCount,
           updated_at: new Date().toISOString(),
         };
       } else {
