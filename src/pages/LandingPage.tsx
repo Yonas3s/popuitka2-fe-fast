@@ -60,7 +60,7 @@ export const LandingPage = () => {
         centerContent={
           <>
             <a href="#features">Возможности</a>
-            <a href="#workflow">Процесс</a>
+            <a href="#github">GitHub</a>
             <a href="#workflow">CLI</a>
             <a href="#mcp">MCP</a>
           </>
@@ -195,6 +195,83 @@ export const LandingPage = () => {
               <p>Приглашайте клиентов смотреть нужные сборки и собирайте подтверждения с фидбеком в одном месте.</p>
               <div className="stitch-feature-visual approve">
                 <span>Одобрено</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section className="stitch-github" id="github">
+        <div className="stitch-container stitch-github-grid">
+          <div className="stitch-github-copy">
+            <h2>GitHub Sync</h2>
+            <p>
+              Привяжите репозитории к проектам и получайте обновления автоматически.
+              Merge в main — задача закрывается. Push в ветку — событие в логе.
+            </p>
+            <p className="stitch-cli-subtitle">Как это работает</p>
+            <ul className="stitch-cli-list">
+              <li>Установите GitHub App в один клик</li>
+              <li>Привяжите нужные репозитории к проекту</li>
+              <li>Задачи закрываются автоматически при merge</li>
+              <li>Webhook-лог показывает все события в реальном времени</li>
+            </ul>
+            {isAuthenticated ? (
+              <Link to="/settings" className="ui-btn ui-btn-primary">
+                Настроить GitHub
+              </Link>
+            ) : (
+              <a
+                href="https://github.com/apps/popuitkav2"
+                target="_blank"
+                rel="noreferrer"
+                className="stitch-dev-doc-link"
+              >
+                Посмотреть GitHub App
+              </a>
+            )}
+          </div>
+
+          <div className="stitch-github-side">
+            <article className="stitch-github-card">
+              <h3>Привязка репозитория</h3>
+              <div className="stitch-github-demo">
+                <div className="stitch-github-demo-row">
+                  <span className="stitch-github-dot connected" />
+                  <span>acme/web-frontend</span>
+                  <span className="stitch-github-badge">auto-close</span>
+                </div>
+                <div className="stitch-github-demo-row">
+                  <span className="stitch-github-dot connected" />
+                  <span>acme/api-server</span>
+                  <span className="stitch-github-badge">auto-close</span>
+                </div>
+                <div className="stitch-github-demo-row pending">
+                  <span className="stitch-github-dot" />
+                  <span>acme/shared-utils</span>
+                  <span className="stitch-github-badge-outline">привязать</span>
+                </div>
+              </div>
+            </article>
+
+            <article className="stitch-github-card">
+              <h3>Webhook события</h3>
+              <div className="stitch-github-demo">
+                <div className="stitch-github-event">
+                  <code>push</code>
+                  <span>main</span>
+                  <span className="stitch-github-event-status ok">обработано</span>
+                </div>
+                <div className="stitch-github-event">
+                  <code>pull_request</code>
+                  <span>feat/github</span>
+                  <span className="stitch-github-event-status ok">ACME-42 закрыта</span>
+                </div>
+                <div className="stitch-github-event">
+                  <code>push</code>
+                  <span>develop</span>
+                  <span className="stitch-github-event-status skip">пропущено</span>
+                </div>
               </div>
             </article>
           </div>

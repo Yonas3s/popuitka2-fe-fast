@@ -4508,6 +4508,155 @@ p {
   font-weight: 600;
 }
 
+/* GitHub sync section */
+
+.stitch-github {
+  padding: 80px 0;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.stitch-github-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
+}
+
+.stitch-github-copy h2 {
+  margin: 0 0 12px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #111827;
+}
+
+.stitch-github-copy > p {
+  margin: 0 0 16px;
+  font-size: 15px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.stitch-github-side {
+  display: grid;
+  gap: 14px;
+}
+
+.stitch-github-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px;
+  background: #f9fafb;
+}
+
+.stitch-github-card h3 {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stitch-github-demo {
+  display: grid;
+  gap: 8px;
+}
+
+.stitch-github-demo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #111827;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.stitch-github-demo-row.pending {
+  color: #9ca3af;
+}
+
+.stitch-github-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #d1d5db;
+  flex-shrink: 0;
+}
+
+.stitch-github-dot.connected {
+  background: #10b981;
+}
+
+.stitch-github-badge {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: #059669;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-family: 'Inter', sans-serif;
+}
+
+.stitch-github-badge-outline {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-family: 'Inter', sans-serif;
+}
+
+.stitch-github-event {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.stitch-github-event code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  color: #4b5563;
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  min-width: 90px;
+}
+
+.stitch-github-event span:nth-child(2) {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.stitch-github-event-status {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+}
+
+.stitch-github-event-status.ok {
+  color: #059669;
+}
+
+.stitch-github-event-status.skip {
+  color: #9ca3af;
+}
+
+@media (max-width: 768px) {
+  .stitch-github-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .stitch-dev {
   padding: 80px 0;
   border-top: 1px solid #e5e7eb;
