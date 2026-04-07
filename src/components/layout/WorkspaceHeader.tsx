@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth.store';
 import { UnifiedHeader } from './UnifiedHeader';
 
@@ -15,12 +15,19 @@ export const WorkspaceHeader = ({ activeTab }: WorkspaceHeaderProps) => {
   const meLoading = useAuthStore((state) => state.meLoading);
   const meLoaded = useAuthStore((state) => state.meLoaded);
   const loadMe = useAuthStore((state) => state.loadMe);
+  const logout = useAuthStore((state) => state.logout);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (isAuthenticated && !user && !meLoading && !meLoaded) {
       void loadMe();
     }
   }, [isAuthenticated, loadMe, meLoaded, meLoading, user]);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/signin');
+  };
 
   return (
     <UnifiedHeader
@@ -49,10 +56,15 @@ export const WorkspaceHeader = ({ activeTab }: WorkspaceHeaderProps) => {
       }
       rightClassName="projects-v3-header-right workspace-header-right"
       rightContent={
-        <div className="workspace-user-block" aria-label="Текущий пользователь">
-          <strong>{user?.username || 'Пользователь'}</strong>
-          <span>{meLoading ? 'Загрузка профиля...' : user?.email || 'Email не указан'}</span>
-        </div>
+        <>
+          <div className="workspace-user-block" aria-label="Текущий пользователь">
+            <strong>{user?.username || 'Пользователь'}</strong>
+            <span>{meLoading ? 'Загрузка...' : (user?.email || '')}</span>
+          </div>
+          <button type="button" className="ui-btn ui-btn-ghost ui-btn-sm" onClick={handleLogout}>
+            Выйти
+          </button>
+        </>
       }
     />
   );

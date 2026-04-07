@@ -3,9 +3,21 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiService } from '../lib/api/service';
 import { APP_TITLE } from '../lib/config/env';
 import { UnifiedHeader } from '../components/layout/UnifiedHeader';
+import { useAuthStore } from '../store/auth.store';
 
 export const LandingPage = () => {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
+  const meLoading = useAuthStore((state) => state.meLoading);
+  const meLoaded = useAuthStore((state) => state.meLoaded);
+  const loadMe = useAuthStore((state) => state.loadMe);
   const [health, setHealth] = useState<'loading' | 'online' | 'offline'>('loading');
+
+  useEffect(() => {
+    if (isAuthenticated && !user && !meLoading && !meLoaded) {
+      void loadMe();
+    }
+  }, [isAuthenticated, user, meLoading, meLoaded, loadMe]);
   const liveLabel = health === 'online' ? 'v1.0.4 Онлайн' : 'v1.0.4 Проверка';
   const healthClass = `health-${health}`;
   const year = useMemo(() => new Date().getFullYear(), []);
@@ -55,14 +67,26 @@ export const LandingPage = () => {
         }
         rightClassName="stitch-nav-actions"
         rightContent={
-          <>
-            <Link to="/signin" className="stitch-link-button">
-              Войти
-            </Link>
-            <Link to="/signup" className="stitch-solid-button">
-              Начать
-            </Link>
-          </>
+          isAuthenticated ? (
+            <>
+              <div className="stitch-user-info">
+                <strong>{user?.username || 'Загрузка...'}</strong>
+                <span>{user?.email || ''}</span>
+              </div>
+              <Link to="/projects" className="stitch-solid-button">
+                Перейти к проектам
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/signin" className="stitch-link-button">
+                Войти
+              </Link>
+              <Link to="/signup" className="stitch-solid-button">
+                Начать
+              </Link>
+            </>
+          )
         }
       />
 

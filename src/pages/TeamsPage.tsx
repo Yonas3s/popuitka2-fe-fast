@@ -159,13 +159,13 @@ export const TeamsPage = () => {
               <p>Управляйте командами, ролями и распределением проектов.</p>
             </div>
             <button
-              className="teams-v3-create-btn"
+              className="ui-btn ui-btn-primary"
               type="button"
               onClick={() => {
                 setCreateOpen((prev) => !prev);
               }}
             >
-              <span aria-hidden="true">＋</span>
+              <span className="ui-btn-icon" aria-hidden="true">+</span>
               Создать команду
             </button>
           </div>
@@ -185,7 +185,7 @@ export const TeamsPage = () => {
                 <div className="teams-v3-create-actions">
                   <button
                     type="button"
-                    className="teams-v3-cancel-btn"
+                    className="ui-btn ui-btn-secondary ui-btn-sm"
                     onClick={() => {
                       setCreateOpen(false);
                     }}
@@ -193,7 +193,7 @@ export const TeamsPage = () => {
                   >
                     Отмена
                   </button>
-                  <button type="submit" className="teams-v3-submit-btn" disabled={createLoading}>
+                  <button type="submit" className="ui-btn ui-btn-primary ui-btn-sm" disabled={createLoading}>
                     {createLoading ? 'Создаем...' : 'Создать'}
                   </button>
                 </div>

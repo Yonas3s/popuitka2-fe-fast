@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { normalizeApiError } from '../lib/api/errors';
 import { apiService } from '../lib/api/service';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
+import { GitHubSettingsPanel } from '../components/github/GitHubSettingsPanel';
 import { useUiStore } from '../store/ui.store';
 import type { ApiError, ApiToken, CreatedApiToken } from '../types/models';
 
@@ -202,11 +203,12 @@ export const SettingsPage = () => {
 
             <button
               type="button"
-              className="settings-v1-create-btn"
+              className="ui-btn ui-btn-primary"
               onClick={() => {
                 setCreateOpen(true);
               }}
             >
+              <span className="ui-btn-icon" aria-hidden="true">+</span>
               Создать токен
             </button>
           </div>
@@ -267,6 +269,8 @@ export const SettingsPage = () => {
               })}
             </section>
           ) : null}
+
+          <GitHubSettingsPanel />
         </div>
       </main>
 
@@ -331,7 +335,7 @@ export const SettingsPage = () => {
                 <div className="projects-v3-form-actions">
                   <button
                     type="button"
-                    className="projects-v3-cancel-btn"
+                    className="ui-btn ui-btn-secondary ui-btn-sm"
                     onClick={() => {
                       setCreateOpen(false);
                     }}
@@ -339,7 +343,7 @@ export const SettingsPage = () => {
                   >
                     Отмена
                   </button>
-                  <button type="submit" className="projects-v3-submit-btn" disabled={createLoading}>
+                  <button type="submit" className="ui-btn ui-btn-primary ui-btn-sm" disabled={createLoading}>
                     {createLoading ? 'Создаем...' : 'Создать токен'}
                   </button>
                 </div>
@@ -388,15 +392,15 @@ export const SettingsPage = () => {
               <div className="projects-v3-form-actions">
                 <button
                   type="button"
-                  className="projects-v3-cancel-btn"
+                  className="ui-btn ui-btn-secondary ui-btn-sm"
                   onClick={() => {
                     setCreatedToken(null);
                   }}
                 >
                   Закрыть
                 </button>
-                <button type="button" className="projects-v3-submit-btn" onClick={() => void onCopyCreatedToken()}>
-                  Copy
+                <button type="button" className="ui-btn ui-btn-primary ui-btn-sm" onClick={() => void onCopyCreatedToken()}>
+                  Скопировать
                 </button>
               </div>
             </section>

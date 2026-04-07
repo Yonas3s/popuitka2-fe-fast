@@ -246,13 +246,13 @@ export const ProjectsPage = () => {
               <p>{projectCountLabel}. Выберите проект для управления релизами.</p>
             </div>
             <button
-              className="projects-v3-create-btn"
+              className="ui-btn ui-btn-primary"
               type="button"
               onClick={() => {
                 setCreateOpen(true);
               }}
             >
-              <span>＋</span>
+              <span className="ui-btn-icon" aria-hidden="true">+</span>
               Создать проект
             </button>
           </div>
@@ -371,14 +371,14 @@ export const ProjectsPage = () => {
                 <div className="projects-v3-form-actions">
                   <button
                     type="button"
-                    className="projects-v3-cancel-btn"
+                    className="ui-btn ui-btn-secondary ui-btn-sm"
                     onClick={() => {
                       setCreateOpen(false);
                     }}
                   >
                     Отмена
                   </button>
-                  <button className="projects-v3-submit-btn" type="submit" disabled={isSubmitting}>
+                  <button className="ui-btn ui-btn-primary ui-btn-sm" type="submit" disabled={isSubmitting}>
                     {isSubmitting ? 'Создаем...' : 'Создать'}
                   </button>
                 </div>

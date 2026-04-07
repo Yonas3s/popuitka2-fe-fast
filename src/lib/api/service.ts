@@ -35,8 +35,11 @@ import type {
   AdminStat,
   ApiToken,
   AuthProfile,
+  BoundRepository,
   CreatedApiToken,
   DirectionTag,
+  GitHubInstallation,
+  GitHubRepo,
   Project,
   PublicSharePayload,
   ShareLinkResponse,
@@ -49,6 +52,7 @@ import type {
   TeamMember,
   TeamInvitePreview,
   TeamProjectsPayload,
+  WebhookEvent,
   WorkflowType,
 } from '../../types/models';
 
@@ -137,6 +141,12 @@ export type InviteToTeamPayload = {
 export type CreateApiTokenPayload = {
   name: string;
   expires_at?: string;
+};
+
+export type BindRepositoryPayload = {
+  repository_external_id: number;
+  installation_id: string;
+  auto_close_on_merge?: boolean;
 };
 
 export type GetAdminActionLogsParams = {
@@ -444,5 +454,76 @@ export const apiService = {
 
   async approvePublicProject(shareToken: string): Promise<void> {
     await apiClient.post(endpoints.approvePublicProject(shareToken));
+  },
+
+  async getGitHubInstallations(): Promise<GitHubInstallation[]> {
+    const response = await apiClient.get(endpoints.githubInstallations());
+    const list = Array.isArray(response.data) ? response.data : [];
+    return list.map((item: Record<string, unknown>) => ({
+      id: String(item._id || item.id || ''),
+      accountLogin: String(item.account_login || item.accountLogin || ''),
+      accountType: String(item.account_type || item.accountType || 'User'),
+      appSlug: typeof item.app_slug === 'string' ? item.app_slug : undefined,
+      raw: item,
+    }));
+  },
+
+  async getInstallationRepos(installationId: string): Promise<GitHubRepo[]> {
+    const response = await apiClient.get(endpoints.githubInstallationRepos(installationId));
+    const list = Array.isArray(response.data) ? response.data : [];
+    return list.map((item: Record<string, unknown>) => ({
+      id: Number(item.id || 0),
+      fullName: String(item.full_name || item.fullName || ''),
+      name: String(item.name || ''),
+      isPrivate: Boolean(item.private ?? item.isPrivate),
+      htmlUrl: String(item.html_url || item.htmlUrl || ''),
+      raw: item,
+    }));
+  },
+
+  async handleGitHubInstallCallback(installationId: string, setupAction: string): Promise<void> {
+    await apiClient.get(endpoints.githubCallbackInstall(), {
+      params: { installation_id: installationId, setup_action: setupAction },
+    });
+  },
+
+  async getProjectRepositories(projectId: string): Promise<BoundRepository[]> {
+    const response = await apiClient.get(endpoints.projectRepositories(projectId));
+    const list = Array.isArray(response.data) ? response.data : [];
+    return list.map((item: Record<string, unknown>) => ({
+      id: String(item._id || item.id || ''),
+      repositoryExternalId: Number(item.repository_external_id || item.repositoryExternalId || 0),
+      installationId: String(item.installation_id || item.installationId || ''),
+      fullName: String(item.full_name || item.fullName || ''),
+      htmlUrl: String(item.html_url || item.htmlUrl || ''),
+      autoCloseOnMerge: Boolean(item.auto_close_on_merge ?? item.autoCloseOnMerge),
+      raw: item,
+    }));
+  },
+
+  async bindRepository(projectId: string, payload: BindRepositoryPayload): Promise<void> {
+    await apiClient.post(endpoints.projectRepositories(projectId), payload);
+  },
+
+  async unbindRepository(projectId: string, repoId: string): Promise<void> {
+    await apiClient.delete(endpoints.projectRepositoryById(projectId, repoId));
+  },
+
+  async getWebhookEvents(projectId: string): Promise<{ events: WebhookEvent[]; total: number }> {
+    const response = await apiClient.get(endpoints.webhookEvents(projectId));
+    const data = response.data as Record<string, unknown>;
+    const rawEvents = Array.isArray(data.events) ? data.events : [];
+    const events: WebhookEvent[] = rawEvents.map((item: Record<string, unknown>) => ({
+      id: String(item._id || item.id || ''),
+      eventType: String(item.event_type || item.eventType || ''),
+      branch: String(item.branch || ''),
+      closedTasks: Array.isArray(item.closed_tasks || item.closedTasks)
+        ? (item.closed_tasks || item.closedTasks) as string[]
+        : [],
+      status: String(item.status || ''),
+      createdAt: String(item.createdAt || item.created_at || ''),
+      raw: item,
+    }));
+    return { events, total: Number(data.total || events.length) };
   },
 };

@@ -16,6 +16,7 @@ import { TeamDetailsPage } from '../pages/TeamDetailsPage';
 import { TeamInvitePage } from '../pages/TeamInvitePage';
 import { AdminPage } from '../pages/AdminPage';
 import { SettingsPage } from '../pages/SettingsPage';
+import { GitHubCallbackInstallPage } from '../pages/GitHubCallbackInstallPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
 export const AppRoutes = () => {
@@ -36,6 +37,8 @@ export const AppRoutes = () => {
       <Route path="/team-invites" element={<TeamInvitePage />} />
       <Route path="/team-invite/:token" element={<TeamInvitePage />} />
       <Route path="/team-invites/:token" element={<TeamInvitePage />} />
+
+      <Route path="/github/callback/install" element={<GitHubCallbackInstallPage />} />
 
       <Route element={<RequireAuth />}>
         <Route path="/admin" element={<AdminPage />} />

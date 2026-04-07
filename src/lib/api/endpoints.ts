@@ -49,4 +49,10 @@ export const endpoints = {
     `/projects/${projectId}/stages/${stageId}/request-review`,
   publicProject: (shareToken: string) => `/p/${shareToken}`,
   approvePublicProject: (shareToken: string) => `/p/${shareToken}/approve`,
+  githubInstallations: () => '/github/installations',
+  githubInstallationRepos: (installationId: string) => `/github/installations/${installationId}/repos`,
+  githubCallbackInstall: () => '/github/callback/install',
+  projectRepositories: (projectId: string) => `/projects/${projectId}/repositories`,
+  projectRepositoryById: (projectId: string, repoId: string) => `/projects/${projectId}/repositories/${repoId}`,
+  webhookEvents: (projectId: string) => `/projects/${projectId}/webhook-events`,
 };

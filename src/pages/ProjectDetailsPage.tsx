@@ -8,7 +8,9 @@ import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { FRONTEND_BASE_URL } from '../lib/config/env';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
-import type { ApiError, DirectionTag, Stage, Task, TaskType, TeamMember } from '../types/models';
+import { ProjectReposPanel } from '../components/github/ProjectReposPanel';
+import { WebhookEventsPanel } from '../components/github/WebhookEventsPanel';
+import type { ApiError, BoundRepository, DirectionTag, Stage, Task, TaskType, TeamMember } from '../types/models';
 
 type StageForm = {
   stage_name: string;
@@ -45,6 +47,7 @@ export const ProjectDetailsPage = () => {
   const [flatLoading, setFlatLoading] = useState(false);
   const [flatError, setFlatError] = useState<ApiError | null>(null);
   const [flatTaskDraft, setFlatTaskDraft] = useState('');
+  const [flatTaskRepoDraft, setFlatTaskRepoDraft] = useState('');
   const [flatTaskEdits, setFlatTaskEdits] = useState<Record<string, string>>({});
   const [flatTaskDescriptionEdits, setFlatTaskDescriptionEdits] = useState<Record<string, string>>({});
   const [activeFlatTaskId, setActiveFlatTaskId] = useState<string | null>(null);
@@ -55,6 +58,12 @@ export const ProjectDetailsPage = () => {
   const [directionsLoading, setDirectionsLoading] = useState(false);
   const [flatTypeFilter, setFlatTypeFilter] = useState<'all' | TaskType>('all');
   const [flatDirectionFilter, setFlatDirectionFilter] = useState<'all' | string>('all');
+  const [projectRepos, setProjectRepos] = useState<BoundRepository[]>([]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    apiService.getProjectRepositories(projectId).then(setProjectRepos).catch(() => setProjectRepos([]));
+  }, [projectId]);
 
   const {
     register,
@@ -267,8 +276,13 @@ export const ProjectDetailsPage = () => {
     }
 
     try {
-      await apiService.createProjectTask(projectId, { title });
+      const payload: Record<string, unknown> = { title };
+      if (flatTaskRepoDraft) {
+        payload.repository_id = flatTaskRepoDraft;
+      }
+      await apiService.createProjectTask(projectId, payload as { title: string });
       setFlatTaskDraft('');
+      setFlatTaskRepoDraft('');
       pushToast('Задача добавлена', 'success');
       await loadFlatTasks();
     } catch (reason) {
@@ -962,12 +976,29 @@ export const ProjectDetailsPage = () => {
                     }
                   }}
                 />
+                {projectRepos.length > 0 ? (
+                  <select
+                    className="project-v4-flat-repo-select"
+                    value={flatTaskRepoDraft}
+                    onChange={(event) => setFlatTaskRepoDraft(event.target.value)}
+                  >
+                    <option value="">Без репозитория</option>
+                    {projectRepos.map((repo) => (
+                      <option key={repo.id} value={repo.id}>
+                        {repo.fullName}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
                 <button type="button" className="project-v4-primary-btn" onClick={() => void onCreateFlatTask()}>
                   Добавить задачу
                 </button>
               </div>
             </section>
           )}
+
+          <ProjectReposPanel projectId={projectId} />
+          <WebhookEventsPanel projectId={projectId} />
         </div>
       </main>
 

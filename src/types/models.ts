@@ -234,6 +234,43 @@ export type AgentRun = {
   raw: Record<string, unknown>;
 };
 
+export type GitHubInstallation = {
+  id: string;
+  accountLogin: string;
+  accountType: string;
+  appSlug?: string;
+  raw: Record<string, unknown>;
+};
+
+export type GitHubRepo = {
+  id: number;
+  fullName: string;
+  name: string;
+  isPrivate: boolean;
+  htmlUrl: string;
+  raw: Record<string, unknown>;
+};
+
+export type BoundRepository = {
+  id: string;
+  repositoryExternalId: number;
+  installationId: string;
+  fullName: string;
+  htmlUrl: string;
+  autoCloseOnMerge: boolean;
+  raw: Record<string, unknown>;
+};
+
+export type WebhookEvent = {
+  id: string;
+  eventType: string;
+  branch: string;
+  closedTasks: string[];
+  status: string;
+  createdAt: string;
+  raw: Record<string, unknown>;
+};
+
 export type ToastType = 'success' | 'error' | 'info';
 
 export type Toast = {

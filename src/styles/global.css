@@ -14,7 +14,7 @@
   --card-border: rgba(130, 168, 255, 0.22);
   --shadow: 0 24px 70px rgba(2, 9, 22, 0.55);
   --brand-size: 20px;
-  --header-max-width: 1180px;
+  --header-max-width: 1280px;
   --header-gutter: 16px;
   --app-background:
     radial-gradient(1000px 700px at -12% -20%, rgba(73, 224, 201, 0.22), transparent 56%),
@@ -22,6 +22,78 @@
     radial-gradient(760px 500px at 50% 120%, rgba(255, 179, 106, 0.12), transparent 58%),
     linear-gradient(150deg, #060a13 0%, #0b1425 50%, #050912 100%);
 }
+
+/* ── micro ui kit ── */
+
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.ui-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ui-btn-primary {
+  background: #111827;
+  border-color: #111827;
+  color: #fff;
+}
+
+.ui-btn-primary:hover:not(:disabled) {
+  background: #1f2937;
+  border-color: #1f2937;
+}
+
+.ui-btn-secondary {
+  background: #fff;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.ui-btn-secondary:hover:not(:disabled) {
+  border-color: #9ca3af;
+  color: #111827;
+}
+
+.ui-btn-ghost {
+  background: transparent;
+  border-color: #e5e7eb;
+  color: #6b7280;
+}
+
+.ui-btn-ghost:hover:not(:disabled) {
+  border-color: #9ca3af;
+  color: #111827;
+}
+
+.ui-btn-sm {
+  height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+  border-radius: 8px;
+}
+
+.ui-btn-icon {
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 400;
+}
+
+/* ── end micro ui kit ── */
 
 @media (max-width: 720px) {
   :root {
@@ -58,9 +130,8 @@
 }
 
 .teams-v3-container {
-  width: min(100%, 1180px);
+  width: min(1280px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 0 18px;
 }
 
 .teams-v3-header-row {
@@ -160,7 +231,6 @@
 .teams-v3-main {
   position: relative;
   min-height: calc(100vh - 65px);
-  padding: 44px 0 72px;
 }
 
 .teams-v3-grid-bg {
@@ -224,11 +294,12 @@
   z-index: 1;
   display: grid;
   gap: 20px;
+  padding: 40px 0 48px;
 }
 
 .teams-v3-toolbar {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
 }
@@ -236,15 +307,18 @@
 .teams-v3-toolbar h1 {
   margin: 0;
   font-family: 'Inter', sans-serif;
-  font-size: clamp(32px, 5vw, 42px);
-  letter-spacing: -0.03em;
-  color: #0f172a;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: #111827;
 }
 
 .teams-v3-toolbar p {
-  margin: 10px 0 0;
-  color: #64748b;
+  margin: 6px 0 0;
+  color: #6b7280;
   font-size: 14px;
+  line-height: 1.4;
 }
 
 .teams-v3-create-btn {
@@ -341,9 +415,12 @@
   border-radius: 12px;
   border: 1px solid #e2e8f0;
   background: #fff;
-  color: #475569;
-  padding: 12px 14px;
+  color: #94a3b8;
+  padding: 20px;
   font-size: 14px;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
 }
 
 .teams-v3-error {
@@ -3949,7 +4026,26 @@ p {
 .stitch-nav-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
+}
+
+.stitch-user-info {
+  display: grid;
+  gap: 1px;
+  text-align: right;
+}
+
+.stitch-user-info strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.3;
+}
+
+.stitch-user-info span {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.3;
 }
 
 .stitch-link-button {
@@ -4774,6 +4870,7 @@ p {
 
 .workspace-header-right {
   justify-content: flex-end;
+  gap: 16px;
 }
 
 .workspace-user-block {
@@ -4785,20 +4882,21 @@ p {
 
 .workspace-user-block strong {
   font-size: 13px;
-  line-height: 1.2;
+  line-height: 1.3;
   color: #111827;
   font-weight: 600;
 }
 
 .workspace-user-block span {
   font-size: 12px;
-  line-height: 1.2;
+  line-height: 1.3;
   color: #6b7280;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 260px;
+  max-width: 220px;
 }
+
 
 .projects-v3-main {
   flex: 1;
@@ -4869,33 +4967,33 @@ p {
 .projects-v3-content {
   position: relative;
   z-index: 2;
-  padding: 44px 0 48px;
+  padding: 40px 0 48px;
   display: grid;
-  gap: 16px;
+  gap: 20px;
 }
 
 .projects-v3-toolbar {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .projects-v3-toolbar h1 {
   margin: 0;
-  font-size: 30px;
-  line-height: 1.15;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: #111827;
   font-family: 'Inter', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: #111827;
 }
 
 .projects-v3-toolbar p {
-  margin-top: 4px;
+  margin: 6px 0 0;
   color: #6b7280;
   font-size: 14px;
+  line-height: 1.4;
 }
 
 .projects-v3-create-btn {
@@ -5121,8 +5219,12 @@ p {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   background: #ffffff;
-  padding: 12px 14px;
+  padding: 20px;
   font-size: 14px;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  color: #94a3b8;
 }
 
 .projects-v3-error {
@@ -8206,26 +8308,31 @@ p {
   z-index: 1;
   display: grid;
   gap: 20px;
+  padding: 40px 0 48px;
 }
 
 .settings-v1-toolbar {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  align-items: flex-end;
   gap: 16px;
 }
 
 .settings-v1-toolbar h1 {
   margin: 0;
-  font-size: clamp(32px, 5vw, 42px);
-  letter-spacing: -0.03em;
-  color: #0f172a;
+  font-family: 'Inter', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: #111827;
 }
 
 .settings-v1-toolbar p {
-  margin: 10px 0 0;
-  color: #64748b;
+  margin: 6px 0 0;
+  color: #6b7280;
   font-size: 14px;
+  line-height: 1.4;
   max-width: 760px;
 }
 
@@ -8253,12 +8360,15 @@ p {
 .settings-v1-loading,
 .settings-v1-error {
   margin: 0;
-  padding: 14px 16px;
+  padding: 20px;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
   background: #fff;
-  color: #64748b;
+  color: #94a3b8;
   font-size: 14px;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
 }
 
 .settings-v1-error {
@@ -9794,4 +9904,358 @@ p {
   .duck-dialog-controls label:has(input[type='checkbox']) {
     margin-top: 0;
   }
+}
+
+/* ── GitHub integration ── */
+
+.github-callback-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #f8fafc;
+  font-family: 'Inter', sans-serif;
+  padding: 20px;
+}
+
+.github-callback-card {
+  max-width: 480px;
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 40px 32px;
+  text-align: center;
+}
+
+.github-callback-card h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  color: #111827;
+}
+
+.github-callback-card p {
+  margin: 0 0 24px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.github-callback-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* GitHub settings panel (Settings page) */
+
+.gh-settings-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  padding: 24px;
+  display: grid;
+  gap: 16px;
+}
+
+.gh-settings-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.gh-settings-head h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.gh-settings-head p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.gh-settings-loading,
+.gh-repos-loading {
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.gh-settings-error {
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #fecdd3;
+  border-radius: 10px;
+  color: #be123c;
+  font-size: 14px;
+  background: #fff1f2;
+}
+
+.gh-settings-empty,
+.gh-repos-empty {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.gh-repos-empty a {
+  color: #3b82f6;
+}
+
+.gh-installations-list {
+  display: grid;
+  gap: 8px;
+}
+
+.gh-installation-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.gh-installation-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gh-installation-info strong {
+  font-size: 14px;
+  color: #111827;
+}
+
+.gh-installation-info span {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.gh-installation-status {
+  font-size: 12px;
+  font-weight: 600;
+  color: #059669;
+}
+
+/* Project repos panel */
+
+.gh-repos-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  padding: 24px;
+  display: grid;
+  gap: 16px;
+}
+
+.gh-repos-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.gh-repos-head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.gh-bound-list,
+.gh-available-list {
+  display: grid;
+  gap: 8px;
+}
+
+.gh-bound-card,
+.gh-available-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  gap: 12px;
+}
+
+.gh-bound-info,
+.gh-available-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.gh-bound-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  text-decoration: none;
+}
+
+.gh-bound-name:hover {
+  color: #3b82f6;
+}
+
+.gh-bound-meta {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.gh-available-info strong {
+  font-size: 14px;
+  color: #111827;
+}
+
+.gh-private-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f59e0b;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+
+.gh-bind-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  background: #f9fafb;
+}
+
+.gh-bind-section h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.gh-bind-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.gh-bind-field select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #111827;
+  background: #fff;
+}
+
+/* Webhook events panel */
+
+.gh-webhook-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  padding: 24px;
+  display: grid;
+  gap: 16px;
+}
+
+.gh-webhook-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gh-webhook-head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.gh-webhook-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.gh-webhook-table {
+  display: grid;
+  gap: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.gh-webhook-row {
+  display: grid;
+  grid-template-columns: 160px 120px 1fr 1fr 100px;
+  gap: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+  align-items: center;
+}
+
+.gh-webhook-row:last-child {
+  border-bottom: none;
+}
+
+.gh-webhook-header {
+  font-weight: 600;
+  color: #6b7280;
+  font-size: 12px;
+  background: #f9fafb;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.gh-webhook-row code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.gh-webhook-status {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gh-webhook-status.processed {
+  color: #059669;
+}
+
+.gh-webhook-status.failed {
+  color: #dc2626;
+}
+
+.gh-webhook-status.skipped {
+  color: #9ca3af;
+}
+
+/* flat task repo select */
+
+.project-v4-flat-repo-select {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #374151;
+  background: #fff;
+  min-width: 140px;
 }
