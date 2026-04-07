@@ -144,7 +144,7 @@ export type CreateApiTokenPayload = {
 };
 
 export type BindRepositoryPayload = {
-  repository_external_id: number;
+  repository_external_id: string;
   installation_id: string;
   auto_close_on_merge?: boolean;
 };
@@ -460,7 +460,7 @@ export const apiService = {
     const response = await apiClient.get(endpoints.githubInstallations());
     const list = Array.isArray(response.data) ? response.data : [];
     return list.map((item: Record<string, unknown>) => ({
-      id: String(item._id || item.id || ''),
+      id: String(item.installation_id || item._id || item.id || ''),
       accountLogin: String(item.account_login || item.accountLogin || ''),
       accountType: String(item.account_type || item.accountType || 'User'),
       appSlug: typeof item.app_slug === 'string' ? item.app_slug : undefined,
@@ -472,10 +472,10 @@ export const apiService = {
     const response = await apiClient.get(endpoints.githubInstallationRepos(installationId));
     const list = Array.isArray(response.data) ? response.data : [];
     return list.map((item: Record<string, unknown>) => ({
-      id: Number(item.id || 0),
+      externalId: String(item.external_id || item.externalId || item.id || ''),
       fullName: String(item.full_name || item.fullName || ''),
       name: String(item.name || ''),
-      isPrivate: Boolean(item.private ?? item.isPrivate),
+      isPrivate: Boolean(item.private ?? item.is_private ?? item.isPrivate),
       htmlUrl: String(item.html_url || item.htmlUrl || ''),
       raw: item,
     }));

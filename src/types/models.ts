@@ -243,7 +243,7 @@ export type GitHubInstallation = {
 };
 
 export type GitHubRepo = {
-  id: number;
+  externalId: string;
   fullName: string;
   name: string;
   isPrivate: boolean;

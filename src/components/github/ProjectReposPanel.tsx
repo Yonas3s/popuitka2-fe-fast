@@ -72,8 +72,8 @@ export const ProjectReposPanel = ({ projectId }: ProjectReposPanelProps) => {
       .getInstallationRepos(selectedInstallation)
       .then((repos) => {
         if (!cancelled) {
-          const boundExternalIds = new Set(boundRepos.map((r) => r.repositoryExternalId));
-          setAvailableRepos(repos.filter((r) => !boundExternalIds.has(r.id)));
+          const boundExternalIds = new Set(boundRepos.map((r) => String(r.repositoryExternalId)));
+          setAvailableRepos(repos.filter((r) => !boundExternalIds.has(r.externalId)));
         }
       })
       .catch((reason) => {
@@ -95,7 +95,7 @@ export const ProjectReposPanel = ({ projectId }: ProjectReposPanelProps) => {
   const onBindRepo = async (repo: GitHubRepo) => {
     try {
       await apiService.bindRepository(projectId, {
-        repository_external_id: repo.id,
+        repository_external_id: repo.externalId,
         installation_id: selectedInstallation,
         auto_close_on_merge: true,
       });
@@ -205,7 +205,7 @@ export const ProjectReposPanel = ({ projectId }: ProjectReposPanelProps) => {
           {availableRepos.length > 0 ? (
             <div className="gh-available-list">
               {availableRepos.map((repo) => (
-                <article key={repo.id} className="gh-available-card">
+                <article key={repo.externalId} className="gh-available-card">
                   <div className="gh-available-info">
                     <strong>{repo.fullName}</strong>
                     {repo.isPrivate ? <span className="gh-private-badge">private</span> : null}
