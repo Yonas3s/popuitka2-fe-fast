@@ -80,15 +80,20 @@ export const LandingPage = () => {
           </div>
 
           <h1 className="stitch-title">
-            Управляйте релизом,<br />
-            <span>а не хаосом.</span>
+            Релиз-менеджмент<br />
+            <span>для dev-команд.</span>
           </h1>
 
-          <p className="stitch-gradient-title">От бэклога до апрува клиента.</p>
+          <p className="stitch-gradient-title">Задачи. Этапы. GitHub. Апрув клиента.</p>
 
           <p className="stitch-subtitle">
-            Минималистичный инструмент для инженерных команд, которым важны прозрачность,
-            контроль и скорость поставки.
+            Создайте проект, разбейте на задачи, привяжите репозиторий.
+            Клиент видит прогресс и апрувит сборку по ссылке.
+          </p>
+
+          <p className="stitch-subtitle stitch-subtitle-agent">
+            AI-агент умеет декомпозировать задачи за вас — опишите что нужно сделать,
+            остальное он разложит сам.
           </p>
 
           <div className="stitch-hero-actions">
