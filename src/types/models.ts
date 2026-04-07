@@ -253,7 +253,7 @@ export type GitHubRepo = {
 
 export type BoundRepository = {
   id: string;
-  repositoryExternalId: number;
+  repositoryExternalId: string;
   installationId: string;
   fullName: string;
   htmlUrl: string;

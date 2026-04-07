@@ -490,15 +490,20 @@ export const apiService = {
   async getProjectRepositories(projectId: string): Promise<BoundRepository[]> {
     const response = await apiClient.get(endpoints.projectRepositories(projectId));
     const list = Array.isArray(response.data) ? response.data : [];
-    return list.map((item: Record<string, unknown>) => ({
-      id: String(item._id || item.id || ''),
-      repositoryExternalId: Number(item.repository_external_id || item.repositoryExternalId || 0),
-      installationId: String(item.installation_id || item.installationId || ''),
-      fullName: String(item.full_name || item.fullName || ''),
-      htmlUrl: String(item.html_url || item.htmlUrl || ''),
-      autoCloseOnMerge: Boolean(item.auto_close_on_merge ?? item.autoCloseOnMerge),
-      raw: item,
-    }));
+    return list.map((item: Record<string, unknown>) => {
+      const repo = (typeof item.repository_id === 'object' && item.repository_id !== null
+        ? item.repository_id
+        : item) as Record<string, unknown>;
+      return {
+        id: String(item._id || item.id || ''),
+        repositoryExternalId: String(repo.external_id || repo.externalId || item.repository_external_id || ''),
+        installationId: String(repo.installation_id || item.installation_id || ''),
+        fullName: String(repo.full_name || repo.fullName || item.full_name || ''),
+        htmlUrl: String(repo.html_url || repo.htmlUrl || item.html_url || ''),
+        autoCloseOnMerge: Boolean(item.auto_close_on_merge ?? item.autoCloseOnMerge),
+        raw: item,
+      };
+    });
   },
 
   async bindRepository(projectId: string, payload: BindRepositoryPayload): Promise<void> {
