@@ -181,6 +181,15 @@ export const LandingPage = () => {
               <p>Публичная ссылка на релиз. Клиент видит что готово и подтверждает.</p>
               <div className="stitch-feature-visual approve"><span>Одобрено</span></div>
             </article>
+            <article className="stitch-feature-card">
+              <div className="stitch-feature-icon stitch-feature-icon-ai">AI</div>
+              <h3>AI-агент</h3>
+              <p>Генерация задач по промпту. Выберите модель, задайте лимит — агент разложит работу на задачи.</p>
+              <div className="stitch-feature-visual agent">
+                <span>7 задач</span>
+                <span>gemini-2.5</span>
+              </div>
+            </article>
           </div>
         </div>
       </section>

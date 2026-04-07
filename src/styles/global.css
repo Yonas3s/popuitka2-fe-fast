@@ -4402,7 +4402,7 @@ p {
 
 .stitch-features-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 18px;
 }
 
@@ -4506,6 +4506,39 @@ p {
   letter-spacing: 0.1em;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-weight: 600;
+}
+
+.stitch-feature-icon-ai {
+  background: #111827;
+  color: #fff;
+  font-size: 12px;
+}
+
+.stitch-feature-visual.agent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.stitch-feature-visual.agent span {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  padding: 4px 9px;
+  border-radius: 999px;
+}
+
+.stitch-feature-visual.agent span:first-child {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: #3b82f6;
+}
+
+.stitch-feature-visual.agent span:last-child {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
 }
 
 /* GitHub sync section */
@@ -8202,7 +8235,7 @@ p {
   }
 
   .stitch-features-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .stitch-showcase-grid {
