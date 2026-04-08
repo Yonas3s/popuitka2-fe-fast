@@ -62,7 +62,7 @@ export const ResetPasswordPage = () => {
     try {
       await apiService.resetPassword({
         email,
-        code,
+        reset_token: code,
         password: values.password,
       });
       clearFlow();
@@ -118,8 +118,9 @@ export const ResetPasswordPage = () => {
                     {...register('password', {
                       required: 'Введите новый пароль',
                       minLength: { value: 8, message: 'Минимум 8 символов' },
+                      maxLength: { value: 128, message: 'Максимум 128 символов' },
                       validate: {
-                        hasUpper: (v) => /[A-ZА-ЯЁ]/.test(v) || 'Нужна хотя бы одна заглавная буква',
+                        hasLetter: (v) => /[a-zA-Z]/.test(v) || 'Нужна хотя бы одна латинская буква',
                         hasDigit: (v) => /\d/.test(v) || 'Нужна хотя бы одна цифра',
                       },
                     })}

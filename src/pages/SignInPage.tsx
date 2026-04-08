@@ -124,6 +124,7 @@ export const SignInPage = () => {
                   autoComplete="email"
                   {...register('email', {
                     required: 'Введите email',
+                    maxLength: { value: 254, message: 'Максимум 254 символа' },
                     pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/, message: 'Некорректный формат email' },
                   })}
                 />

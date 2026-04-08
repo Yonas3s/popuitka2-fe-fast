@@ -69,8 +69,8 @@ export const VerifyResetCodePage = () => {
 
     setSubmitting(true);
     try {
-      await apiService.verifyResetCode({ email: effectiveEmail, code: normalizedCode });
-      setCode(normalizedCode);
+      const resetToken = await apiService.verifyResetCode({ email: effectiveEmail, code: normalizedCode });
+      setCode(resetToken || normalizedCode);
       pushToast('Код подтвержден', 'success');
       navigate('/reset-password');
     } catch (error) {

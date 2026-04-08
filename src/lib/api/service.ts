@@ -126,7 +126,7 @@ export type VerifyResetCodePayload = {
 
 export type ResetPasswordPayload = {
   email: string;
-  code: string;
+  reset_token: string;
   password: string;
 };
 
@@ -195,8 +195,10 @@ export const apiService = {
     await apiClient.post(endpoints.forgotPassword(), payload);
   },
 
-  async verifyResetCode(payload: VerifyResetCodePayload): Promise<void> {
-    await apiClient.post(endpoints.verifyResetCode(), payload);
+  async verifyResetCode(payload: VerifyResetCodePayload): Promise<string> {
+    const response = await apiClient.post(endpoints.verifyResetCode(), payload);
+    const data = response.data as Record<string, unknown>;
+    return typeof data.reset_token === 'string' ? data.reset_token : '';
   },
 
   async resetPassword(payload: ResetPasswordPayload): Promise<void> {

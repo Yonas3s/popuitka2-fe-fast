@@ -22,21 +22,23 @@ type SignUpForm = {
 const PASSWORD_RULES = {
   required: 'Введите пароль',
   minLength: { value: 8, message: 'Минимум 8 символов' },
+  maxLength: { value: 128, message: 'Максимум 128 символов' },
   validate: {
-    hasUpper: (v: string) => /[A-ZА-ЯЁ]/.test(v) || 'Нужна хотя бы одна заглавная буква',
+    hasLetter: (v: string) => /[a-zA-Z]/.test(v) || 'Нужна хотя бы одна латинская буква',
     hasDigit: (v: string) => /\d/.test(v) || 'Нужна хотя бы одна цифра',
   },
 };
 
-const EMAIL_PATTERN = {
-  value: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
-  message: 'Некорректный формат email',
+const EMAIL_RULES = {
+  required: 'Введите email',
+  maxLength: { value: 254, message: 'Максимум 254 символа' },
+  pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/, message: 'Некорректный формат email' },
 };
 
 const USERNAME_RULES = {
   required: 'Введите имя пользователя',
   minLength: { value: 2, message: 'Минимум 2 символа' },
-  maxLength: { value: 40, message: 'Максимум 40 символов' },
+  maxLength: { value: 30, message: 'Максимум 30 символов' },
   pattern: { value: /^[a-zA-Zа-яА-ЯёЁ0-9_ .-]+$/, message: 'Только буквы, цифры, пробел, точка, дефис, _' },
 };
 
@@ -144,7 +146,7 @@ export const SignUpPage = () => {
                   type="email"
                   placeholder="name@company.com"
                   autoComplete="email"
-                  {...register('email', { required: 'Введите email', pattern: EMAIL_PATTERN })}
+                  {...register('email', EMAIL_RULES)}
                 />
                 {errors.email?.message ? <small>{errors.email.message}</small> : null}
               </label>
