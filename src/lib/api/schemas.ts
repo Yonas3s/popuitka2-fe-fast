@@ -400,7 +400,7 @@ const pickFirstArrayValue = (value: Record<string, unknown>): unknown[] => {
 };
 
 const normalizeId = (record: Record<string, unknown>, fallback: string): string => {
-  const id = record._id ?? record.id;
+  const id = record.id ?? record._id;
   return typeof id === 'string' && id.length > 0 ? id : fallback;
 };
 
@@ -409,6 +409,7 @@ export const normalizeProject = (value: unknown, index = 0): Project => {
   const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
 
   const projectName =
+    (typeof record.projectName === 'string' && record.projectName) ||
     (typeof record.project_name === 'string' && record.project_name) ||
     (typeof record.name === 'string' && record.name) ||
     'Без названия';
@@ -450,6 +451,7 @@ export const normalizeStage = (value: unknown, index = 0): Stage => {
   const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
 
   const stageName =
+    (typeof record.stageName === 'string' && record.stageName) ||
     (typeof record.stage_name === 'string' && record.stage_name) ||
     (typeof record.name === 'string' && record.name) ||
     `Стадия ${index + 1}`;
@@ -766,25 +768,27 @@ export const normalizeAdminActionLog = (value: unknown, index = 0): AdminActionL
 export const normalizeAdminStat = (value: unknown): AdminStat => {
   const parsed = adminStatSchema.safeParse(value);
   const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
-  const actionsBySourceRaw = Array.isArray(record.actions_by_source) ? record.actions_by_source : [];
-  const actionsByAuthRaw = Array.isArray(record.actions_by_auth) ? record.actions_by_auth : [];
-  const recentActionsRaw = Array.isArray(record.recent_actions) ? record.recent_actions : [];
+  const actionsBySourceRaw = Array.isArray(record.actionsBySource) ? record.actionsBySource : Array.isArray(record.actions_by_source) ? record.actions_by_source : [];
+  const actionsByAuthRaw = Array.isArray(record.actionsByAuth) ? record.actionsByAuth : Array.isArray(record.actions_by_auth) ? record.actions_by_auth : [];
+  const recentActionsRaw = Array.isArray(record.recentActions) ? record.recentActions : Array.isArray(record.recent_actions) ? record.recent_actions : [];
+
+  const num = (camel: string, snake: string) => getNumber(record, camel) || getNumber(record, snake);
 
   return {
     users: getNumber(record, 'users'),
-    devUsers: getNumber(record, 'dev_users'),
-    adminUsers: getNumber(record, 'admin_users'),
-    localUsers: getNumber(record, 'local_users'),
-    ghUsers: getNumber(record, 'gh_users'),
+    devUsers: num('devUsers', 'dev_users'),
+    adminUsers: num('adminUsers', 'admin_users'),
+    localUsers: num('localUsers', 'local_users'),
+    ghUsers: num('ghUsers', 'gh_users'),
     projects: getNumber(record, 'projects'),
-    activeProjects: getNumber(record, 'active_projects'),
-    completedProjects: getNumber(record, 'completed_projects'),
+    activeProjects: num('activeProjects', 'active_projects'),
+    completedProjects: num('completedProjects', 'completed_projects'),
     stages: getNumber(record, 'stages'),
-    waitingStages: getNumber(record, 'waiting_stages'),
-    activeStages: getNumber(record, 'active_stages'),
-    reviewStages: getNumber(record, 'review_stages'),
-    completedStages: getNumber(record, 'completed_stages'),
-    actionsTotal: getNumber(record, 'actions_total'),
+    waitingStages: num('waitingStages', 'waiting_stages'),
+    activeStages: num('activeStages', 'active_stages'),
+    reviewStages: num('reviewStages', 'review_stages'),
+    completedStages: num('completedStages', 'completed_stages'),
+    actionsTotal: num('actionsTotal', 'actions_total'),
     actionsBySource: actionsBySourceRaw.map((item) => {
       const asObj = asRecord(item);
       return {
@@ -795,7 +799,7 @@ export const normalizeAdminStat = (value: unknown): AdminStat => {
     actionsByAuth: actionsByAuthRaw.map((item) => {
       const asObj = asRecord(item);
       return {
-        authType: toAdminActionAuthType(asObj.auth_type),
+        authType: toAdminActionAuthType(asObj.authType ?? asObj.auth_type),
         count: getNumber(asObj, 'count'),
       };
     }),

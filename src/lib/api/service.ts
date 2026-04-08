@@ -462,10 +462,10 @@ export const apiService = {
     const response = await apiClient.get(endpoints.githubInstallations());
     const list = Array.isArray(response.data) ? response.data : [];
     return list.map((item: Record<string, unknown>) => ({
-      id: String(item.installation_id || item._id || item.id || ''),
-      accountLogin: String(item.account_login || item.accountLogin || ''),
-      accountType: String(item.account_type || item.accountType || 'User'),
-      appSlug: typeof item.app_slug === 'string' ? item.app_slug : undefined,
+      id: String(item.installationId || item.installation_id || item.id || item._id || ''),
+      accountLogin: String(item.accountLogin || item.account_login || ''),
+      accountType: String(item.accountType || item.account_type || 'User'),
+      appSlug: typeof item.appSlug === 'string' ? item.appSlug : typeof item.app_slug === 'string' ? item.app_slug : undefined,
       raw: item,
     }));
   },
@@ -474,11 +474,11 @@ export const apiService = {
     const response = await apiClient.get(endpoints.githubInstallationRepos(installationId));
     const list = Array.isArray(response.data) ? response.data : [];
     return list.map((item: Record<string, unknown>) => ({
-      externalId: String(item.external_id || item.externalId || item.id || ''),
-      fullName: String(item.full_name || item.fullName || ''),
+      externalId: String(item.externalId || item.external_id || item.id || ''),
+      fullName: String(item.fullName || item.full_name || ''),
       name: String(item.name || ''),
-      isPrivate: Boolean(item.private ?? item.is_private ?? item.isPrivate),
-      htmlUrl: String(item.html_url || item.htmlUrl || ''),
+      isPrivate: Boolean(item.isPrivate ?? item.is_private ?? item.private),
+      htmlUrl: String(item.htmlUrl || item.html_url || ''),
       raw: item,
     }));
   },
@@ -493,16 +493,18 @@ export const apiService = {
     const response = await apiClient.get(endpoints.projectRepositories(projectId));
     const list = Array.isArray(response.data) ? response.data : [];
     return list.map((item: Record<string, unknown>) => {
-      const repo = (typeof item.repository_id === 'object' && item.repository_id !== null
-        ? item.repository_id
-        : item) as Record<string, unknown>;
+      const repo = (typeof item.repositoryId === 'object' && item.repositoryId !== null
+        ? item.repositoryId
+        : typeof item.repository_id === 'object' && item.repository_id !== null
+          ? item.repository_id
+          : item) as Record<string, unknown>;
       return {
-        id: String(item._id || item.id || ''),
-        repositoryExternalId: String(repo.external_id || repo.externalId || item.repository_external_id || ''),
-        installationId: String(repo.installation_id || item.installation_id || ''),
-        fullName: String(repo.full_name || repo.fullName || item.full_name || ''),
-        htmlUrl: String(repo.html_url || repo.htmlUrl || item.html_url || ''),
-        autoCloseOnMerge: Boolean(item.auto_close_on_merge ?? item.autoCloseOnMerge),
+        id: String(item.id || item._id || ''),
+        repositoryExternalId: String(repo.externalId || repo.external_id || item.repositoryExternalId || item.repository_external_id || ''),
+        installationId: String(repo.installationId || repo.installation_id || item.installationId || item.installation_id || ''),
+        fullName: String(repo.fullName || repo.full_name || item.fullName || item.full_name || ''),
+        htmlUrl: String(repo.htmlUrl || repo.html_url || item.htmlUrl || item.html_url || ''),
+        autoCloseOnMerge: Boolean(item.autoCloseOnMerge ?? item.auto_close_on_merge),
         raw: item,
       };
     });
@@ -521,12 +523,14 @@ export const apiService = {
     const data = response.data as Record<string, unknown>;
     const rawEvents = Array.isArray(data.events) ? data.events : [];
     const events: WebhookEvent[] = rawEvents.map((item: Record<string, unknown>) => ({
-      id: String(item._id || item.id || ''),
-      eventType: String(item.event_type || item.eventType || ''),
+      id: String(item.id || item._id || ''),
+      eventType: String(item.eventType || item.event_type || ''),
       branch: String(item.branch || ''),
-      closedTasks: Array.isArray(item.closed_tasks || item.closedTasks)
-        ? (item.closed_tasks || item.closedTasks) as string[]
-        : [],
+      closedTasks: Array.isArray(item.closedTasks)
+        ? item.closedTasks as string[]
+        : Array.isArray(item.closed_tasks)
+          ? item.closed_tasks as string[]
+          : [],
       status: String(item.status || ''),
       createdAt: String(item.createdAt || item.created_at || ''),
       raw: item,
