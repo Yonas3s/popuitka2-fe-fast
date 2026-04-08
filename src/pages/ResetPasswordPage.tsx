@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useState } from 'react';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
@@ -15,12 +15,27 @@ type ResetForm = {
 
 export const ResetPasswordPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const pushToast = useUiStore((state) => state.pushToast);
-  const email = useResetFlowStore((state) => state.email);
-  const code = useResetFlowStore((state) => state.code);
+  const storeEmail = useResetFlowStore((state) => state.email);
+  const storeCode = useResetFlowStore((state) => state.code);
+  const setFlow = useResetFlowStore((state) => state.setFlow);
   const clearFlow = useResetFlowStore((state) => state.clearFlow);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const tokenFromUrl = searchParams.get('reset_token') || searchParams.get('token') || '';
+  const emailFromUrl = searchParams.get('email') || '';
+
+  const email = storeEmail || emailFromUrl;
+  const code = storeCode || tokenFromUrl;
+
+  useEffect(() => {
+    if (!storeEmail && emailFromUrl && tokenFromUrl) {
+      setFlow(emailFromUrl, tokenFromUrl);
+    }
+  }, [emailFromUrl, tokenFromUrl, storeEmail, setFlow]);
 
   const {
     register,
@@ -43,6 +58,7 @@ export const ResetPasswordPage = () => {
       return;
     }
 
+    setServerError(null);
     try {
       await apiService.resetPassword({
         email,
@@ -54,7 +70,7 @@ export const ResetPasswordPage = () => {
       navigate('/signin');
     } catch (error) {
       const normalized = normalizeApiError(error);
-      pushToast(normalized.message, 'error');
+      setServerError(normalized.message);
     }
   });
 
@@ -101,7 +117,11 @@ export const ResetPasswordPage = () => {
                     autoComplete="new-password"
                     {...register('password', {
                       required: 'Введите новый пароль',
-                      minLength: { value: 6, message: 'Минимум 6 символов' },
+                      minLength: { value: 8, message: 'Минимум 8 символов' },
+                      validate: {
+                        hasUpper: (v) => /[A-ZА-ЯЁ]/.test(v) || 'Нужна хотя бы одна заглавная буква',
+                        hasDigit: (v) => /\d/.test(v) || 'Нужна хотя бы одна цифра',
+                      },
                     })}
                   />
                   <button
@@ -146,6 +166,8 @@ export const ResetPasswordPage = () => {
                 </div>
                 {errors.confirmPassword?.message ? <small>{errors.confirmPassword.message}</small> : null}
               </label>
+
+              {serverError ? <p className="signin-v2-server-error">{serverError}</p> : null}
 
               <button className="signin-v2-submit" type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Сохраняем...' : 'Изменить пароль'}

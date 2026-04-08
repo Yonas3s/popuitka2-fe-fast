@@ -19,6 +19,27 @@ type SignUpForm = {
   confirmPassword: string;
 };
 
+const PASSWORD_RULES = {
+  required: 'Введите пароль',
+  minLength: { value: 8, message: 'Минимум 8 символов' },
+  validate: {
+    hasUpper: (v: string) => /[A-ZА-ЯЁ]/.test(v) || 'Нужна хотя бы одна заглавная буква',
+    hasDigit: (v: string) => /\d/.test(v) || 'Нужна хотя бы одна цифра',
+  },
+};
+
+const EMAIL_PATTERN = {
+  value: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+  message: 'Некорректный формат email',
+};
+
+const USERNAME_RULES = {
+  required: 'Введите имя пользователя',
+  minLength: { value: 2, message: 'Минимум 2 символа' },
+  maxLength: { value: 40, message: 'Максимум 40 символов' },
+  pattern: { value: /^[a-zA-Zа-яА-ЯёЁ0-9_ .-]+$/, message: 'Только буквы, цифры, пробел, точка, дефис, _' },
+};
+
 export const SignUpPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,6 +50,7 @@ export const SignUpPage = () => {
   const postLoginPath = redirectPath || '/projects';
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -39,6 +61,7 @@ export const SignUpPage = () => {
   const passwordValue = watch('password');
 
   const onSubmit = handleSubmit(async (values) => {
+    setServerError(null);
     try {
       await apiService.signup({
         username: values.username,
@@ -49,7 +72,7 @@ export const SignUpPage = () => {
       navigate(withRedirectQuery('/signin', redirectPath), { replace: true });
     } catch (error) {
       const normalized = normalizeApiError(error);
-      pushToast(normalized.message, 'error');
+      setServerError(normalized.message);
     }
   });
 
@@ -110,7 +133,7 @@ export const SignUpPage = () => {
                 <input
                   placeholder="Иван Петров"
                   autoComplete="username"
-                  {...register('username', { required: 'Введите имя пользователя' })}
+                  {...register('username', USERNAME_RULES)}
                 />
                 {errors.username?.message ? <small>{errors.username.message}</small> : null}
               </label>
@@ -121,7 +144,7 @@ export const SignUpPage = () => {
                   type="email"
                   placeholder="name@company.com"
                   autoComplete="email"
-                  {...register('email', { required: 'Введите email' })}
+                  {...register('email', { required: 'Введите email', pattern: EMAIL_PATTERN })}
                 />
                 {errors.email?.message ? <small>{errors.email.message}</small> : null}
               </label>
@@ -133,10 +156,7 @@ export const SignUpPage = () => {
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     autoComplete="new-password"
-                    {...register('password', {
-                      required: 'Введите пароль',
-                      minLength: { value: 6, message: 'Минимум 6 символов' },
-                    })}
+                    {...register('password', PASSWORD_RULES)}
                   />
                   <button
                     className="signin-v2-eye"
@@ -181,6 +201,8 @@ export const SignUpPage = () => {
                 </div>
                 {errors.confirmPassword?.message ? <small>{errors.confirmPassword.message}</small> : null}
               </label>
+
+              {serverError ? <p className="signin-v2-server-error">{serverError}</p> : null}
 
               <button className="signin-v2-submit" type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Создаем...' : 'Создать аккаунт'}

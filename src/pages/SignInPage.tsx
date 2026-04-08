@@ -45,6 +45,7 @@ export const SignInPage = () => {
   const postLoginPath = redirectFromQuery || redirectFromState || '/projects';
   const signUpHref = withRedirectQuery('/signup', postLoginPath);
   const [showPassword, setShowPassword] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const {
     register,
@@ -53,6 +54,7 @@ export const SignInPage = () => {
   } = useForm<SignInForm>();
 
   const onSubmit = handleSubmit(async (values) => {
+    setServerError(null);
     try {
       await login(values);
       pushToast('Вход выполнен', 'success');
@@ -60,7 +62,7 @@ export const SignInPage = () => {
       navigate(postLoginPath, { replace: true });
     } catch (error) {
       const normalized = normalizeApiError(error);
-      pushToast(normalized.message, 'error');
+      setServerError(normalized.message);
     }
   });
 
@@ -120,7 +122,10 @@ export const SignInPage = () => {
                   type="email"
                   placeholder="name@company.com"
                   autoComplete="email"
-                  {...register('email', { required: 'Введите email' })}
+                  {...register('email', {
+                    required: 'Введите email',
+                    pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/, message: 'Некорректный формат email' },
+                  })}
                 />
                 {errors.email?.message ? <small>{errors.email.message}</small> : null}
               </label>
@@ -154,6 +159,8 @@ export const SignInPage = () => {
                 </label>
                 <Link to="/forgot-password">Забыли пароль?</Link>
               </div>
+
+              {serverError ? <p className="signin-v2-server-error">{serverError}</p> : null}
 
               <button className="signin-v2-submit" type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Проверяем...' : 'Войти'}
