@@ -61,6 +61,18 @@ export const WorkspaceHeader = ({ activeTab }: WorkspaceHeaderProps) => {
             <strong>{user?.username || 'Пользователь'}</strong>
             <span>{meLoading ? 'Загрузка...' : (user?.email || '')}</span>
           </div>
+          <Link
+            to="/settings/telegram"
+            className={`workspace-tg-badge ${user?.telegramUsername ? 'is-linked' : ''}`}
+            title={user?.telegramUsername ? `Telegram: @${user.telegramUsername}` : 'Telegram не привязан'}
+          >
+            <span className="workspace-tg-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                <path d="M21.9 4.4 18.5 20c-.3 1.2-1 1.5-2 .9l-5.4-4-2.6 2.5c-.3.3-.5.5-1 .5l.4-5.4 9.8-8.8c.4-.4-.1-.6-.6-.2L4.7 12.1l-5.2-1.6c-1.1-.4-1.2-1.1.2-1.7L20.5 2.8c1-.3 1.7.2 1.4 1.6Z"/>
+              </svg>
+            </span>
+            <span>{user?.telegramUsername ? 'Telegram' : 'Не привязан'}</span>
+          </Link>
           <button type="button" className="ui-btn ui-btn-ghost ui-btn-sm" onClick={handleLogout}>
             Выйти
           </button>

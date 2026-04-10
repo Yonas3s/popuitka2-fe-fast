@@ -55,4 +55,10 @@ export const endpoints = {
   projectRepositories: (projectId: string) => `/projects/${projectId}/repositories`,
   projectRepositoryById: (projectId: string, repoId: string) => `/projects/${projectId}/repositories/${repoId}`,
   webhookEvents: (projectId: string) => `/projects/${projectId}/webhook-events`,
+  meTelegram: () => '/me/telegram',
+  meTelegramConnectLink: () => '/me/telegram/connect-link',
+  projectTelegramBindings: (projectId: string) => `/projects/${projectId}/telegram/bindings`,
+  projectTelegramBindingById: (projectId: string, bindingId: string) =>
+    `/projects/${projectId}/telegram/bindings/${bindingId}`,
+  projectTelegramBindToken: (projectId: string) => `/projects/${projectId}/telegram/bind-token`,
 };

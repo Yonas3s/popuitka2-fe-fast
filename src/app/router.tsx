@@ -16,6 +16,7 @@ import { TeamDetailsPage } from '../pages/TeamDetailsPage';
 import { TeamInvitePage } from '../pages/TeamInvitePage';
 import { AdminPage } from '../pages/AdminPage';
 import { SettingsPage } from '../pages/SettingsPage';
+import { TelegramSettingsPage } from '../pages/TelegramSettingsPage';
 import { GitHubCallbackInstallPage } from '../pages/GitHubCallbackInstallPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
@@ -43,6 +44,7 @@ export const AppRoutes = () => {
       <Route element={<RequireAuth />}>
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/settings/telegram" element={<TelegramSettingsPage />} />
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/teams/:teamId" element={<TeamDetailsPage />} />
         <Route path="/projects" element={<ProjectsPage />} />

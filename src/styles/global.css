@@ -10705,3 +10705,397 @@ p {
   background: #fff;
   min-width: 140px;
 }
+
+/* ── Telegram integration ── */
+
+.workspace-tg-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #fff;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.workspace-tg-badge:hover {
+  color: #111827;
+  border-color: #9ca3af;
+}
+
+.workspace-tg-badge.is-linked {
+  color: #0088cc;
+  border-color: rgba(0, 136, 204, 0.3);
+  background: rgba(0, 136, 204, 0.05);
+}
+
+.workspace-tg-badge.is-linked:hover {
+  background: rgba(0, 136, 204, 0.1);
+}
+
+.workspace-tg-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Telegram settings page */
+
+.tg-card {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.tg-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tg-card-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.tg-card-status.tg-linked {
+  color: #059669;
+}
+
+.tg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #10b981;
+}
+
+.tg-dot-off {
+  background: #d1d5db;
+}
+
+.tg-card-text {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.tg-linked-info {
+  display: grid;
+  gap: 4px;
+}
+
+.tg-linked-label {
+  margin: 0;
+  font-size: 12px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tg-linked-username {
+  font-size: 18px;
+  font-weight: 600;
+  color: #0088cc;
+  text-decoration: none;
+}
+
+.tg-linked-username:hover {
+  text-decoration: underline;
+}
+
+.tg-card-connect h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.tg-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tg-qr-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 20px;
+  border: 1px dashed #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+}
+
+.tg-qr {
+  width: 200px;
+  height: 200px;
+  image-rendering: pixelated;
+}
+
+.tg-qr-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.tg-countdown {
+  padding: 10px 14px;
+  border: 1px solid #fef3c7;
+  border-radius: 8px;
+  background: #fffbeb;
+  font-size: 13px;
+  color: #92400e;
+  text-align: center;
+}
+
+.tg-countdown.expired {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.tg-link-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
+
+/* Project telegram panel */
+
+.tg-project-panel {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.tg-project-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.tg-project-head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.tg-project-head p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.tg-loading,
+.tg-empty {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.tg-bindings-list {
+  display: grid;
+  gap: 8px;
+}
+
+.tg-binding-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.tg-binding-info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tg-binding-info strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.tg-binding-info span {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* Telegram bind modal */
+
+.tg-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: grid;
+  place-items: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.tg-modal {
+  width: min(540px, 100%);
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.3);
+  padding: 24px;
+  display: grid;
+  gap: 18px;
+}
+
+.tg-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tg-modal-head h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.tg-modal-close {
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  line-height: 1;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.tg-modal-close:hover {
+  color: #111827;
+}
+
+.tg-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 16px;
+}
+
+.tg-steps li {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.tg-step-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #0088cc;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.tg-step-body {
+  flex: 1;
+  display: grid;
+  gap: 8px;
+}
+
+.tg-step-body p {
+  margin: 0;
+  font-size: 14px;
+  color: #374151;
+}
+
+.tg-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 13px;
+  color: #111827;
+  text-align: left;
+  width: 100%;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.tg-copy-btn:hover {
+  border-color: #0088cc;
+  background: #f0f9ff;
+}
+
+.tg-copy-cmd code {
+  font-family: inherit;
+  font-size: inherit;
+  background: transparent;
+  padding: 0;
+}
+
+.tg-copy-icon {
+  color: #9ca3af;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.tg-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Assignee telegram link in task cards */
+
+.tg-assignee-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: rgba(0, 136, 204, 0.1);
+  color: #0088cc;
+  text-decoration: none;
+  vertical-align: middle;
+  transition: background 150ms ease;
+}
+
+.tg-assignee-link:hover {
+  background: rgba(0, 136, 204, 0.2);
+}

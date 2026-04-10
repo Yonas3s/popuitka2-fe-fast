@@ -518,6 +518,63 @@ export const apiService = {
     await apiClient.delete(endpoints.projectRepositoryById(projectId, repoId));
   },
 
+  async getMeTelegram(): Promise<{ linked: boolean; telegramUsername: string | null; raw: Record<string, unknown> }> {
+    const response = await apiClient.get(endpoints.meTelegram());
+    const data = (response.data || {}) as Record<string, unknown>;
+    const telegramUsername =
+      (typeof data.telegramUsername === 'string' && data.telegramUsername) ||
+      (typeof data.telegram_username === 'string' && data.telegram_username) ||
+      null;
+    return {
+      linked: Boolean(data.linked),
+      telegramUsername,
+      raw: data,
+    };
+  },
+
+  async createMeTelegramConnectLink(): Promise<{ token: string; deepLink: string; expiresAt: string }> {
+    const response = await apiClient.post(endpoints.meTelegramConnectLink());
+    const data = (response.data || {}) as Record<string, unknown>;
+    return {
+      token: String(data.token || ''),
+      deepLink: String(data.deepLink || data.deep_link || ''),
+      expiresAt: String(data.expiresAt || data.expires_at || ''),
+    };
+  },
+
+  async disconnectMeTelegram(): Promise<void> {
+    await apiClient.delete(endpoints.meTelegram());
+  },
+
+  async getProjectTelegramBindings(projectId: string) {
+    const response = await apiClient.get(endpoints.projectTelegramBindings(projectId));
+    const list = Array.isArray(response.data) ? response.data : [];
+    return list.map((item: Record<string, unknown>) => ({
+      id: String(item.id || item._id || ''),
+      chatTitle: String(item.chatTitle || item.chat_title || item.title || 'Чат'),
+      chatId: item.chatId ? String(item.chatId) : item.chat_id ? String(item.chat_id) : undefined,
+      createdAt: String(item.createdAt || item.created_at || ''),
+      raw: item,
+    }));
+  },
+
+  async createProjectTelegramBindToken(projectId: string) {
+    const response = await apiClient.post(endpoints.projectTelegramBindToken(projectId));
+    const data = (response.data || {}) as Record<string, unknown>;
+    const instructions = Array.isArray(data.instructions) ? (data.instructions as string[]) : [];
+    return {
+      token: String(data.token || ''),
+      command: String(data.command || ''),
+      botUsername: String(data.botUsername || data.bot_username || 'unit_duck_bot'),
+      expiresAt: String(data.expiresAt || data.expires_at || ''),
+      instructions,
+    };
+  },
+
+  async unbindProjectTelegram(projectId: string, bindingId: string): Promise<void> {
+    await apiClient.delete(endpoints.projectTelegramBindingById(projectId, bindingId));
+  },
+
   async getWebhookEvents(projectId: string): Promise<{ events: WebhookEvent[]; total: number }> {
     const response = await apiClient.get(endpoints.webhookEvents(projectId));
     const data = response.data as Record<string, unknown>;

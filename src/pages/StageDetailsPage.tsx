@@ -256,6 +256,15 @@ export const StageDetailsPage = () => {
     () => Object.fromEntries(assignableMembers.map((member) => [member.id, `@${member.username}`])),
     [assignableMembers],
   );
+  const memberTelegramById = useMemo(
+    () =>
+      Object.fromEntries(
+        assignableMembers
+          .filter((m) => m.telegramUsername)
+          .map((m) => [m.id, m.telegramUsername as string]),
+      ),
+    [assignableMembers],
+  );
 
   const ensureStageRoute = () => {
     if (!projectId || !stageId) {
@@ -646,6 +655,20 @@ export const StageDetailsPage = () => {
                           )}
                           <span className="stage-v5-task-assignee-pill">
                             {task.assigneeUserId ? memberNameById[task.assigneeUserId] || task.assigneeUserId : 'Без исполнителя'}
+                            {task.assigneeUserId && memberTelegramById[task.assigneeUserId] ? (
+                              <a
+                                className="tg-assignee-link"
+                                href={`https://t.me/${memberTelegramById[task.assigneeUserId]}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                title={`Telegram: @${memberTelegramById[task.assigneeUserId]}`}
+                              >
+                                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true">
+                                  <path d="M21.9 4.4 18.5 20c-.3 1.2-1 1.5-2 .9l-5.4-4-2.6 2.5c-.3.3-.5.5-1 .5l.4-5.4 9.8-8.8c.4-.4-.1-.6-.6-.2L4.7 12.1l-5.2-1.6c-1.1-.4-1.2-1.1.2-1.7L20.5 2.8c1-.3 1.7.2 1.4 1.6Z"/>
+                                </svg>
+                              </a>
+                            ) : null}
                           </span>
                           <button
                             type="button"

@@ -14,6 +14,7 @@ export type AuthProfile = {
   email: string;
   authProvider: string;
   createdAt?: string;
+  telegramUsername?: string | null;
   raw: Record<string, unknown>;
 };
 
@@ -97,6 +98,7 @@ export type TeamMember = {
   username: string;
   email: string;
   role: string;
+  telegramUsername?: string | null;
   raw: Record<string, unknown>;
 };
 
@@ -258,6 +260,36 @@ export type BoundRepository = {
   fullName: string;
   htmlUrl: string;
   autoCloseOnMerge: boolean;
+  raw: Record<string, unknown>;
+};
+
+export type TelegramUserLink = {
+  linked: boolean;
+  telegramUsername: string | null;
+  raw: Record<string, unknown>;
+};
+
+export type TelegramConnectLink = {
+  token: string;
+  deepLink: string;
+  expiresAt: string;
+  raw: Record<string, unknown>;
+};
+
+export type TelegramBinding = {
+  id: string;
+  chatTitle: string;
+  chatId?: string;
+  createdAt?: string;
+  raw: Record<string, unknown>;
+};
+
+export type TelegramBindToken = {
+  token: string;
+  command: string;
+  botUsername: string;
+  expiresAt: string;
+  instructions: string[];
   raw: Record<string, unknown>;
 };
 

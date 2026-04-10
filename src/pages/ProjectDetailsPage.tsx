@@ -10,6 +10,7 @@ import { FRONTEND_BASE_URL } from '../lib/config/env';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
 import { ProjectReposPanel } from '../components/github/ProjectReposPanel';
 import { WebhookEventsPanel } from '../components/github/WebhookEventsPanel';
+import { ProjectTelegramPanel } from '../components/telegram/ProjectTelegramPanel';
 import type { ApiError, BoundRepository, DirectionTag, Stage, Task, TaskType, TeamMember } from '../types/models';
 
 type StageForm = {
@@ -841,7 +842,24 @@ export const ProjectDetailsPage = () => {
                             {taskTypeLabels[task.taskType]}
                           </span>
                           <span className="project-v4-flat-assignee-id">
-                            assignee_user_id: {task.assigneeUserId || '—'}
+                            assignee: {task.assigneeUserId ? assignableMembers.find((m) => m.id === task.assigneeUserId)?.username || task.assigneeUserId : '—'}
+                            {(() => {
+                              const member = assignableMembers.find((m) => m.id === task.assigneeUserId);
+                              if (!member?.telegramUsername) return null;
+                              return (
+                                <a
+                                  className="tg-assignee-link"
+                                  href={`https://t.me/${member.telegramUsername}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title={`Telegram: @${member.telegramUsername}`}
+                                >
+                                  <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true">
+                                    <path d="M21.9 4.4 18.5 20c-.3 1.2-1 1.5-2 .9l-5.4-4-2.6 2.5c-.3.3-.5.5-1 .5l.4-5.4 9.8-8.8c.4-.4-.1-.6-.6-.2L4.7 12.1l-5.2-1.6c-1.1-.4-1.2-1.1.2-1.7L20.5 2.8c1-.3 1.7.2 1.4 1.6Z"/>
+                                  </svg>
+                                </a>
+                              );
+                            })()}
                           </span>
                           {project?.teamId && !membersAccessDenied ? (
                             <label className="project-v4-flat-assign">
@@ -998,6 +1016,7 @@ export const ProjectDetailsPage = () => {
           )}
 
           <ProjectReposPanel projectId={projectId} />
+          <ProjectTelegramPanel projectId={projectId} />
           <WebhookEventsPanel projectId={projectId} />
         </div>
       </main>

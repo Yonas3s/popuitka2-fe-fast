@@ -685,12 +685,18 @@ export const normalizeAuthProfile = (value: unknown): AuthProfile => {
     (typeof record.createdAt === 'string' && record.createdAt) ||
     undefined;
 
+  const telegramUsername =
+    (typeof record.telegramUsername === 'string' && record.telegramUsername) ||
+    (typeof record.telegram_username === 'string' && record.telegram_username) ||
+    null;
+
   return {
     id: normalizeId(record, 'me'),
     username,
     email,
     authProvider,
     createdAt,
+    telegramUsername,
     raw: record,
   };
 };
@@ -952,11 +958,19 @@ export const normalizeTeamMember = (value: unknown, index = 0): TeamMember => {
     nestedUser.id;
   const id = typeof idCandidate === 'string' && idCandidate.length > 0 ? idCandidate : `member-${index}`;
 
+  const telegramUsername =
+    (typeof record.telegramUsername === 'string' && record.telegramUsername) ||
+    (typeof record.telegram_username === 'string' && record.telegram_username) ||
+    (typeof nestedUser.telegramUsername === 'string' && nestedUser.telegramUsername) ||
+    (typeof nestedUser.telegram_username === 'string' && nestedUser.telegram_username) ||
+    null;
+
   return {
     id,
     username,
     email,
     role,
+    telegramUsername,
     raw: record,
   };
 };
