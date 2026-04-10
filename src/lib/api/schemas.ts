@@ -68,6 +68,7 @@ const taskSchema = z
     issueKey: z.string().optional(),
     done: z.boolean().optional(),
     is_done: z.boolean().optional(),
+    isDone: z.boolean().optional(),
     completed: z.boolean().optional(),
     task_type: z.string().optional(),
     taskType: z.string().optional(),
@@ -75,6 +76,7 @@ const taskSchema = z
     task_description: z.string().optional(),
     direction_ids: z.array(z.unknown()).optional(),
     directionIds: z.array(z.unknown()).optional(),
+    directions: z.array(z.unknown()).optional(),
     assignee_user_id: z.string().nullable().optional(),
     assigneeUserId: z.string().nullable().optional(),
   })
@@ -484,25 +486,32 @@ export const normalizeTask = (value: unknown, index = 0): Task => {
   const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
 
   const done =
+    (typeof record.isDone === 'boolean' && record.isDone) ||
     (typeof record.done === 'boolean' && record.done) ||
     (typeof record.is_done === 'boolean' && record.is_done) ||
     (typeof record.completed === 'boolean' && record.completed) ||
     false;
 
   const taskTypeCandidate =
-    (typeof record.task_type === 'string' && record.task_type) ||
     (typeof record.taskType === 'string' && record.taskType) ||
+    (typeof record.task_type === 'string' && record.task_type) ||
     '';
   const normalizedTaskType = taskTypeCandidate.trim().toLowerCase();
   const taskType = taskTypeValues.includes(normalizedTaskType as TaskType)
     ? (normalizedTaskType as TaskType)
     : 'task';
 
-  const directionSource = Array.isArray(record.direction_ids)
-    ? record.direction_ids
+  // Supports three shapes:
+  //  1) directions: [{ directionId: '...' }]     — new camelCase format
+  //  2) directionIds: ['...']                     — old camelCase fallback
+  //  3) direction_ids: ['...' | { id/_id }]       — legacy snake_case fallback
+  const directionSource = Array.isArray(record.directions)
+    ? record.directions
     : Array.isArray(record.directionIds)
       ? record.directionIds
-      : [];
+      : Array.isArray(record.direction_ids)
+        ? record.direction_ids
+        : [];
   const directionIds = Array.from(
     new Set(
       directionSource
@@ -511,11 +520,18 @@ export const normalizeTask = (value: unknown, index = 0): Task => {
             return item;
           }
           const nested = asRecord(item);
-          if (typeof nested._id === 'string' && nested._id) {
-            return nested._id;
+          // New shape: { directionId: '...' } (possibly with nested direction object)
+          if (typeof nested.directionId === 'string' && nested.directionId) {
+            return nested.directionId;
+          }
+          if (typeof nested.direction_id === 'string' && nested.direction_id) {
+            return nested.direction_id;
           }
           if (typeof nested.id === 'string' && nested.id) {
             return nested.id;
+          }
+          if (typeof nested._id === 'string' && nested._id) {
+            return nested._id;
           }
           return '';
         })
@@ -531,15 +547,15 @@ export const normalizeTask = (value: unknown, index = 0): Task => {
       (typeof record.task_description === 'string' && record.task_description) ||
       undefined,
     issueKey:
-      (typeof record.issue_key === 'string' && record.issue_key) ||
       (typeof record.issueKey === 'string' && record.issueKey) ||
+      (typeof record.issue_key === 'string' && record.issue_key) ||
       undefined,
     done,
     taskType,
     directionIds,
     assigneeUserId:
-      (typeof record.assignee_user_id === 'string' && record.assignee_user_id) ||
       (typeof record.assigneeUserId === 'string' && record.assigneeUserId) ||
+      (typeof record.assignee_user_id === 'string' && record.assignee_user_id) ||
       undefined,
     raw: record,
   };

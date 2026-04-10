@@ -268,6 +268,30 @@ describe('task extractors', () => {
     expect(tasks[2].assigneeUserId).toBeUndefined();
     expect(tasks[2].taskType).toBe('task');
   });
+
+  it('parses new camelCase task format with directions[{directionId}] and isDone', () => {
+    const tasks = extractTasks({
+      tasks: [
+        {
+          id: 'task-new-1',
+          title: 'New format',
+          issueKey: 'ul-201',
+          isDone: true,
+          assigneeUserId: 'user-7',
+          taskType: 'feature',
+          directions: [{ directionId: 'dir-a' }, { directionId: 'dir-b' }],
+        },
+      ],
+    });
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].id).toBe('task-new-1');
+    expect(tasks[0].issueKey).toBe('ul-201');
+    expect(tasks[0].done).toBe(true);
+    expect(tasks[0].assigneeUserId).toBe('user-7');
+    expect(tasks[0].taskType).toBe('feature');
+    expect(tasks[0].directionIds).toEqual(['dir-a', 'dir-b']);
+  });
 });
 
 describe('agent run extractors', () => {
