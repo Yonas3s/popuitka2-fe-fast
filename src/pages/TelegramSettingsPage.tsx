@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { useUiStore } from '../store/ui.store';
-import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
+import { SettingsLayout } from '../components/layout/SettingsLayout';
 
 type LinkInfo = {
   linked: boolean;
@@ -132,26 +131,17 @@ export const TelegramSettingsPage = () => {
   const expired = link && expiresMs <= 0;
 
   return (
-    <div className="settings-v1-page">
-      <WorkspaceHeader activeTab="settings" />
+    <SettingsLayout>
+      <div className="settings-v1-toolbar">
+        <div>
+          <h1>Telegram</h1>
+          <p>Привяжи Telegram к аккаунту, чтобы получать личные уведомления.</p>
+        </div>
+      </div>
 
-      <main className="projects-v3-main settings-v1-main">
-        <div className="projects-v3-grid-bg" />
-
-        <div className="projects-v3-container settings-v1-content">
-          <div className="settings-v1-toolbar">
-            <div>
-              <h1>Telegram</h1>
-              <p>Привяжи Telegram к аккаунту, чтобы получать личные уведомления.</p>
-            </div>
-            <Link to="/settings" className="ui-btn ui-btn-secondary ui-btn-sm">
-              ← API токены
-            </Link>
-          </div>
-
-          {loading ? (
-            <p className="settings-v1-loading">Загрузка...</p>
-          ) : null}
+      {loading ? (
+        <p className="settings-v1-loading">Загрузка...</p>
+      ) : null}
 
           {!loading && info?.linked ? (
             <section className="tg-card">
@@ -246,8 +236,6 @@ export const TelegramSettingsPage = () => {
               </button>
             </section>
           ) : null}
-        </div>
-      </main>
-    </div>
+    </SettingsLayout>
   );
 };

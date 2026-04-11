@@ -7312,6 +7312,8 @@ p {
   padding: 2px 4px;
   border-radius: 6px;
   width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
 }
 
 .stage-v5-task-main {
@@ -8472,6 +8474,25 @@ p {
     display: none;
   }
 
+  .stitch-brand {
+    font-size: 16px;
+    white-space: nowrap;
+  }
+
+  .stitch-user-info {
+    display: none;
+  }
+
+  .stitch-nav-actions .stitch-solid-button {
+    padding: 8px 14px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .stitch-nav-row {
+    gap: 10px;
+  }
+
   .stitch-title {
     font-size: clamp(34px, 10vw, 52px);
   }
@@ -8512,13 +8533,27 @@ p {
     display: none;
   }
 
-  .workspace-user-block strong {
-    font-size: 12px;
+  .projects-v3-brand {
+    font-size: 16px;
+    white-space: nowrap;
   }
 
-  .workspace-user-block span {
-    max-width: 160px;
-    font-size: 11px;
+  .workspace-user-block,
+  .workspace-header-right .workspace-tg-badge,
+  .workspace-logout-desktop {
+    display: none;
+  }
+
+  .workspace-header-right {
+    gap: 8px;
+  }
+
+  .workspace-burger {
+    display: inline-flex;
+  }
+
+  .workspace-mobile-overlay {
+    display: flex;
   }
 
   .project-v4-breadcrumb {
@@ -8534,8 +8569,49 @@ p {
     max-width: 160px;
   }
 
+  .projects-v3-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
   .projects-v3-toolbar h1 {
-    font-size: 28px;
+    font-size: 24px;
+  }
+
+  .projects-v3-toolbar .ui-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .settings-v1-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .settings-v1-toolbar h1 {
+    font-size: 24px;
+  }
+
+  .settings-v1-toolbar .ui-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .teams-v3-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .teams-v3-toolbar h1 {
+    font-size: 24px;
+  }
+
+  .teams-v3-toolbar .ui-btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .projects-v3-modal-backdrop {
@@ -8558,6 +8634,15 @@ p {
   .projects-v3-cancel-btn,
   .projects-v3-submit-btn {
     flex: 1;
+  }
+
+  .projects-v3-form-actions .ui-btn {
+    flex: 1;
+  }
+
+  .projects-v3-modal {
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
   }
 
   .projects-v3-footer-row {
@@ -10708,6 +10793,127 @@ p {
 
 /* ── Telegram integration ── */
 
+/* Mobile burger + menu */
+
+.workspace-burger {
+  display: none;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.workspace-burger:hover {
+  border-color: #9ca3af;
+}
+
+.workspace-mobile-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  z-index: 50;
+  display: none;
+  justify-content: flex-end;
+}
+
+.workspace-mobile-menu {
+  width: min(320px, 88vw);
+  height: 100%;
+  background: #fff;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow-y: auto;
+  box-shadow: -20px 0 60px rgba(15, 23, 42, 0.2);
+}
+
+.workspace-mobile-user {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.workspace-mobile-user strong {
+  font-size: 16px;
+  color: #111827;
+  font-weight: 700;
+}
+
+.workspace-mobile-user span {
+  font-size: 13px;
+  color: #6b7280;
+  word-break: break-all;
+}
+
+.workspace-mobile-links {
+  display: grid;
+  gap: 2px;
+}
+
+.workspace-mobile-links a {
+  display: block;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #4b5563;
+  text-decoration: none;
+  transition: background 150ms ease;
+}
+
+.workspace-mobile-links a:hover,
+.workspace-mobile-links a.is-active {
+  background: #f3f4f6;
+  color: #111827;
+  font-weight: 600;
+}
+
+.workspace-mobile-actions {
+  margin-top: auto;
+  display: grid;
+  gap: 10px;
+}
+
+.workspace-mobile-actions .workspace-tg-badge {
+  width: 100%;
+  justify-content: center;
+  padding: 10px 14px;
+}
+
+.workspace-mobile-actions .ui-btn {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .workspace-burger {
+    display: inline-flex;
+  }
+
+  .workspace-mobile-overlay {
+    display: flex;
+  }
+
+  .workspace-header-right .workspace-user-block,
+  .workspace-header-right .workspace-tg-badge,
+  .workspace-header-right .workspace-logout-desktop {
+    display: none;
+  }
+
+  .workspace-mobile-menu .workspace-tg-badge {
+    display: inline-flex;
+  }
+}
+
 .workspace-tg-badge {
   display: inline-flex;
   align-items: center;
@@ -11101,6 +11307,192 @@ p {
 }
 
 /* ── 404 Not Found ── */
+
+/* ── Settings layout with sidebar ── */
+
+.settings-layout-page {
+  min-height: 100vh;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-layout-main {
+  flex: 1;
+  position: relative;
+}
+
+.settings-layout-grid-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(to right, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
+  mask-image: linear-gradient(to bottom, #000 30%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 30%, transparent 100%);
+}
+
+.settings-layout-container {
+  position: relative;
+  z-index: 1;
+  width: min(1280px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 40px 0 48px;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 32px;
+}
+
+.settings-sidebar {
+  position: sticky;
+  top: 84px;
+  align-self: start;
+  display: grid;
+  gap: 20px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.settings-sidebar-group {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-sidebar-title {
+  margin: 0 10px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.settings-sidebar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.settings-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.settings-sidebar-link:hover {
+  background: rgba(15, 23, 42, 0.04);
+  color: #111827;
+}
+
+.settings-sidebar-link.is-active {
+  background: #fff;
+  border-color: #e5e7eb;
+  color: #111827;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.settings-sidebar-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+}
+
+.settings-sidebar-link.is-active .settings-sidebar-icon {
+  color: #3b82f6;
+}
+
+.settings-layout-content {
+  min-width: 0;
+  display: grid;
+  gap: 20px;
+}
+
+/* Profile page */
+
+.profile-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  padding: 24px;
+  display: grid;
+  gap: 18px;
+}
+
+.profile-field {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.profile-field:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.profile-field-label {
+  font-size: 12px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.profile-field-value {
+  font-size: 15px;
+  color: #111827;
+  font-weight: 600;
+}
+
+.profile-field-code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  color: #6b7280;
+  background: #f9fafb;
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  max-width: fit-content;
+  word-break: break-all;
+}
+
+@media (max-width: 900px) {
+  .settings-layout-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 24px 0 32px;
+  }
+
+  .settings-sidebar {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .settings-sidebar-list {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    display: grid;
+  }
+}
 
 .notfound-page {
   min-height: 100vh;
