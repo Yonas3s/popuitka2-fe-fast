@@ -9,6 +9,7 @@ import { ResetPasswordPage } from '../pages/ResetPasswordPage';
 import { ProjectsPage } from '../pages/ProjectsPage';
 import { ProjectDetailsPage } from '../pages/ProjectDetailsPage';
 import { StageDetailsPage } from '../pages/StageDetailsPage';
+import { AgentPage } from '../pages/AgentPage';
 import { PublicClientPage } from '../pages/PublicClientPage';
 import { AuthCallbackPage } from '../pages/AuthCallbackPage';
 import { TeamsPage } from '../pages/TeamsPage';
@@ -49,6 +50,7 @@ export const AppRoutes = () => {
         <Route path="/teams/:teamId" element={<TeamDetailsPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
+        <Route path="/projects/:projectId/agent" element={<AgentPage />} />
         <Route path="/projects/:projectId/stages/:stageId" element={<StageDetailsPage />} />
       </Route>
 

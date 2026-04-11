@@ -72,7 +72,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   currentRunId: null,
   isPolling: false,
   prompt: '',
-  model: 'gemini-2.5-flash',
+  model: '',
   createTasks: true,
   taskLimit: 7,
   stageId: null,
@@ -135,7 +135,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
   async createRun(projectId) {
     const prompt = get().prompt.trim();
-    const model = get().model.trim() || 'gemini-2.5-flash';
+    const model = get().model.trim();
     const createTasks = get().createTasks;
     const taskLimit = Math.min(20, Math.max(1, Math.floor(get().taskLimit || 7)));
     const stageId = get().stageId;
@@ -168,7 +168,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     try {
       const createdRun = await apiService.createAgentRun(projectId, {
         prompt,
-        model,
+        // When empty, let the backend pick the default for its current provider
+        // (e.g. llama-3.3-70b-versatile on Groq). Prevents stale client-side
+        // defaults from overriding the backend's choice.
+        ...(model ? { model } : {}),
         create_tasks: createTasks,
         task_limit: taskLimit,
         stage_id: createTasks && stageId ? stageId : undefined,
@@ -258,7 +261,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       currentRunId: null,
       isPolling: false,
       prompt: '',
-      model: 'gemini-2.5-flash',
+      model: '',
       createTasks: true,
       taskLimit: 7,
       stageId: null,

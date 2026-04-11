@@ -630,6 +630,12 @@ export const ProjectDetailsPage = () => {
             </div>
 
             <div className="project-v4-actions">
+              <Link
+                className="project-v4-secondary-btn"
+                to={`/projects/${projectId}/agent`}
+              >
+                Агент
+              </Link>
               <button
                 className="project-v4-secondary-btn"
                 type="button"

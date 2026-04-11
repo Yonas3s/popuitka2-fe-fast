@@ -109,7 +109,9 @@ export type PatchTaskMetaPayload = {
 
 export type CreateAgentRunPayload = {
   prompt: string;
-  model: string;
+  // Optional: when omitted, the backend chooses the default model for the
+  // currently configured provider (e.g. llama-3.3-70b-versatile on Groq).
+  model?: string;
   create_tasks: boolean;
   task_limit: number;
   stage_id?: string;
