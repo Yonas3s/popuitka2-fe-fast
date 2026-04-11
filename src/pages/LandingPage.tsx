@@ -311,6 +311,43 @@ unit-labs projects list`}</pre>
                 Документация MCP
               </a>
             </article>
+
+            {/* Telegram */}
+            <article className="stitch-integration-card">
+              <div className="stitch-integration-head">
+                <h3>Telegram Bot</h3>
+                <span className="stitch-integration-badge stitch-integration-badge-live">Bot</span>
+              </div>
+              <p>
+                Упомяни бота в чате — он прочитает код и сам заведёт задачу со ссылками на файлы.
+              </p>
+              <div className="stitch-tg-chat">
+                <div className="stitch-tg-msg user">
+                  <div className="stitch-tg-avatar">Я</div>
+                  <div className="stitch-tg-bubble">
+                    <b>@unit_duck_bot</b> проанализируй авторизацию на фронте и заведи задачу по безопасности
+                  </div>
+                </div>
+                <div className="stitch-tg-msg bot">
+                  <div className="stitch-tg-avatar bot-avatar">🦆</div>
+                  <div className="stitch-tg-bubble bot-bubble">
+                    <div className="stitch-tg-task">
+                      <span className="stitch-tg-check">✓</span>
+                      <span className="stitch-tg-task-key">POPU-87</span>
+                      <span className="stitch-tg-task-title">Улучшить защиту авторизации</span>
+                    </div>
+                    <div className="stitch-tg-sources">
+                      📁 LoginPage.tsx · authClient.ts · middleware/auth.js
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="stitch-tg-commands">
+                <span className="stitch-tg-cmd">/tasks</span>
+                <span className="stitch-tg-cmd">/mine</span>
+                <span className="stitch-tg-cmd">/task POPU-15</span>
+              </div>
+            </article>
           </div>
         </div>
       </section>

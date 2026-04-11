@@ -5067,7 +5067,7 @@ p {
 
 .stitch-integrations-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px;
 }
 
@@ -5125,6 +5125,168 @@ p {
   overflow-x: auto;
 }
 
+/* Integration — Telegram Bot */
+
+.stitch-integration-badge-live {
+  color: #047857;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  position: relative;
+  padding-left: 18px;
+}
+
+.stitch-integration-badge-live::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+  animation: stitch-tg-pulse 2s ease-in-out infinite;
+}
+
+@keyframes stitch-tg-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.stitch-tg-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+}
+
+.stitch-tg-msg {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.stitch-tg-msg.user {
+  flex-direction: row-reverse;
+}
+
+.stitch-tg-avatar {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stitch-tg-avatar.bot-avatar {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  font-size: 13px;
+}
+
+.stitch-tg-bubble {
+  max-width: 82%;
+  padding: 8px 11px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #111827;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+}
+
+.stitch-tg-msg.user .stitch-tg-bubble {
+  background: #111827;
+  color: #f9fafb;
+  border-color: #111827;
+  border-bottom-right-radius: 4px;
+}
+
+.stitch-tg-msg.user .stitch-tg-bubble b {
+  color: #93c5fd;
+  font-weight: 600;
+}
+
+.stitch-tg-bubble.bot-bubble {
+  border-bottom-left-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stitch-tg-task {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.stitch-tg-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #10b981;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.stitch-tg-task-key {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #111827;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  padding: 1px 6px;
+}
+
+.stitch-tg-task-title {
+  font-weight: 600;
+  color: #111827;
+}
+
+.stitch-tg-sources {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.5;
+  padding-top: 4px;
+  border-top: 1px dashed #e5e7eb;
+}
+
+.stitch-tg-commands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stitch-tg-cmd {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+
 /* Final CTA */
 
 .stitch-final-cta {
@@ -5177,14 +5339,25 @@ p {
   color: #fff;
 }
 
-@media (max-width: 900px) {
-  .stitch-audience-grid,
+@media (max-width: 1100px) {
   .stitch-integrations-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .stitch-audience-grid {
     grid-template-columns: 1fr;
   }
 
   .stitch-steps-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .stitch-integrations-grid {
+    grid-template-columns: 1fr;
   }
 }
 
