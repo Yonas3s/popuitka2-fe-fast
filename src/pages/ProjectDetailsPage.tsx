@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useProjectsStore } from '../store/projects.store';
 import { useUiStore } from '../store/ui.store';
@@ -52,6 +52,9 @@ export const ProjectDetailsPage = () => {
   const [flatTaskEdits, setFlatTaskEdits] = useState<Record<string, string>>({});
   const [flatTaskDescriptionEdits, setFlatTaskDescriptionEdits] = useState<Record<string, string>>({});
   const [activeFlatTaskId, setActiveFlatTaskId] = useState<string | null>(null);
+  const [highlightedFlatTaskId, setHighlightedFlatTaskId] = useState<string | null>(null);
+  const consumedFlatDeeplinkRef = useRef<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [assignableMembers, setAssignableMembers] = useState<TeamMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersAccessDenied, setMembersAccessDenied] = useState(false);
@@ -90,6 +93,47 @@ export const ProjectDetailsPage = () => {
       void fetchStages(projectId);
     }
   }, [fetchStages, project, projectId]);
+
+  // Deeplink: ?task=POPU-86 on a flat project opens/scrolls/highlights the task.
+  useEffect(() => {
+    const rawKey = searchParams.get('task');
+    if (!rawKey) return;
+    if (flatTasks.length === 0) return;
+    if (consumedFlatDeeplinkRef.current === rawKey) return;
+
+    const normalized = rawKey.toLowerCase();
+    const target = flatTasks.find((task) => (task.issueKey || '').toLowerCase() === normalized);
+    if (!target) return;
+
+    consumedFlatDeeplinkRef.current = rawKey;
+    setActiveFlatTaskId(target.id);
+    setFlatTaskDescriptionEdits((prev) =>
+      prev[target.id] !== undefined
+        ? prev
+        : { ...prev, [target.id]: target.description ?? '' },
+    );
+    setHighlightedFlatTaskId(target.id);
+
+    const scrollTimer = window.setTimeout(() => {
+      const el = document.getElementById(`flat-task-${target.id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 80);
+
+    const clearTimer = window.setTimeout(() => {
+      setHighlightedFlatTaskId((current) => (current === target.id ? null : current));
+    }, 2400);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('task');
+    setSearchParams(nextParams, { replace: true });
+
+    return () => {
+      window.clearTimeout(scrollTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [flatTasks, searchParams, setSearchParams]);
 
   const resolvedShare = useMemo(() => {
     if (shareLink) {
@@ -798,8 +842,13 @@ export const ProjectDetailsPage = () => {
               <div className="project-v4-flat-list">
                 {filteredFlatTasks.map((task) => {
                   const value = flatTaskEdits[task.id] ?? task.title;
+                  const isHighlighted = highlightedFlatTaskId === task.id;
                   return (
-                    <article key={task.id} className={`project-v4-flat-item ${task.done ? 'is-done' : ''}`}>
+                    <article
+                      key={task.id}
+                      id={`flat-task-${task.id}`}
+                      className={`project-v4-flat-item ${task.done ? 'is-done' : ''}${isHighlighted ? ' deeplink-highlight' : ''}`}
+                    >
                       <label className="project-v4-flat-check">
                         <input
                           type="checkbox"

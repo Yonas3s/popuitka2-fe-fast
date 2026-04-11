@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useProjectsStore } from '../store/projects.store';
 import { useStageStore } from '../store/stage.store';
 import { useAuthStore } from '../store/auth.store';
@@ -38,6 +38,7 @@ const formatIssueKey = (value?: string) => (value ? value.toUpperCase() : null);
 
 export const StageDetailsPage = () => {
   const { projectId = '', stageId = '' } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const user = useAuthStore((state) => state.user);
   const project = useProjectsStore((state) => state.currentProject);
@@ -77,6 +78,8 @@ export const StageDetailsPage = () => {
   const [newDirectionName, setNewDirectionName] = useState('');
   const [activeTaskDetailsId, setActiveTaskDetailsId] = useState<string | null>(null);
   const [taskDescriptionEdits, setTaskDescriptionEdits] = useState<Record<string, string>>({});
+  const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
+  const consumedDeeplinkRef = useRef<string | null>(null);
   const quickTaskInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -93,6 +96,57 @@ export const StageDetailsPage = () => {
     setContextDraft(currentStage?.description ?? '');
     setWorkLinkDraft(currentStage?.workLink ?? '');
   }, [currentStage?.description, currentStage?.workLink]);
+
+  // Deeplink: ?task=POPU-86 opens, scrolls to and highlights the matching task.
+  useEffect(() => {
+    const rawKey = searchParams.get('task');
+    if (!rawKey) {
+      return;
+    }
+    if (tasks.length === 0) {
+      return;
+    }
+    if (consumedDeeplinkRef.current === rawKey) {
+      return;
+    }
+
+    const normalized = rawKey.toLowerCase();
+    const target = tasks.find((task) => (task.issueKey || '').toLowerCase() === normalized);
+    if (!target) {
+      return;
+    }
+
+    consumedDeeplinkRef.current = rawKey;
+    setActiveTaskDetailsId(target.id);
+    setTaskDescriptionEdits((prev) =>
+      prev[target.id] !== undefined
+        ? prev
+        : { ...prev, [target.id]: target.description ?? '' },
+    );
+    setHighlightedTaskId(target.id);
+
+    // Delay scroll slightly so the inline editor can mount before measuring.
+    const scrollTimer = window.setTimeout(() => {
+      const el = document.getElementById(`task-${target.id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 80);
+
+    const clearTimer = window.setTimeout(() => {
+      setHighlightedTaskId((current) => (current === target.id ? null : current));
+    }, 2400);
+
+    // Drop the query param so reloading the page doesn't re-trigger.
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('task');
+    setSearchParams(nextParams, { replace: true });
+
+    return () => {
+      window.clearTimeout(scrollTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [searchParams, setSearchParams, tasks]);
 
   useEffect(() => {
     if (!project?.teamId) {
@@ -618,8 +672,13 @@ export const StageDetailsPage = () => {
               <div className="stage-v5-task-list">
                 {filteredTasks.map((task) => {
                   const value = editValues[task.id] ?? task.title;
+                  const isHighlighted = highlightedTaskId === task.id;
                   return (
-                    <div className={`stage-v5-task-row ${task.done ? 'done' : ''}`} key={task.id}>
+                    <div
+                      className={`stage-v5-task-row ${task.done ? 'done' : ''}${isHighlighted ? ' deeplink-highlight' : ''}`}
+                      key={task.id}
+                      id={`task-${task.id}`}
+                    >
                       <label>
                         <input
                           type="checkbox"

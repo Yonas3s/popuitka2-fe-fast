@@ -6506,6 +6506,10 @@ p {
   opacity: 0.75;
 }
 
+.project-v4-flat-item.deeplink-highlight {
+  animation: deeplink-task-highlight 2.2s ease-out;
+}
+
 .project-v4-flat-check input {
   width: 16px;
   height: 16px;
@@ -7294,6 +7298,25 @@ p {
 .stage-v5-task-row.done {
   background: rgba(59, 130, 246, 0.05);
   border-left: 2px solid #3b82f6;
+}
+
+.stage-v5-task-row.deeplink-highlight {
+  animation: deeplink-task-highlight 2.2s ease-out;
+}
+
+@keyframes deeplink-task-highlight {
+  0% {
+    background: rgba(251, 191, 36, 0.55);
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.35) inset;
+  }
+  30% {
+    background: rgba(251, 191, 36, 0.35);
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.2) inset;
+  }
+  100% {
+    background: transparent;
+    box-shadow: none;
+  }
 }
 
 .stage-v5-task-row input[type='checkbox'] {
