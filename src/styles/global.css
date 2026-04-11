@@ -10768,8 +10768,9 @@ a.agent-v2-task-title:hover {
 
 .duck-dialog-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) auto auto;
-  gap: 8px;
+  grid-template-columns: 1fr auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: end;
 }
 
 .duck-dialog-controls label {
@@ -10806,7 +10807,7 @@ a.agent-v2-task-title:hover {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 18px;
+  height: 34px;
 }
 
 .duck-dialog-controls label.is-disabled {

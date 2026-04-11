@@ -48,7 +48,7 @@ export const useDuckStore = create<DuckState>()(
       isTyping: false,
       unreadCount: 0,
       draft: '',
-      model: 'gemini-2.5-flash',
+      model: '',
       createTasks: true,
       taskLimit: 7,
       preferredStageId: null,
@@ -124,7 +124,21 @@ export const useDuckStore = create<DuckState>()(
     }),
     {
       name: 'popuitka2.duck',
+      // v2: drop the hardcoded "gemini-2.5-flash" default that used to be
+      // forced here. Older clients still have it persisted in localStorage;
+      // migrate() below clears it so the backend can pick the current
+      // provider's default (e.g. llama-3.3-70b-versatile on Groq).
+      version: 2,
       storage: createJSONStorage(() => localStorage),
+      migrate: (persistedState: unknown, version: number) => {
+        const state = (persistedState as Record<string, unknown>) || {};
+        if (version < 2) {
+          if (typeof state.model === 'string' && /gemini|gpt-|openai/i.test(state.model)) {
+            state.model = '';
+          }
+        }
+        return state as DuckState;
+      },
       partialize: (state) => ({
         unreadCount: state.unreadCount,
         model: state.model,
@@ -140,6 +154,10 @@ export const useDuckStore = create<DuckState>()(
         state.isOpen = false;
         state.isTyping = false;
         state.draft = '';
+        // Second layer of defence against stale hardcoded models from v1.
+        if (state.model && /^gemini|^gpt-|^openai/i.test(state.model)) {
+          state.model = '';
+        }
       },
     },
   ),

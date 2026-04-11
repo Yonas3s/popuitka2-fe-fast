@@ -16,7 +16,9 @@ type QuickAction = {
 type DuckDialogProps = {
   open: boolean;
   projectId?: string;
+  projectName?: string;
   stageId?: string | null;
+  stageName?: string;
   workflowType?: WorkflowType;
   canCreateTasks: boolean;
   createTasks: boolean;
@@ -53,12 +55,13 @@ const formatTime = (value: string) => {
 export const DuckDialog = ({
   open,
   projectId,
+  projectName,
   stageId,
+  stageName,
   workflowType = 'stages',
   canCreateTasks,
   createTasks,
   taskLimit,
-  model,
   draft,
   isTyping,
   messages,
@@ -68,7 +71,6 @@ export const DuckDialog = ({
   onClose,
   onSubmit,
   onDraftChange,
-  onModelChange,
   onCreateTasksChange,
   onTaskLimitChange,
   onPreferredStageChange,
@@ -91,20 +93,27 @@ export const DuckDialog = ({
     }
   };
 
-  const contextParts = [`workflow: ${workflowType}`];
-  if (projectId) {
-    contextParts.push(`project: ${projectId.slice(0, 8)}…`);
+  // Friendly context subtitle. Falls back to "глобально" when the user is
+  // not on a project page — better than showing raw uuids as in v1.
+  const subtitleParts: string[] = [];
+  if (projectName) {
+    subtitleParts.push(projectName);
+  } else if (projectId) {
+    subtitleParts.push('проект');
+  } else {
+    subtitleParts.push('глобальный контекст');
   }
-  if (stageId && workflowType === 'stages') {
-    contextParts.push(`stage: ${stageId.slice(0, 8)}…`);
+  if (stageName && workflowType === 'stages') {
+    subtitleParts.push(stageName);
   }
+  const subtitle = subtitleParts.join(' · ');
 
   return (
-    <section className="duck-dialog" role="dialog" aria-modal="false" aria-label="Duck Assistant">
+    <section className="duck-dialog" role="dialog" aria-modal="true" aria-label="Утка — AI-агент">
       <header className="duck-dialog-head">
         <div>
-          <h3>Duck Assistant</h3>
-          <p>{contextParts.join(' · ')}</p>
+          <h3>Утка</h3>
+          <p>{subtitle}</p>
         </div>
         <button type="button" onClick={onClose} aria-label="Закрыть">
           ×
@@ -120,11 +129,6 @@ export const DuckDialog = ({
       </div>
 
       <div className="duck-dialog-controls">
-        <label>
-          <span>Модель</span>
-          <input value={model} onChange={(event) => onModelChange(event.target.value)} placeholder="gemini-2.5-flash" />
-        </label>
-
         <label className={!canCreateTasks ? 'is-disabled' : ''}>
           <input
             type="checkbox"

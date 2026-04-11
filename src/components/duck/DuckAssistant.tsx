@@ -12,8 +12,9 @@ import { DuckDialog } from './DuckDialog';
 import type { DuckMood } from './PixelDuck';
 import type { AgentRun, WorkflowType } from '../../types/models';
 
-const DEFAULT_MODEL = 'gemini-2.5-flash';
 const ATTENTION_COOLDOWN_MS = 30_000;
+const POLL_INTERVAL_MS = 2500;
+const POLL_MAX_ATTEMPTS = 48; // ~2 minutes total (research runs can take up to 90s)
 
 const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
@@ -281,22 +282,25 @@ export const DuckAssistant = () => {
     };
   }, [unreadCount]);
 
-  const waitForRunCompletion = useCallback(async (projectId: string, runId: string) => {
-    let latest = await apiService.getAgentRun(projectId, runId);
-    if (isTerminalStatus(latest.status)) {
-      return latest;
-    }
-
-    for (let attempt = 0; attempt < 24; attempt += 1) {
-      await sleep(2500);
-      latest = await apiService.getAgentRun(projectId, runId);
+  const waitForRunCompletion = useCallback(
+    async (projectId: string, runId: string): Promise<{ run: AgentRun; timedOut: boolean }> => {
+      let latest = await apiService.getAgentRun(projectId, runId);
       if (isTerminalStatus(latest.status)) {
-        return latest;
+        return { run: latest, timedOut: false };
       }
-    }
 
-    return latest;
-  }, []);
+      for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt += 1) {
+        await sleep(POLL_INTERVAL_MS);
+        latest = await apiService.getAgentRun(projectId, runId);
+        if (isTerminalStatus(latest.status)) {
+          return { run: latest, timedOut: false };
+        }
+      }
+
+      return { run: latest, timedOut: true };
+    },
+    [],
+  );
 
   const sendPrompt = useCallback(
     async (rawPrompt: string, options?: { forceCreateTasks?: boolean }) => {
@@ -322,16 +326,35 @@ export const DuckAssistant = () => {
           return;
         }
 
+        const trimmedModel = model.trim();
         const run = await apiService.createAgentRun(routeContext.projectId, {
           prompt,
-          model: model.trim() || DEFAULT_MODEL,
+          // Empty model → backend picks the default for its active provider
+          // (e.g. llama-3.3-70b-versatile on Groq). Avoids leaking stale
+          // client-side defaults from older builds.
+          ...(trimmedModel ? { model: trimmedModel } : {}),
           create_tasks: shouldCreateTasks,
           task_limit: Math.min(20, Math.max(1, taskLimit)),
           stage_id:
             shouldCreateTasks && workflowType === 'stages' && resolvedStageId ? resolvedStageId : undefined,
         });
 
-        const completedRun = await waitForRunCompletion(routeContext.projectId, run.id);
+        const { run: completedRun, timedOut } = await waitForRunCompletion(
+          routeContext.projectId,
+          run.id,
+        );
+
+        if (timedOut && !isTerminalStatus(completedRun.status)) {
+          pushAssistantMessage(
+            'Запуск занимает дольше обычного. Я продолжу его в фоне — обнови страницу через минуту или открой историю запусков.',
+          );
+          setFlashMood('error');
+          window.setTimeout(() => {
+            if (mountedRef.current) setFlashMood(null);
+          }, 2000);
+          return;
+        }
+
         pushAssistantMessage(buildAssistantResult(completedRun));
 
         const resultMood: DuckMood = completedRun.status === 'failed' ? 'error' : 'success';
@@ -413,7 +436,14 @@ export const DuckAssistant = () => {
       <DuckDialog
         open={isOpen}
         projectId={routeContext.projectId ?? undefined}
+        projectName={currentProject?.projectName}
         stageId={resolvedStageId}
+        stageName={
+          resolvedStageId
+            ? stages.find((s) => s.id === resolvedStageId)?.stageName
+              ?? currentStage?.stageName
+            : undefined
+        }
         workflowType={workflowType}
         canCreateTasks={canCreateTasks}
         createTasks={createTasks}
