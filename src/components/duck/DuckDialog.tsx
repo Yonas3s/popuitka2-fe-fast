@@ -56,7 +56,6 @@ export const DuckDialog = ({
   open,
   projectId,
   projectName,
-  stageId,
   stageName,
   workflowType = 'stages',
   canCreateTasks,

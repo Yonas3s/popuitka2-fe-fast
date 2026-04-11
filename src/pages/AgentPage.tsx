@@ -21,6 +21,7 @@ const STATUS_META: Record<AgentRun['status'], { label: string; className: string
   failed: { label: 'Ошибка', className: 'is-failed', icon: '✕' },
   cancelled: { label: 'Отменён', className: 'is-cancelled', icon: '◯' },
   canceled: { label: 'Отменён', className: 'is-cancelled', icon: '◯' },
+  unknown: { label: 'Неизвестно', className: 'is-cancelled', icon: '◯' },
 };
 
 const formatDate = (value?: string) => {
