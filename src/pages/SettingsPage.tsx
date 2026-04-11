@@ -1,8 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { normalizeApiError } from '../lib/api/errors';
 import { apiService } from '../lib/api/service';
-import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
-import { GitHubSettingsPanel } from '../components/github/GitHubSettingsPanel';
+import { SettingsLayout } from '../components/layout/SettingsLayout';
 import { useUiStore } from '../store/ui.store';
 import type { ApiError, ApiToken, CreatedApiToken } from '../types/models';
 
@@ -184,95 +183,81 @@ export const SettingsPage = () => {
   };
 
   return (
-    <div className="settings-v1-page">
-      <WorkspaceHeader activeTab="settings" />
-
-      <main className="projects-v3-main settings-v1-main">
-        <div className="projects-v3-grid-bg" />
-        <span className="projects-v3-marker projects-v3-marker-top-left" />
-        <span className="projects-v3-marker projects-v3-marker-top-right" />
-        <span className="projects-v3-marker projects-v3-marker-bottom-left" />
-        <span className="projects-v3-marker projects-v3-marker-bottom-right" />
-
-        <div className="projects-v3-container settings-v1-content">
-          <div className="settings-v1-toolbar">
-            <div>
-              <h1>API токены</h1>
-              <p>Создавай персональные токены для интеграций. Токен в открытом виде показывается только один раз.</p>
-            </div>
-
-            <button
-              type="button"
-              className="ui-btn ui-btn-primary"
-              onClick={() => {
-                setCreateOpen(true);
-              }}
-            >
-              <span className="ui-btn-icon" aria-hidden="true">+</span>
-              Создать токен
-            </button>
-          </div>
-
-          {error ? <p className="settings-v1-error">{error.message}</p> : null}
-
-          {!loading && !error && tokens.length === 0 ? (
-            <section className="settings-v1-empty">
-              <h2>{emptyLabel}</h2>
-              <p>Создай первый API токен для внешних интеграций и автоматизаций.</p>
-            </section>
-          ) : null}
-
-          {loading ? <p className="settings-v1-loading">{emptyLabel}</p> : null}
-
-          {!loading && tokens.length > 0 ? (
-            <section className="settings-v1-list">
-              {tokens.map((token) => {
-                const status = toStatusMeta(token);
-                return (
-                  <article key={token.id} className="settings-v1-token-card">
-                    <div className="settings-v1-token-head">
-                      <div>
-                        <h2>{token.name}</h2>
-                        <p>{token.tokenPrefix || 'Без префикса'}</p>
-                      </div>
-                      <span className={`settings-v1-token-status ${status.className}`}>{status.label}</span>
-                    </div>
-
-                    <div className="settings-v1-token-grid">
-                      <div>
-                        <span>Создан</span>
-                        <strong>{toDateLabel(token.createdAt)}</strong>
-                      </div>
-                      <div>
-                        <span>Последнее использование</span>
-                        <strong>{toDateLabel(token.lastUsedAt, 'Не использовался')}</strong>
-                      </div>
-                      <div>
-                        <span>Истекает</span>
-                        <strong>{toDateLabel(token.expiresAt, 'Без срока')}</strong>
-                      </div>
-                    </div>
-
-                    <div className="settings-v1-token-actions">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onRequestRevoke(token);
-                        }}
-                        disabled={Boolean(token.revokedAt) || revokingId === token.id}
-                      >
-                        {token.revokedAt ? 'Отозван' : revokingId === token.id ? 'Отзываем...' : 'Отозвать'}
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </section>
-          ) : null}
-
-          <GitHubSettingsPanel />
+    <SettingsLayout>
+      <div className="settings-v1-toolbar">
+        <div>
+          <h1>API токены</h1>
+          <p>Создавай персональные токены для интеграций. Токен в открытом виде показывается только один раз.</p>
         </div>
-      </main>
+
+        <button
+          type="button"
+          className="ui-btn ui-btn-primary"
+          onClick={() => {
+            setCreateOpen(true);
+          }}
+        >
+          <span className="ui-btn-icon" aria-hidden="true">+</span>
+          Создать токен
+        </button>
+      </div>
+
+      {error ? <p className="settings-v1-error">{error.message}</p> : null}
+
+      {!loading && !error && tokens.length === 0 ? (
+        <section className="settings-v1-empty">
+          <h2>{emptyLabel}</h2>
+          <p>Создай первый API токен для внешних интеграций и автоматизаций.</p>
+        </section>
+      ) : null}
+
+      {loading ? <p className="settings-v1-loading">{emptyLabel}</p> : null}
+
+      {!loading && tokens.length > 0 ? (
+        <section className="settings-v1-list">
+          {tokens.map((token) => {
+            const status = toStatusMeta(token);
+            return (
+              <article key={token.id} className="settings-v1-token-card">
+                <div className="settings-v1-token-head">
+                  <div>
+                    <h2>{token.name}</h2>
+                    <p>{token.tokenPrefix || 'Без префикса'}</p>
+                  </div>
+                  <span className={`settings-v1-token-status ${status.className}`}>{status.label}</span>
+                </div>
+
+                <div className="settings-v1-token-grid">
+                  <div>
+                    <span>Создан</span>
+                    <strong>{toDateLabel(token.createdAt)}</strong>
+                  </div>
+                  <div>
+                    <span>Последнее использование</span>
+                    <strong>{toDateLabel(token.lastUsedAt, 'Не использовался')}</strong>
+                  </div>
+                  <div>
+                    <span>Истекает</span>
+                    <strong>{toDateLabel(token.expiresAt, 'Без срока')}</strong>
+                  </div>
+                </div>
+
+                <div className="settings-v1-token-actions">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onRequestRevoke(token);
+                    }}
+                    disabled={Boolean(token.revokedAt) || revokingId === token.id}
+                  >
+                    {token.revokedAt ? 'Отозван' : revokingId === token.id ? 'Отзываем...' : 'Отозвать'}
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      ) : null}
 
       {createOpen ? (
         <div
@@ -407,6 +392,6 @@ export const SettingsPage = () => {
           </section>
         </div>
       ) : null}
-    </div>
+    </SettingsLayout>
   );
 };
