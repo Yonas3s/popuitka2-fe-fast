@@ -6,7 +6,6 @@ type GroupedTaskListProps = {
   tasks: Task[];
   members: TeamMember[];
   directions: DirectionTag[];
-  onToggle: (taskId: string) => void;
   onStatusChange?: (taskId: string, status: TaskStatus) => void;
   onDelete: (taskId: string) => void;
   onTitleSave: (taskId: string, title: string) => void;
@@ -44,7 +43,6 @@ const ALL_STATUSES: TaskStatus[] = ['backlog', 'todo', 'in_progress', 'review', 
 export const GroupedTaskList = ({
   tasks,
   members,
-  onToggle,
   onStatusChange,
   onDelete,
   onTitleSave,
@@ -89,7 +87,7 @@ export const GroupedTaskList = ({
     setEditingId(null);
   };
 
-  const submitNewTask = (status: TaskStatus) => {
+  const submitNewTask = (_status: TaskStatus) => {
     const trimmed = newTaskDraft.trim();
     if (!trimmed) return;
     onCreateTask(trimmed);

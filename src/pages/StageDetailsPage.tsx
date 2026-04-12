@@ -678,7 +678,6 @@ export const StageDetailsPage = () => {
                   tasks={filteredTasks}
                   members={assignableMembers}
                   directions={directions}
-                  onToggle={(taskId) => void onToggleTask(taskId)}
                   onStatusChange={(taskId, status) => void onChangeTaskStatus(taskId, status)}
                   onDelete={(taskId) => onDeleteTask(taskId)}
                   onTitleSave={(taskId, title) => {
