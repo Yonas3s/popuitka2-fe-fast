@@ -29,6 +29,7 @@ import {
 } from './schemas';
 import type {
   AgentRun,
+  TaskStatus,
   AdminActionAuthType,
   AdminActionLogsPayload,
   AdminActionSource,
@@ -377,6 +378,10 @@ export const apiService = {
     await apiClient.patch(endpoints.patchTaskMeta(projectId, stageId, taskId), payload);
   },
 
+  async changeTaskStatus(projectId: string, stageId: string, taskId: string, status: TaskStatus): Promise<void> {
+    await apiClient.patch(endpoints.taskStatus(projectId, stageId, taskId), { status });
+  },
+
   async deleteTask(projectId: string, stageId: string, taskId: string): Promise<void> {
     await apiClient.delete(endpoints.deleteTask(projectId, stageId, taskId));
   },
@@ -418,6 +423,10 @@ export const apiService = {
 
   async patchProjectTaskMeta(projectId: string, taskId: string, payload: PatchTaskMetaPayload): Promise<void> {
     await apiClient.patch(endpoints.patchProjectTaskMeta(projectId, taskId), payload);
+  },
+
+  async changeProjectTaskStatus(projectId: string, taskId: string, status: TaskStatus): Promise<void> {
+    await apiClient.patch(endpoints.projectTaskStatus(projectId, taskId), { status });
   },
 
   async deleteProjectTask(projectId: string, taskId: string): Promise<void> {

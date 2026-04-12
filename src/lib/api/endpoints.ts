@@ -34,6 +34,8 @@ export const endpoints = {
     `/projects/${projectId}/stages/${stageId}/tasks/${taskId}/assign`,
   patchTaskMeta: (projectId: string, stageId: string, taskId: string) =>
     `/projects/${projectId}/stages/${stageId}/tasks/${taskId}/meta`,
+  taskStatus: (projectId: string, stageId: string, taskId: string) =>
+    `/projects/${projectId}/stages/${stageId}/tasks/${taskId}/status`,
   deleteTask: (projectId: string, stageId: string, taskId: string) =>
     `/projects/${projectId}/stages/${stageId}/tasks/${taskId}`,
   projectTasks: (projectId: string) => `/projects/${projectId}/tasks`,
@@ -41,6 +43,7 @@ export const endpoints = {
   editProjectTaskTitle: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}/title`,
   assignProjectTask: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}/assign`,
   patchProjectTaskMeta: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}/meta`,
+  projectTaskStatus: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}/status`,
   deleteProjectTask: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}`,
   agentRuns: (projectId: string) => `/projects/${projectId}/agent/runs`,
   agentRunById: (projectId: string, runId: string) => `/projects/${projectId}/agent/runs/${runId}`,

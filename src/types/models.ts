@@ -156,6 +156,8 @@ export type CreatedApiToken = {
 
 export type WorkflowType = 'stages' | 'flat';
 export type TaskType = 'task' | 'bug' | 'feature' | 'improvement' | 'chore';
+export type TaskStatus = 'backlog' | 'todo' | 'in_progress' | 'review' | 'done';
+export type TaskPriority = 'urgent' | 'high' | 'medium' | 'low' | 'none';
 
 export type Project = {
   id: string;
@@ -184,6 +186,8 @@ export type Task = {
   description?: string;
   issueKey?: string;
   done: boolean;
+  status: TaskStatus;
+  priority: TaskPriority;
   taskType: TaskType;
   directionIds: string[];
   assigneeUserId?: string;
