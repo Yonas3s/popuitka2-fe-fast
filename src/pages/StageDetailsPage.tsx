@@ -7,7 +7,8 @@ import { useUiStore } from '../store/ui.store';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
-import type { DirectionTag, TaskType, TeamMember } from '../types/models';
+import { GroupedTaskList } from '../components/tasks/GroupedTaskList';
+import type { DirectionTag, TaskStatus, TaskType, TeamMember } from '../types/models';
 
 type EditState = {
   [taskId: string]: string;
@@ -426,6 +427,17 @@ export const StageDetailsPage = () => {
     });
   };
 
+  const onChangeTaskStatus = async (taskId: string, status: TaskStatus) => {
+    if (!ensureStageRoute()) return;
+    try {
+      await apiService.changeTaskStatus(projectId, stageId, taskId, status);
+      pushToast('Статус обновлён', 'success');
+      await fetchTasks(projectId, stageId);
+    } catch (reason) {
+      pushToast(normalizeApiError(reason).message, 'error');
+    }
+  };
+
   const onAssignTask = async (taskId: string, assigneeUserId: string | null) => {
     if (!ensureStageRoute()) {
       return;
@@ -602,20 +614,46 @@ export const StageDetailsPage = () => {
             <article className="stage-v5-card">
               <header className="stage-v5-card-head">
                 <h3>Задачи</h3>
-                <button
-                  type="button"
-                  onClick={() => {
-                    quickTaskInputRef.current?.focus();
-                  }}
-                >
-                  + Добавить задачу
-                </button>
               </header>
 
               {loading && tasks.length === 0 ? <p className="stage-v5-message">Загрузка задач...</p> : null}
               {error ? <p className="stage-v5-message error">{error.message}</p> : null}
 
-              <div className="stage-v5-task-list">
+              {!loading && !error ? (
+                <GroupedTaskList
+                  tasks={filteredTasks}
+                  members={assignableMembers}
+                  directions={directions}
+                  onToggle={(taskId) => void onToggleTask(taskId)}
+                  onStatusChange={(taskId, status) => void onChangeTaskStatus(taskId, status)}
+                  onDelete={(taskId) => onDeleteTask(taskId)}
+                  onTitleSave={(taskId, title) => {
+                    void apiService
+                      .editTaskTitle(projectId, stageId, taskId, { title })
+                      .then(() => {
+                        pushToast('Название обновлено', 'success');
+                        return fetchTasks(projectId, stageId);
+                      })
+                      .catch((reason) => {
+                        pushToast(normalizeApiError(reason).message, 'error');
+                      });
+                  }}
+                  onCreateTask={(title) => {
+                    void apiService
+                      .createTask(projectId, stageId, { title })
+                      .then(() => {
+                        pushToast('Задача добавлена', 'success');
+                        return fetchTasks(projectId, stageId);
+                      })
+                      .catch((reason) => {
+                        pushToast(normalizeApiError(reason).message, 'error');
+                      });
+                  }}
+                />
+              ) : null}
+
+              {/* Legacy task list removed — now using GroupedTaskList */}
+              {false && <div className="stage-v5-task-list">
                 {filteredTasks.map((task) => {
                   const value = editValues[task.id] ?? task.title;
                   return (
@@ -826,7 +864,7 @@ export const StageDetailsPage = () => {
                     }}
                   />
                 </div>
-              </div>
+              </div>}
             </article>
 
             <article className="stage-v5-card">
