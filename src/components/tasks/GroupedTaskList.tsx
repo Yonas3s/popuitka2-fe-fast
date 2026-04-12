@@ -1,14 +1,30 @@
 import { useMemo, useState } from 'react';
 import type { Task, TaskStatus, TaskType, TeamMember, DirectionTag } from '../../types/models';
 
+type VisibleColumns = {
+  id: boolean;
+  status: boolean;
+  assignee: boolean;
+  priority: boolean;
+  labels: boolean;
+  created: boolean;
+};
+
 type Props = {
   tasks: Task[];
   members: TeamMember[];
   directions: DirectionTag[];
+  showEmptyGroups?: boolean;
+  visibleColumns?: VisibleColumns;
   onStatusChange?: (taskId: string, status: TaskStatus) => void;
   onDelete: (taskId: string) => void;
   onTitleSave: (taskId: string, title: string) => void;
   onCreateTask: (title: string) => void;
+};
+
+const DEFAULT_COLS: VisibleColumns = {
+  id: true, status: true, assignee: true,
+  priority: true, labels: true, created: true,
 };
 
 const STATUS_ORDER: TaskStatus[] = ['in_progress', 'review', 'todo', 'backlog', 'done'];
@@ -97,8 +113,11 @@ const fmtDate = (raw: Record<string, unknown>) => {
 
 export const GroupedTaskList = ({
   tasks, members, directions,
+  showEmptyGroups = true,
+  visibleColumns,
   onStatusChange, onDelete: _onDelete, onTitleSave, onCreateTask,
 }: Props) => {
+  const cols = visibleColumns || DEFAULT_COLS;
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ done: true });
   const [editId, setEditId] = useState<string | null>(null);
   const [editVal, setEditVal] = useState('');
@@ -111,7 +130,7 @@ export const GroupedTaskList = ({
 
   return (
     <div className="li">
-      {groups.map(({ s, t: gt }) => {
+      {groups.filter(({ t: gt }) => showEmptyGroups || gt.length > 0).map(({ s, t: gt }) => {
         const isC = Boolean(collapsed[s]);
         return (
           <section key={s} className="li-g">
@@ -142,14 +161,14 @@ export const GroupedTaskList = ({
 
                   return (
                     <div key={task.id} className={`li-r${s==='done'?' li-done':''}`}>
-                      <div className="li-r-prio"><PB p={task.priority}/></div>
-                      <div className="li-r-key">{task.issueKey?.toUpperCase()||''}</div>
-                      <div className="li-r-st">
+                      {cols.priority && <div className="li-r-prio"><PB p={task.priority}/></div>}
+                      {cols.id && <div className="li-r-key">{task.issueKey?.toUpperCase()||''}</div>}
+                      {cols.status && <div className="li-r-st">
                         <SC s={task.status}/>
                         {onStatusChange && <select className="li-r-st-sel" value={task.status} onChange={e=>onStatusChange(task.id,e.target.value as TaskStatus)}>
                           {ALL_STATUSES.map(x=><option key={x} value={x}>{S[x].label}</option>)}
                         </select>}
-                      </div>
+                      </div>}
                       <div className="li-r-title">
                         {editing ? (
                           <input className="li-r-edit" autoFocus value={editVal}
@@ -161,14 +180,14 @@ export const GroupedTaskList = ({
                           <span className="li-r-t" onDoubleClick={()=>{setEditId(task.id);setEditVal(task.title);}}>{task.title}</span>
                         )}
                       </div>
-                      <div className="li-r-tags">
+                      {cols.labels && <div className="li-r-tags">
                         <span className="li-tag" style={{'--tc':tp.color} as React.CSSProperties}>{tp.label}</span>
                         {dirs.slice(0,1).map(n=><span key={n} className="li-tag" style={{'--tc':'#3b82f6'} as React.CSSProperties}>{n}</span>)}
-                      </div>
-                      <div className="li-r-av">
+                      </div>}
+                      {cols.assignee && <div className="li-r-av">
                         {mem && <span className="li-av" title={'@'+mem.username}>{mem.username[0].toUpperCase()}</span>}
-                      </div>
-                      <div className="li-r-date">{date}</div>
+                      </div>}
+                      {cols.created && <div className="li-r-date">{date}</div>}
                     </div>
                   );
                 })}

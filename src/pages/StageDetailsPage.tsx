@@ -8,6 +8,8 @@ import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
 import { GroupedTaskList } from '../components/tasks/GroupedTaskList';
+import { BoardView } from '../components/tasks/BoardView';
+import { ViewSettingsPanel, type ViewMode, type VisibleColumns } from '../components/tasks/ViewSettingsPanel';
 import type { DirectionTag, TaskStatus, TaskType, TeamMember } from '../types/models';
 
 type EditState = {
@@ -71,6 +73,17 @@ export const StageDetailsPage = () => {
   const [requestingReview, setRequestingReview] = useState(false);
   const [assignableMembers, setAssignableMembers] = useState<TeamMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
+
+  // View settings
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewPanelOpen, setViewPanelOpen] = useState(false);
+  const [visibleCols, setVisibleCols] = useState<VisibleColumns>({
+    id: true, status: true, assignee: true,
+    priority: true, labels: true, created: true,
+  });
+  const [grouping, setGrouping] = useState<'status' | 'priority' | 'none'>('status');
+  const [ordering, setOrdering] = useState<'priority' | 'created' | 'manual'>('priority');
+  const [showEmptyGroups, setShowEmptyGroups] = useState(true);
   const [membersAccessDenied, setMembersAccessDenied] = useState(false);
   const [directions, setDirections] = useState<DirectionTag[]>([]);
   const [directionsLoading, setDirectionsLoading] = useState(false);
@@ -668,16 +681,74 @@ export const StageDetailsPage = () => {
             <article className="stage-v5-card">
               <header className="stage-v5-card-head">
                 <h3>Задачи</h3>
+                <div className="stage-v5-card-head-links" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  <div className="vsp-pill-toggle">
+                    <button
+                      className={`vsp-pill-btn ${viewMode === 'list' ? 'active' : ''}`}
+                      onClick={() => setViewMode('list')}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 3.5h10M2 7h10M2 10.5h10" strokeLinecap="round"/></svg>
+                      List
+                    </button>
+                    <button
+                      className={`vsp-pill-btn ${viewMode === 'board' ? 'active' : ''}`}
+                      onClick={() => setViewMode('board')}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="2" width="3.5" height="10" rx="1"/><rect x="5.25" y="2" width="3.5" height="7" rx="1"/><rect x="9.5" y="2" width="3.5" height="10" rx="1"/></svg>
+                      Board
+                    </button>
+                  </div>
+                  <div className="vsp-trigger-wrap">
+                    <button className="vsp-trigger" onClick={() => setViewPanelOpen((p) => !p)} title="Настройки отображения">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 4h4M10 4h4M2 8h8M12 8h2M2 12h2M6 12h8" strokeLinecap="round"/><circle cx="8" cy="4" r="1.5"/><circle cx="11" cy="8" r="1.5"/><circle cx="5" cy="12" r="1.5"/></svg>
+                    </button>
+                    <ViewSettingsPanel
+                      open={viewPanelOpen}
+                      onClose={() => setViewPanelOpen(false)}
+                      viewMode={viewMode}
+                      onViewModeChange={setViewMode}
+                      grouping={grouping}
+                      onGroupingChange={setGrouping}
+                      ordering={ordering}
+                      onOrderingChange={setOrdering}
+                      showEmptyGroups={showEmptyGroups}
+                      onShowEmptyGroupsChange={setShowEmptyGroups}
+                      visibleColumns={visibleCols}
+                      onVisibleColumnsChange={setVisibleCols}
+                    />
+                  </div>
+                </div>
               </header>
 
               {loading && tasks.length === 0 ? <p className="stage-v5-message">Загрузка задач...</p> : null}
               {error ? <p className="stage-v5-message error">{error.message}</p> : null}
 
-              {!loading && !error ? (
+              {!loading && !error && viewMode === 'board' ? (
+                <BoardView
+                  tasks={filteredTasks}
+                  members={assignableMembers}
+                  onStatusChange={(taskId, status) => void onChangeTaskStatus(taskId, status)}
+                  onCreateTask={(title) => {
+                    void apiService
+                      .createTask(projectId, stageId, { title })
+                      .then(() => {
+                        pushToast('Задача добавлена', 'success');
+                        return fetchTasks(projectId, stageId);
+                      })
+                      .catch((reason) => {
+                        pushToast(normalizeApiError(reason).message, 'error');
+                      });
+                  }}
+                />
+              ) : null}
+
+              {!loading && !error && viewMode === 'list' ? (
                 <GroupedTaskList
                   tasks={filteredTasks}
                   members={assignableMembers}
                   directions={directions}
+                  showEmptyGroups={showEmptyGroups}
+                  visibleColumns={visibleCols}
                   onStatusChange={(taskId, status) => void onChangeTaskStatus(taskId, status)}
                   onDelete={(taskId) => onDeleteTask(taskId)}
                   onTitleSave={(taskId, title) => {
