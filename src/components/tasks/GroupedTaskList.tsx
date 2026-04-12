@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import type { Task, TaskStatus, TaskType, TeamMember, DirectionTag } from '../../types/models';
-import { useUiStore } from '../../store/ui.store';
 
 type GroupedTaskListProps = {
   tasks: Task[];
@@ -14,59 +13,97 @@ type GroupedTaskListProps = {
 
 const STATUS_ORDER: TaskStatus[] = ['in_progress', 'review', 'todo', 'backlog', 'done'];
 
-const STATUS_META: Record<TaskStatus, { label: string; dotColor: string }> = {
-  in_progress: { label: 'В РАБОТЕ', dotColor: '#f59e0b' },
-  review: { label: 'НА РЕВЬЮ', dotColor: '#8b5cf6' },
-  todo: { label: 'К ВЫПОЛНЕНИЮ', dotColor: '#3b82f6' },
-  backlog: { label: 'БЭКЛОГ', dotColor: '#9ca3af' },
-  done: { label: 'ЗАВЕРШЕНО', dotColor: '#10b981' },
+const STATUS_META: Record<TaskStatus, { label: string; icon: string; iconClass: string }> = {
+  in_progress: { label: 'In Progress', icon: '◑', iconClass: 'gtl-si-progress' },
+  review: { label: 'In Review', icon: '◕', iconClass: 'gtl-si-review' },
+  todo: { label: 'Todo', icon: '○', iconClass: 'gtl-si-todo' },
+  backlog: { label: 'Backlog', icon: '◌', iconClass: 'gtl-si-backlog' },
+  done: { label: 'Done', icon: '●', iconClass: 'gtl-si-done' },
 };
 
-const TYPE_META: Record<TaskType, { label: string; color: string; bg: string; border: string }> = {
-  feature: { label: 'Фича', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
-  bug: { label: 'Баг', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
-  task: { label: 'Задача', color: '#374151', bg: '#f3f4f6', border: '#e5e7eb' },
-  improvement: { label: 'Улучшение', color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc' },
-  chore: { label: 'Техдолг', color: '#78716c', bg: '#fafaf9', border: '#e7e5e4' },
+const TYPE_META: Record<TaskType, { label: string; dotColor: string }> = {
+  feature: { label: 'Feature', dotColor: '#f472b6' },
+  bug: { label: 'Bug', dotColor: '#ef4444' },
+  task: { label: 'Task', dotColor: '#6b7280' },
+  improvement: { label: 'Improvement', dotColor: '#06b6d4' },
+  chore: { label: 'Chore', dotColor: '#a3a3a3' },
 };
 
-const PRIORITY_META: Record<string, { icon: string; color: string } | null> = {
-  urgent: { icon: '⚡', color: '#ef4444' },
-  high: { icon: '⏶', color: '#f97316' },
-  medium: { icon: '〓', color: '#6b7280' },
-  low: { icon: '⏷', color: '#cbd5e1' },
-  none: null,
+const PRIORITY_BARS: Record<string, { bars: number; color: string; title: string }> = {
+  urgent: { bars: 4, color: '#ef4444', title: 'Urgent' },
+  high: { bars: 3, color: '#f97316', title: 'High' },
+  medium: { bars: 2, color: '#eab308', title: 'Medium' },
+  low: { bars: 1, color: '#9ca3af', title: 'Low' },
+  none: { bars: 0, color: 'transparent', title: 'No priority' },
+};
+
+const PriorityIcon = ({ priority }: { priority: string }) => {
+  const p = PRIORITY_BARS[priority] || PRIORITY_BARS.none;
+  if (p.bars === 0) {
+    return <span className="gtl-prio" title={p.title}><span className="gtl-prio-dots">···</span></span>;
+  }
+  return (
+    <span className="gtl-prio" title={p.title}>
+      {[1, 2, 3, 4].map((i) => (
+        <span
+          key={i}
+          className="gtl-prio-bar"
+          style={{
+            background: i <= p.bars ? p.color : '#e5e7eb',
+            height: `${6 + i * 3}px`,
+          }}
+        />
+      ))}
+    </span>
+  );
+};
+
+const StatusIcon = ({ status }: { status: TaskStatus }) => {
+  const meta = STATUS_META[status];
+  return <span className={`gtl-si ${meta.iconClass}`}>{meta.icon}</span>;
 };
 
 const ALL_STATUSES: TaskStatus[] = ['backlog', 'todo', 'in_progress', 'review', 'done'];
 
+const formatDate = (raw: Record<string, unknown>): string => {
+  const v = (raw.createdAt as string) || (raw.created_at as string) || '';
+  if (!v) return '';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('ru-RU', { month: 'short', year: 'numeric' });
+};
+
 export const GroupedTaskList = ({
   tasks,
   members,
+  directions,
   onStatusChange,
   onDelete,
   onTitleSave,
   onCreateTask,
 }: GroupedTaskListProps) => {
-  const pushToast = useUiStore((state) => state.pushToast);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ done: true });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [newTaskDraft, setNewTaskDraft] = useState('');
-  const [newTaskGroup, setNewTaskGroup] = useState<string | null>(null);
+  const [addingGroup, setAddingGroup] = useState<string | null>(null);
+  const [newDraft, setNewDraft] = useState('');
 
   const memberNameById = useMemo(
-    () => Object.fromEntries(members.map((m) => [m.id, `@${m.username}`])),
+    () => Object.fromEntries(members.map((m) => [m.id, m.username])),
     [members],
   );
 
+  const directionNameById = useMemo(
+    () => Object.fromEntries(directions.map((d) => [d.id, d.name])),
+    [directions],
+  );
+
   const groups = useMemo(
-    () =>
-      STATUS_ORDER.map((status) => ({
-        status,
-        meta: STATUS_META[status],
-        tasks: tasks.filter((t) => t.status === status),
-      })),
+    () => STATUS_ORDER.map((status) => ({
+      status,
+      meta: STATUS_META[status],
+      tasks: tasks.filter((t) => t.status === status),
+    })),
     [tasks],
   );
 
@@ -79,20 +116,19 @@ export const GroupedTaskList = ({
 
   const saveEdit = (taskId: string) => {
     const trimmed = editValue.trim();
-    if (!trimmed) {
-      pushToast('Название не может быть пустым', 'info');
-      return;
-    }
-    onTitleSave(taskId, trimmed);
+    if (trimmed) onTitleSave(taskId, trimmed);
     setEditingId(null);
   };
 
-  const submitNewTask = (_status: TaskStatus) => {
-    const trimmed = newTaskDraft.trim();
-    if (!trimmed) return;
-    onCreateTask(trimmed);
-    setNewTaskDraft('');
-    setNewTaskGroup(null);
+  const submitNew = () => {
+    const trimmed = newDraft.trim();
+    if (trimmed) onCreateTask(trimmed);
+    setNewDraft('');
+    setAddingGroup(null);
+  };
+
+  const getInitial = (name: string) => {
+    return name.charAt(0).toUpperCase();
   };
 
   return (
@@ -102,43 +138,67 @@ export const GroupedTaskList = ({
 
         return (
           <section key={status} className="gtl-group">
-            <button className="gtl-group-header" onClick={() => toggle(status)}>
-              <span className="gtl-toggle">{isCollapsed ? '▸' : '▾'}</span>
-              <span className="gtl-dot" style={{ color: meta.dotColor }}>●</span>
-              <span className="gtl-label">{meta.label}</span>
-              <span className="gtl-count">{groupTasks.length}</span>
-            </button>
+            <div className="gtl-group-header">
+              <button className="gtl-group-toggle-btn" onClick={() => toggle(status)}>
+                <span className="gtl-toggle">{isCollapsed ? '▸' : '▾'}</span>
+                <StatusIcon status={status} />
+                <span className="gtl-label">{meta.label}</span>
+                <span className="gtl-count">{groupTasks.length}</span>
+              </button>
+              <button
+                className="gtl-group-add"
+                onClick={() => { setAddingGroup(status); setNewDraft(''); }}
+                title="Добавить задачу"
+              >
+                +
+              </button>
+            </div>
 
             {!isCollapsed ? (
               <div className="gtl-body">
-                {groupTasks.length === 0 ? (
-                  <div className="gtl-empty">Нет задач</div>
-                ) : null}
-
                 {groupTasks.map((task) => {
                   const type = TYPE_META[task.taskType] || TYPE_META.task;
-                  const prio = PRIORITY_META[task.priority];
                   const isEditing = editingId === task.id;
+                  const assigneeName = task.assigneeUserId ? memberNameById[task.assigneeUserId] : null;
+                  const taskDirs = task.directionIds
+                    .map((id) => directionNameById[id])
+                    .filter(Boolean);
+                  const dateLabel = formatDate(task.raw);
 
                   return (
                     <article
                       key={task.id}
-                      className={`gtl-task ${status === 'done' ? 'is-done' : ''}`}
+                      className={`gtl-row ${status === 'done' ? 'is-done' : ''}`}
                     >
-                      <span
-                        className="gtl-priority"
-                        style={{ color: prio?.color || 'transparent' }}
-                        title={task.priority !== 'none' ? task.priority : undefined}
-                      >
-                        {prio?.icon || ''}
-                      </span>
+                      {/* Priority */}
+                      <PriorityIcon priority={task.priority} />
 
+                      {/* Issue key */}
                       {task.issueKey ? (
                         <span className="gtl-key">{task.issueKey.toUpperCase()}</span>
                       ) : (
                         <span className="gtl-key gtl-key-empty" />
                       )}
 
+                      {/* Status icon (clickable) */}
+                      {onStatusChange ? (
+                        <div className="gtl-status-wrap">
+                          <StatusIcon status={task.status} />
+                          <select
+                            className="gtl-status-select"
+                            value={task.status}
+                            onChange={(e) => onStatusChange(task.id, e.target.value as TaskStatus)}
+                          >
+                            {ALL_STATUSES.map((s) => (
+                              <option key={s} value={s}>{STATUS_META[s].label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <StatusIcon status={task.status} />
+                      )}
+
+                      {/* Title */}
                       {isEditing ? (
                         <input
                           className="gtl-title-input"
@@ -152,48 +212,49 @@ export const GroupedTaskList = ({
                           }}
                         />
                       ) : (
-                        <span
-                          className="gtl-title"
-                          onDoubleClick={() => startEdit(task)}
-                        >
+                        <span className="gtl-title" onDoubleClick={() => startEdit(task)}>
                           {task.title}
+                          {task.description ? (
+                            <span className="gtl-title-sub"> › {task.description.slice(0, 40)}</span>
+                          ) : null}
                         </span>
                       )}
 
+                      {/* Right side: labels, assignee, date */}
                       <div className="gtl-right">
-                        {onStatusChange ? (
-                          <select
-                            className="gtl-status-select"
-                            value={task.status}
-                            onChange={(e) => onStatusChange(task.id, e.target.value as TaskStatus)}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {ALL_STATUSES.map((s) => (
-                              <option key={s} value={s}>{STATUS_META[s].label}</option>
-                            ))}
-                          </select>
-                        ) : null}
-
-                        <span
-                          className="gtl-type"
-                          style={{ color: type.color, background: type.bg, borderColor: type.border }}
-                        >
+                        {/* Type label */}
+                        <span className="gtl-label-pill">
+                          <span className="gtl-label-dot" style={{ background: type.dotColor }} />
                           {type.label}
                         </span>
 
-                        {task.assigneeUserId ? (
-                          <span className="gtl-assignee">
-                            {memberNameById[task.assigneeUserId] || task.assigneeUserId.slice(0, 8)}
+                        {/* Direction labels */}
+                        {taskDirs.slice(0, 1).map((name) => (
+                          <span key={name} className="gtl-label-pill gtl-label-dir">
+                            <span className="gtl-label-dot" style={{ background: '#3b82f6' }} />
+                            {name}
                           </span>
+                        ))}
+
+                        {/* Assignee avatar */}
+                        {assigneeName ? (
+                          <span className="gtl-avatar" title={`@${assigneeName}`}>
+                            {getInitial(assigneeName)}
+                          </span>
+                        ) : (
+                          <span className="gtl-avatar gtl-avatar-empty" />
+                        )}
+
+                        {/* Date */}
+                        {dateLabel ? (
+                          <span className="gtl-date">{dateLabel}</span>
                         ) : null}
 
+                        {/* Delete */}
                         <button
-                          className="gtl-action-btn"
+                          className="gtl-delete"
                           title="Удалить"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDelete(task.id);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
                         >
                           ×
                         </button>
@@ -202,30 +263,24 @@ export const GroupedTaskList = ({
                   );
                 })}
 
-                {/* Inline add */}
-                {newTaskGroup === status ? (
-                  <div className="gtl-add-input-row">
+                {addingGroup === status ? (
+                  <div className="gtl-inline-add">
                     <input
-                      className="gtl-add-input"
+                      className="gtl-inline-input"
                       autoFocus
                       placeholder="Название задачи..."
-                      value={newTaskDraft}
-                      onChange={(e) => setNewTaskDraft(e.target.value)}
+                      value={newDraft}
+                      onChange={(e) => setNewDraft(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') submitNewTask(status);
-                        if (e.key === 'Escape') { setNewTaskGroup(null); setNewTaskDraft(''); }
+                        if (e.key === 'Enter') submitNew();
+                        if (e.key === 'Escape') { setAddingGroup(null); setNewDraft(''); }
                       }}
                       onBlur={() => {
-                        if (!newTaskDraft.trim()) { setNewTaskGroup(null); setNewTaskDraft(''); }
+                        if (!newDraft.trim()) { setAddingGroup(null); setNewDraft(''); }
                       }}
                     />
                   </div>
-                ) : (
-                  <button className="gtl-add-row" onClick={() => setNewTaskGroup(status)}>
-                    <span className="gtl-add-icon">+</span>
-                    <span>Новая задача...</span>
-                  </button>
-                )}
+                ) : null}
               </div>
             ) : null}
           </section>
