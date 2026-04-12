@@ -108,7 +108,7 @@ const ALL_STATUSES: TaskStatus[] = ['backlog', 'todo', 'in_progress', 'review', 
 
 export const GroupedTaskList = ({
   tasks, members, directions,
-  onStatusChange, onDelete, onTitleSave, onCreateTask,
+  onStatusChange, onDelete: _onDelete, onTitleSave, onCreateTask,
 }: GroupedTaskListProps) => {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ done: true });
   const [editingId, setEditingId] = useState<string | null>(null);
