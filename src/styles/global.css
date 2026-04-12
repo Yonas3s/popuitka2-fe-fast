@@ -11306,6 +11306,268 @@ p {
   background: rgba(0, 136, 204, 0.2);
 }
 
+/* ── Grouped Task List ── */
+
+.gtl {
+  display: grid;
+  gap: 20px;
+}
+
+.gtl-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  font-family: inherit;
+}
+
+.gtl-toggle {
+  font-size: 12px;
+  color: #9ca3af;
+  width: 16px;
+  text-align: center;
+}
+
+.gtl-dot {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.gtl-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+  letter-spacing: 0.06em;
+}
+
+.gtl-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  background: #f3f4f6;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.gtl-body {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.gtl-empty {
+  padding: 14px;
+  font-size: 13px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.gtl-task {
+  display: grid;
+  grid-template-columns: 24px 90px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid #f3f4f6;
+  min-height: 42px;
+  transition: background 100ms;
+}
+
+.gtl-task:hover {
+  background: #f9fafb;
+}
+
+.gtl-task.is-done {
+  opacity: 0.5;
+}
+
+.gtl-task.is-done .gtl-title {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.gtl-priority {
+  font-size: 14px;
+  text-align: center;
+  width: 20px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.gtl-key {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #3b82f6;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 5px;
+  padding: 3px 7px;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.gtl-key-empty {
+  visibility: hidden;
+}
+
+.gtl-title {
+  font-size: 14px;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  cursor: default;
+}
+
+.gtl-title-input {
+  font-size: 14px;
+  color: #111827;
+  min-width: 0;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  padding: 4px 8px;
+  outline: none;
+  background: #fff;
+  width: 100%;
+}
+
+.gtl-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.gtl-status-select {
+  font-size: 11px;
+  padding: 3px 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  background: #f9fafb;
+  color: #374151;
+  cursor: pointer;
+}
+
+.gtl-type {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.gtl-assignee {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.gtl-action-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: #d1d5db;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity 100ms, color 100ms;
+}
+
+.gtl-task:hover .gtl-action-btn {
+  opacity: 1;
+}
+
+.gtl-action-btn:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.gtl-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  color: #9ca3af;
+  font-size: 13px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  font-family: inherit;
+  transition: color 100ms;
+}
+
+.gtl-add-row:hover {
+  color: #6b7280;
+  background: #f9fafb;
+}
+
+.gtl-add-icon {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+}
+
+.gtl-add-input-row {
+  padding: 6px 14px;
+}
+
+.gtl-add-input {
+  width: 100%;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+  outline: none;
+  font-family: inherit;
+}
+
+@media (max-width: 700px) {
+  .gtl-task {
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 4px 8px;
+  }
+
+  .gtl-key {
+    grid-column: 2;
+    justify-self: start;
+    font-size: 10px;
+  }
+
+  .gtl-title {
+    grid-column: 2;
+    white-space: normal;
+  }
+
+  .gtl-right {
+    grid-column: 2;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .gtl-action-btn {
+    opacity: 1;
+  }
+
+  .gtl-status-select {
+    width: 100%;
+  }
+}
+
 /* ── 404 Not Found ── */
 
 /* ── Settings layout with sidebar ── */

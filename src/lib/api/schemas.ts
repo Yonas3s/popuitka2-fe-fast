@@ -481,6 +481,21 @@ export const normalizeStage = (value: unknown, index = 0): Stage => {
   };
 };
 
+const taskStatuses = ['backlog', 'todo', 'in_progress', 'review', 'done'] as const;
+const taskPriorities = ['urgent', 'high', 'medium', 'low', 'none'] as const;
+
+const toTaskStatus = (value: unknown, done: boolean): Task['status'] => {
+  const s = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (taskStatuses.includes(s as Task['status'])) return s as Task['status'];
+  return done ? 'done' : 'backlog';
+};
+
+const toTaskPriority = (value: unknown): Task['priority'] => {
+  const p = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (taskPriorities.includes(p as Task['priority'])) return p as Task['priority'];
+  return 'none';
+};
+
 export const normalizeTask = (value: unknown, index = 0): Task => {
   const parsed = taskSchema.safeParse(value);
   const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
@@ -551,6 +566,8 @@ export const normalizeTask = (value: unknown, index = 0): Task => {
       (typeof record.issue_key === 'string' && record.issue_key) ||
       undefined,
     done,
+    status: toTaskStatus(record.status, done),
+    priority: toTaskPriority(record.priority),
     taskType,
     directionIds,
     assigneeUserId:
