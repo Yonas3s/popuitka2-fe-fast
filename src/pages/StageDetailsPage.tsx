@@ -496,11 +496,19 @@ export const StageDetailsPage = () => {
 
   const onChangeTaskStatus = async (taskId: string, status: TaskStatus) => {
     if (!ensureStageRoute()) return;
+    const previous = tasks;
+    // Optimistic: instantly move the task to the new status
+    const optimistic = previous.map((t) =>
+      t.id === taskId ? { ...t, status, done: status === 'done' } : t,
+    );
+    useStageStore.setState({ tasks: optimistic });
     try {
       await apiService.changeTaskStatus(projectId, stageId, taskId, status);
-      pushToast('Статус обновлён', 'success');
-      await fetchTasks(projectId, stageId);
+      // Background sync — don't set loading: true
+      const fresh = await apiService.getTasks(projectId, stageId);
+      useStageStore.setState({ tasks: fresh });
     } catch (reason) {
+      useStageStore.setState({ tasks: previous });
       pushToast(normalizeApiError(reason).message, 'error');
     }
   };
