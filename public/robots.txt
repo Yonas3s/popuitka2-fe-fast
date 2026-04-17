@@ -1,11 +1,5 @@
 User-agent: *
-Allow: /$
-Allow: /pricing
-Allow: /about
-Allow: /privacy
-Allow: /terms
-Allow: /docs
-Allow: /blog
+Allow: /
 
 Disallow: /signin
 Disallow: /signup
