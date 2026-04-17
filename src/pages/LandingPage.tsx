@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiService } from '../lib/api/service';
 import { APP_TITLE } from '../lib/config/env';
 import { UnifiedHeader } from '../components/layout/UnifiedHeader';
-import { SEO } from '../components/seo/SEO';
 import { useAuthStore } from '../store/auth.store';
 
 export const LandingPage = () => {
@@ -35,12 +34,6 @@ export const LandingPage = () => {
 
   return (
     <div className="stitch-landing">
-      <SEO
-        title="unit-labs — релиз-менеджмент для dev-команд"
-        rawTitle
-        description="unit-labs — SaaS для управления релизами. Проекты, этапы, задачи, интеграция с GitHub и Telegram, апрув клиента по публичной ссылке, AI-агент для декомпозиции задач."
-        canonicalPath="/"
-      />
       {/* ── Nav ── */}
       <UnifiedHeader
         as="nav"

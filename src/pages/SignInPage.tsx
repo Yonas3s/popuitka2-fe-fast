@@ -12,7 +12,6 @@ import { API_BASE_URL } from '../lib/config/env';
 import { useAuthStore } from '../store/auth.store';
 import { useUiStore } from '../store/ui.store';
 import { UnifiedHeader } from '../components/layout/UnifiedHeader';
-import { SEO } from '../components/seo/SEO';
 
 type SignInForm = {
   email: string;
@@ -69,7 +68,6 @@ export const SignInPage = () => {
 
   return (
     <div className="signin-v2-page">
-      <SEO title="Вход" description="Войдите в unit-labs — управляйте релизами, задачами и клиентскими апрувами." canonicalPath="/signin" noindex />
       <div className="signin-v2-grid-bg" />
       <div className="signin-v2-overlay">
         <span className="signin-v2-marker marker-a">A1 :: SYS_INIT</span>

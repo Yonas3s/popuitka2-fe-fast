@@ -11,7 +11,6 @@ import { normalizeApiError } from '../lib/api/errors';
 import { API_BASE_URL } from '../lib/config/env';
 import { useUiStore } from '../store/ui.store';
 import { UnifiedHeader } from '../components/layout/UnifiedHeader';
-import { SEO } from '../components/seo/SEO';
 
 type SignUpForm = {
   username: string;
@@ -81,7 +80,6 @@ export const SignUpPage = () => {
 
   return (
     <div className="signin-v2-page">
-      <SEO title="Регистрация" description="Создайте аккаунт в unit-labs. Бесплатный старт, без карты." canonicalPath="/signup" noindex />
       <div className="signin-v2-grid-bg" />
       <div className="signin-v2-overlay">
         <span className="signin-v2-marker marker-a">A1 :: SYS_INIT</span>
