@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && npm run prerender",
+    "build:no-prerender": "tsc -b && vite build",
+    "prerender": "node scripts/prerender.mjs",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run"
@@ -17,6 +19,7 @@
     "axios": "^1.8.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-helmet-async": "^3.0.0",
     "react-hook-form": "^7.56.1",
     "react-router-dom": "^6.30.1",
     "zod": "^3.24.2",
@@ -32,6 +35,7 @@
     "@vitejs/plugin-react": "^4.4.1",
     "jsdom": "^26.0.0",
     "msw": "^2.7.3",
+    "puppeteer": "^24.41.0",
     "typescript": "^5.7.3",
     "vite": "^6.1.0",
     "vitest": "^3.0.5"

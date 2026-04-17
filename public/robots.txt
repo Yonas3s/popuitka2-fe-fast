@@ -1,0 +1,27 @@
+User-agent: *
+Allow: /$
+Allow: /pricing
+Allow: /about
+Allow: /privacy
+Allow: /terms
+Allow: /docs
+Allow: /blog
+
+Disallow: /signin
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /verify-reset-code
+Disallow: /reset-password
+Disallow: /settings
+Disallow: /projects
+Disallow: /teams
+Disallow: /admin
+Disallow: /agent
+Disallow: /auth/
+Disallow: /github/callback
+Disallow: /team-invite
+Disallow: /team-invites
+Disallow: /p/
+
+Sitemap: https://unit-labs.ru/sitemap.xml
+Host: unit-labs.ru

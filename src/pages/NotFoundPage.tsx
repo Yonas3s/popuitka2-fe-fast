@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { UnifiedHeader } from '../components/layout/UnifiedHeader';
+import { SEO } from '../components/seo/SEO';
 import { useAuthStore } from '../store/auth.store';
 
 export const NotFoundPage = () => {
@@ -8,6 +9,11 @@ export const NotFoundPage = () => {
 
   return (
     <div className="notfound-page">
+      <SEO
+        title="404 — страница не найдена"
+        description="Страница не найдена. Вернитесь на главную unit-labs."
+        noindex
+      />
       <UnifiedHeader
         as="nav"
         className="stitch-nav"
