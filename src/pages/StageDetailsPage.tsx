@@ -9,6 +9,7 @@ import { normalizeApiError } from '../lib/api/errors';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
 import { GroupedTaskList } from '../components/tasks/GroupedTaskList';
 import { BoardView } from '../components/tasks/BoardView';
+import { TaskDetailsDrawer } from '../components/tasks/TaskDetailsDrawer';
 import { ViewSettingsPanel, type ViewMode, type VisibleColumns } from '../components/tasks/ViewSettingsPanel';
 import type { DirectionTag, TaskStatus, TaskType, TeamMember } from '../types/models';
 
@@ -73,6 +74,22 @@ export const StageDetailsPage = () => {
   const [requestingReview, setRequestingReview] = useState(false);
   const [assignableMembers, setAssignableMembers] = useState<TeamMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
+
+  // Task details drawer — URL-synced via ?task=<id>
+  const openedTaskId = searchParams.get('task');
+  const openedTask = openedTaskId ? tasks.find((t) => t.id === openedTaskId) ?? null : null;
+
+  const openTaskDrawer = (taskId: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('task', taskId);
+    setSearchParams(next, { replace: false });
+  };
+
+  const closeTaskDrawer = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('task');
+    setSearchParams(next, { replace: false });
+  };
 
   // View settings
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -713,8 +730,6 @@ export const StageDetailsPage = () => {
                     <ViewSettingsPanel
                       open={viewPanelOpen}
                       onClose={() => setViewPanelOpen(false)}
-                      viewMode={viewMode}
-                      onViewModeChange={setViewMode}
                       grouping={grouping}
                       onGroupingChange={setGrouping}
                       ordering={ordering}
@@ -735,7 +750,17 @@ export const StageDetailsPage = () => {
                 <BoardView
                   tasks={filteredTasks}
                   members={assignableMembers}
+                  directions={directions}
                   onStatusChange={(taskId, status) => void onChangeTaskStatus(taskId, status)}
+                  onTaskTypeChange={(taskId, taskType) => void onTaskTypeChange(taskId, taskType)}
+                  onAssigneeChange={(taskId, assigneeUserId) => void onAssignTask(taskId, assigneeUserId)}
+                  onDirectionsChange={(taskId, directionIds) => {
+                    const current = tasks.find((t) => t.id === taskId)?.directionIds ?? [];
+                    const added = directionIds.filter((id) => !current.includes(id));
+                    const removed = current.filter((id) => !directionIds.includes(id));
+                    [...added, ...removed].forEach((id) => void onToggleDirection(taskId, id));
+                  }}
+                  onOpenTask={openTaskDrawer}
                   onCreateTask={(title) => {
                     void apiService
                       .createTask(projectId, stageId, { title })
@@ -758,6 +783,15 @@ export const StageDetailsPage = () => {
                   showEmptyGroups={showEmptyGroups}
                   visibleColumns={visibleCols}
                   onStatusChange={(taskId, status) => void onChangeTaskStatus(taskId, status)}
+                  onTaskTypeChange={(taskId, taskType) => void onTaskTypeChange(taskId, taskType)}
+                  onAssigneeChange={(taskId, assigneeUserId) => void onAssignTask(taskId, assigneeUserId)}
+                  onDirectionsChange={(taskId, directionIds) => {
+                    const current = tasks.find((t) => t.id === taskId)?.directionIds ?? [];
+                    const added = directionIds.filter((id) => !current.includes(id));
+                    const removed = current.filter((id) => !directionIds.includes(id));
+                    [...added, ...removed].forEach((id) => void onToggleDirection(taskId, id));
+                  }}
+                  onOpenTask={openTaskDrawer}
                   onDelete={(taskId) => onDeleteTask(taskId)}
                   onTitleSave={(taskId, title) => {
                     void apiService
@@ -1143,6 +1177,33 @@ export const StageDetailsPage = () => {
           </aside>
         </section>
       </main>
+
+      {openedTask && (
+        <TaskDetailsDrawer
+          task={openedTask}
+          members={assignableMembers}
+          directions={directions}
+          onClose={closeTaskDrawer}
+          onTitleSave={(taskId, title) => {
+            void editTaskTitle(projectId, stageId, taskId, { title })
+              .catch((reason) => pushToast(normalizeApiError(reason).message, 'error'));
+          }}
+          onDescriptionSave={(taskId, description) => {
+            void patchTaskMeta(projectId, stageId, taskId, { description })
+              .catch((reason) => pushToast(normalizeApiError(reason).message, 'error'));
+          }}
+          onStatusChange={(taskId, status) => void onChangeTaskStatus(taskId, status)}
+          onTypeChange={(taskId, taskType) => void onTaskTypeChange(taskId, taskType)}
+          onAssigneeChange={(taskId, assigneeUserId) => void onAssignTask(taskId, assigneeUserId)}
+          onDirectionsChange={(taskId, directionIds) => {
+            const current = tasks.find((t) => t.id === taskId)?.directionIds ?? [];
+            const added = directionIds.filter((id) => !current.includes(id));
+            const removed = current.filter((id) => !directionIds.includes(id));
+            [...added, ...removed].forEach((id) => void onToggleDirection(taskId, id));
+          }}
+          onDelete={(taskId) => { closeTaskDrawer(); onDeleteTask(taskId); }}
+        />
+      )}
     </div>
   );
 };

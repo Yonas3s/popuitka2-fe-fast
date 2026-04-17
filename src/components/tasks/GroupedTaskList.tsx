@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Task, TaskStatus, TaskType, TeamMember, DirectionTag } from '../../types/models';
+import { TaskMetaMenu, TASK_TYPE_CFG, ALL_TASK_TYPES, type MetaMenuItem } from './TaskMetaMenu';
 
 type VisibleColumns = {
   id: boolean;
@@ -17,6 +18,10 @@ type Props = {
   showEmptyGroups?: boolean;
   visibleColumns?: VisibleColumns;
   onStatusChange?: (taskId: string, status: TaskStatus) => void;
+  onTaskTypeChange?: (taskId: string, taskType: TaskType) => void;
+  onAssigneeChange?: (taskId: string, assigneeUserId: string | null) => void;
+  onDirectionsChange?: (taskId: string, directionIds: string[]) => void;
+  onOpenTask?: (taskId: string) => void;
   onDelete: (taskId: string) => void;
   onTitleSave: (taskId: string, title: string) => void;
   onCreateTask: (title: string) => void;
@@ -38,13 +43,8 @@ const S: Record<TaskStatus, { label: string; color: string }> = {
   done:        { label: 'Done',        color: '#5a67d8' },
 };
 
-const T: Record<TaskType, { label: string; color: string }> = {
-  feature:     { label: 'Feature',     color: '#ec4899' },
-  bug:         { label: 'Bug',         color: '#ef4444' },
-  task:        { label: 'Task',        color: '#6b7280' },
-  improvement: { label: 'Improvement', color: '#06b6d4' },
-  chore:       { label: 'Chore',       color: '#a3a3a3' },
-};
+/** Alias for compatibility with existing code below. */
+const T = TASK_TYPE_CFG;
 
 const P: Record<string, { n: number; c: string }> = {
   urgent: { n: 4, c: '#ef4444' }, high: { n: 3, c: '#f97316' },
@@ -115,7 +115,9 @@ export const GroupedTaskList = ({
   tasks, members, directions,
   showEmptyGroups = true,
   visibleColumns,
-  onStatusChange, onDelete: _onDelete, onTitleSave, onCreateTask,
+  onStatusChange, onTaskTypeChange, onAssigneeChange, onDirectionsChange: _onDirectionsChange,
+  onOpenTask,
+  onDelete: _onDelete, onTitleSave, onCreateTask,
 }: Props) => {
   const cols = visibleColumns || DEFAULT_COLS;
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ done: true });
@@ -123,6 +125,18 @@ export const GroupedTaskList = ({
   const [editVal, setEditVal] = useState('');
   const [addGroup, setAddGroup] = useState<string | null>(null);
   const [addVal, setAddVal] = useState('');
+  const [menu, setMenu] = useState<
+    | { kind: 'type' | 'assignee' | 'directions'; taskId: string; anchor: HTMLElement }
+    | null
+  >(null);
+
+  const onDirectionsChange = _onDirectionsChange;
+
+  const openMenu = (kind: 'type' | 'assignee' | 'directions', taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenu({ kind, taskId, anchor: e.currentTarget as HTMLElement });
+  };
+  const closeMenu = () => setMenu(null);
 
   const mMap = useMemo(() => Object.fromEntries(members.map(m => [m.id, m])), [members]);
   const dMap = useMemo(() => Object.fromEntries(directions.map(d => [d.id, d.name])), [directions]);
@@ -160,7 +174,18 @@ export const GroupedTaskList = ({
                   const editing = editId === task.id;
 
                   return (
-                    <div key={task.id} className={`li-r${s==='done'?' li-done':''}`}>
+                    <div
+                      key={task.id}
+                      className={`li-r${s==='done'?' li-done':''}`}
+                      onClick={(e) => {
+                        if (!onOpenTask) return;
+                        // Ignore clicks on interactive children (tags, avatar, "+" button, selects, inputs, buttons).
+                        const target = e.target as HTMLElement;
+                        if (target.closest('button, select, input, .tmm, [data-no-open]')) return;
+                        if (editId === task.id) return;
+                        onOpenTask(task.id);
+                      }}
+                    >
                       {cols.priority && <div className="li-r-prio"><PB p={task.priority}/></div>}
                       {cols.id && <div className="li-r-key">{task.issueKey?.toUpperCase()||''}</div>}
                       {cols.status && <div className="li-r-st">
@@ -181,11 +206,41 @@ export const GroupedTaskList = ({
                         )}
                       </div>
                       {cols.labels && <div className="li-r-tags">
-                        <span className="li-tag" style={{'--tc':tp.color} as React.CSSProperties}>{tp.label}</span>
-                        {dirs.slice(0,1).map(n=><span key={n} className="li-tag" style={{'--tc':'#3b82f6'} as React.CSSProperties}>{n}</span>)}
+                        {onTaskTypeChange ? (
+                          <button
+                            type="button"
+                            className="li-tag li-tag-btn"
+                            style={{'--tc':tp.color} as React.CSSProperties}
+                            onClick={(e) => openMenu('type', task.id, e)}
+                            aria-label={`Тип: ${tp.label}. Изменить`}
+                          >{tp.label}</button>
+                        ) : (
+                          <span className="li-tag" style={{'--tc':tp.color} as React.CSSProperties}>{tp.label}</span>
+                        )}
+                        {dirs.map(n=><span key={n} className="li-tag" style={{'--tc':'#3b82f6'} as React.CSSProperties}>{n}</span>)}
+                        {onDirectionsChange && directions.length > 0 && (
+                          <button
+                            type="button"
+                            className="li-tag-add"
+                            onClick={(e) => openMenu('directions', task.id, e)}
+                            title="Направления"
+                            aria-label="Направления"
+                          >+</button>
+                        )}
                       </div>}
                       {cols.assignee && <div className="li-r-av">
-                        {mem && <span className="li-av" title={'@'+mem.username}>{mem.username[0].toUpperCase()}</span>}
+                        {onAssigneeChange ? (
+                          <button
+                            type="button"
+                            className={`li-av-btn${mem ? '' : ' li-av-btn-empty'}`}
+                            onClick={(e) => openMenu('assignee', task.id, e)}
+                            aria-label={mem ? `Исполнитель: @${mem.username}. Изменить` : 'Назначить исполнителя'}
+                          >
+                            {mem ? mem.username[0].toUpperCase() : '?'}
+                          </button>
+                        ) : mem ? (
+                          <span className="li-av" title={'@'+mem.username}>{mem.username[0].toUpperCase()}</span>
+                        ) : null}
                       </div>}
                       {cols.created && <div className="li-r-date">{date}</div>}
                     </div>
@@ -205,6 +260,61 @@ export const GroupedTaskList = ({
           </section>
         );
       })}
+
+      {menu && (() => {
+        const task = tasks.find(t => t.id === menu.taskId);
+        if (!task) return null;
+        if (menu.kind === 'type' && onTaskTypeChange) {
+          const items: MetaMenuItem[] = ALL_TASK_TYPES.map(t => ({
+            value: t, label: T[t].label, dot: T[t].color,
+          }));
+          return (
+            <TaskMetaMenu
+              anchor={menu.anchor}
+              items={items}
+              selected={[task.taskType]}
+              onSelect={(vals) => { const v = vals[0] as TaskType; if (v && v !== task.taskType) onTaskTypeChange(task.id, v); }}
+              onClose={closeMenu}
+            />
+          );
+        }
+        if (menu.kind === 'assignee' && onAssigneeChange) {
+          const items: MetaMenuItem[] = [
+            { value: '', label: 'Unassigned', initial: '–' },
+            ...members.map(m => ({ value: m.id, label: m.username, initial: m.username[0].toUpperCase(), hint: m.email ? undefined : undefined })),
+          ];
+          return (
+            <TaskMetaMenu
+              anchor={menu.anchor}
+              items={items}
+              selected={task.assigneeUserId ? [task.assigneeUserId] : ['']}
+              searchable={members.length > 5}
+              placeholder="Поиск участника…"
+              onSelect={(vals) => { onAssigneeChange(task.id, vals[0] || null); }}
+              onClose={closeMenu}
+            />
+          );
+        }
+        if (menu.kind === 'directions' && onDirectionsChange) {
+          const items: MetaMenuItem[] = directions.map(d => ({
+            value: d.id, label: d.name, dot: '#3b82f6',
+          }));
+          return (
+            <TaskMetaMenu
+              anchor={menu.anchor}
+              items={items}
+              selected={task.directionIds}
+              multi
+              searchable={directions.length > 5}
+              placeholder="Поиск направления…"
+              emptyLabel="Нет направлений"
+              onSelect={(vals) => onDirectionsChange(task.id, vals)}
+              onClose={closeMenu}
+            />
+          );
+        }
+        return null;
+      })()}
     </div>
   );
 };

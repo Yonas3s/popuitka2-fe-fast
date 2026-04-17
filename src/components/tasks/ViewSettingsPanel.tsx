@@ -16,8 +16,6 @@ export type VisibleColumns = {
 type ViewSettingsPanelProps = {
   open: boolean;
   onClose: () => void;
-  viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
   grouping: Grouping;
   onGroupingChange: (g: Grouping) => void;
   ordering: Ordering;
@@ -39,7 +37,6 @@ const COL_LABELS: { key: keyof VisibleColumns; label: string }[] = [
 
 export const ViewSettingsPanel = ({
   open, onClose,
-  viewMode, onViewModeChange,
   grouping, onGroupingChange,
   ordering, onOrderingChange,
   showEmptyGroups, onShowEmptyGroupsChange,
@@ -71,26 +68,6 @@ export const ViewSettingsPanel = ({
 
   return (
     <div className="vsp" ref={ref}>
-      {/* View mode toggle */}
-      <div className="vsp-mode">
-        <button className={`vsp-mode-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => onViewModeChange('list')}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M2 3.5h10M2 7h10M2 10.5h10" strokeLinecap="round"/>
-          </svg>
-          List
-        </button>
-        <button className={`vsp-mode-btn ${viewMode === 'board' ? 'active' : ''}`} onClick={() => onViewModeChange('board')}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <rect x="1" y="2" width="3.5" height="10" rx="1"/>
-            <rect x="5.25" y="2" width="3.5" height="7" rx="1"/>
-            <rect x="9.5" y="2" width="3.5" height="10" rx="1"/>
-          </svg>
-          Board
-        </button>
-      </div>
-
-      <div className="vsp-divider" />
-
       {/* Grouping */}
       <div className="vsp-row">
         <span className="vsp-label">Grouping</span>
