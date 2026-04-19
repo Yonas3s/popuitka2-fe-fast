@@ -14,12 +14,15 @@ apiClient.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  // Prevent the browser from serving a stale 304 cached body after a PATCH —
-  // the backend's ETag doesn't always invalidate on mutation, which caused
-  // optimistic state to be overwritten by pre-mutation data.
+  // Bust the browser HTTP cache on every GET so a conditional request can't
+  // replay a stale 304 body after a mutation. Cache-Control alone isn't
+  // enough — the browser may still revalidate with If-None-Match and accept
+  // an identical ETag from a buggy backend. A unique query param forces a
+  // fresh request each time.
   if (config.method && config.method.toLowerCase() === 'get') {
-    config.headers['Cache-Control'] = 'no-cache';
+    config.headers['Cache-Control'] = 'no-store';
     config.headers['Pragma'] = 'no-cache';
+    config.params = { ...(config.params || {}), _: Date.now() };
   }
   return config;
 });
