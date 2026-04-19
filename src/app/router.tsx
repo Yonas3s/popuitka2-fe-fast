@@ -9,6 +9,7 @@ import { VerifyResetCodePage } from '../pages/VerifyResetCodePage';
 import { ResetPasswordPage } from '../pages/ResetPasswordPage';
 import { AuthCallbackPage } from '../pages/AuthCallbackPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
+import { PixelDuck } from '../components/duck/PixelDuck';
 
 // Heavy authenticated pages — split them into separate bundles so the first
 // paint (landing + auth) stays small and subsequent routes load on demand.
@@ -29,7 +30,10 @@ const GitHubCallbackInstallPage = lazy(() => import('../pages/GitHubCallbackInst
 
 const RouteFallback = () => (
   <div className="route-fallback" role="status" aria-live="polite">
-    Загрузка…
+    <div className="route-fallback-duck">
+      <PixelDuck mood="thinking" />
+    </div>
+    <span className="route-fallback-text">Загрузка…</span>
   </div>
 );
 

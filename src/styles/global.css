@@ -13454,10 +13454,32 @@ a.agent-v2-task-title:hover {
 
 /* Route fallback */
 .route-fallback {
-  min-height: 40vh;
+  position: fixed;
+  inset: 0;
+  background: #ffffff;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  gap: 18px;
+  color: #64748b;
   font-size: 13px;
+  z-index: 100;
+}
+.route-fallback-duck {
+  width: 72px;
+  height: 72px;
+  animation: route-fallback-hop 0.8s ease-in-out infinite;
+}
+.route-fallback-duck .duck-pixel {
+  width: 100%;
+  height: 100%;
+}
+.route-fallback-text {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+@keyframes route-fallback-hop {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
 }
