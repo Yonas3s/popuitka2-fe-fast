@@ -112,7 +112,6 @@ export const useStageStore = create<StageState>((set, get) => ({
 
     try {
       await apiService.toggleTask(projectId, stageId, taskId);
-      await get().fetchTasks(projectId, stageId);
     } catch (error) {
       set({ tasks: previous, error: normalizeApiError(error) });
       throw error;
@@ -129,7 +128,6 @@ export const useStageStore = create<StageState>((set, get) => ({
 
     try {
       await apiService.editTaskTitle(projectId, stageId, taskId, payload);
-      await get().fetchTasks(projectId, stageId);
     } catch (error) {
       set({ tasks: previous, error: normalizeApiError(error) });
       throw error;
@@ -147,7 +145,6 @@ export const useStageStore = create<StageState>((set, get) => ({
 
     try {
       await apiService.assignTask(projectId, stageId, taskId, payload);
-      await get().fetchTasks(projectId, stageId);
     } catch (error) {
       set({ tasks: previous, error: normalizeApiError(error) });
       throw error;
@@ -181,7 +178,6 @@ export const useStageStore = create<StageState>((set, get) => ({
 
     try {
       await apiService.patchTaskMeta(projectId, stageId, taskId, safePayload);
-      await get().fetchTasks(projectId, stageId);
     } catch (error) {
       set({ tasks: previous, error: normalizeApiError(error) });
       throw error;
@@ -195,7 +191,6 @@ export const useStageStore = create<StageState>((set, get) => ({
 
     try {
       await apiService.deleteTask(projectId, stageId, taskId);
-      await get().fetchTasks(projectId, stageId);
     } catch (error) {
       set({ tasks: previous, error: normalizeApiError(error) });
       throw error;

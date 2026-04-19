@@ -527,9 +527,6 @@ export const StageDetailsPage = () => {
     useStageStore.setState({ tasks: optimistic });
     try {
       await apiService.changeTaskStatus(projectId, stageId, taskId, status);
-      // Background sync — don't set loading: true
-      const fresh = await apiService.getTasks(projectId, stageId);
-      useStageStore.setState({ tasks: fresh });
     } catch (reason) {
       useStageStore.setState({ tasks: previous });
       pushToast(normalizeApiError(reason).message, 'error');
@@ -579,8 +576,6 @@ export const StageDetailsPage = () => {
 
     try {
       await patchTaskMeta(projectId, stageId, taskId, { priority });
-      // Refresh to pick up server-side re-sort.
-      await fetchTasks(projectId, stageId);
     } catch (reason) {
       useStageStore.setState({ tasks: previous });
       pushToast(normalizeApiError(reason).message, 'error');

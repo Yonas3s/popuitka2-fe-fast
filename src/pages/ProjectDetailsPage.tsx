@@ -345,7 +345,6 @@ export const ProjectDetailsPage = () => {
 
     try {
       await apiService.toggleProjectTask(projectId, taskId);
-      await loadFlatTasks();
     } catch (reason) {
       setFlatTasks(previous);
       const normalized = normalizeApiError(reason);
@@ -372,7 +371,6 @@ export const ProjectDetailsPage = () => {
 
     try {
       await apiService.editProjectTaskTitle(projectId, taskId, { title });
-      await loadFlatTasks();
     } catch (reason) {
       setFlatTasks(previous);
       const normalized = normalizeApiError(reason);
@@ -408,7 +406,6 @@ export const ProjectDetailsPage = () => {
         description,
       });
       pushToast('Описание задачи обновлено', 'success');
-      await loadFlatTasks();
     } catch (reason) {
       setFlatTasks(previous);
       const normalized = normalizeApiError(reason);
@@ -422,7 +419,6 @@ export const ProjectDetailsPage = () => {
     try {
       await apiService.deleteProjectTask(projectId, taskId);
       pushToast('Задача удалена', 'success');
-      await loadFlatTasks();
     } catch (reason) {
       setFlatTasks(previous);
       const normalized = normalizeApiError(reason);
@@ -442,7 +438,6 @@ export const ProjectDetailsPage = () => {
         user_id: assigneeUserId,
       });
       pushToast(assigneeUserId ? 'Исполнитель назначен' : 'Назначение снято', 'success');
-      await loadFlatTasks();
     } catch (reason) {
       setFlatTasks(previous);
       const normalized = normalizeApiError(reason);
@@ -460,7 +455,6 @@ export const ProjectDetailsPage = () => {
         task_type: taskType,
       });
       pushToast('Тип задачи обновлен', 'success');
-      await loadFlatTasks();
     } catch (reason) {
       setFlatTasks(previous);
       const normalized = normalizeApiError(reason);
@@ -488,7 +482,6 @@ export const ProjectDetailsPage = () => {
         direction_ids: nextDirectionIds,
       });
       pushToast('Направления обновлены', 'success');
-      await loadFlatTasks();
     } catch (reason) {
       setFlatTasks(previous);
       const normalized = normalizeApiError(reason);

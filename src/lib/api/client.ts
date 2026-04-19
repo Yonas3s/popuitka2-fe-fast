@@ -14,6 +14,13 @@ apiClient.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Prevent the browser from serving a stale 304 cached body after a PATCH —
+  // the backend's ETag doesn't always invalidate on mutation, which caused
+  // optimistic state to be overwritten by pre-mutation data.
+  if (config.method && config.method.toLowerCase() === 'get') {
+    config.headers['Cache-Control'] = 'no-cache';
+    config.headers['Pragma'] = 'no-cache';
+  }
   return config;
 });
 
