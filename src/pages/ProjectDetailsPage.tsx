@@ -417,11 +417,14 @@ export const ProjectDetailsPage = () => {
   };
 
   const onDeleteFlatTask = async (taskId: string) => {
+    const previous = flatTasks;
+    setFlatTasks(previous.filter((task) => task.id !== taskId));
     try {
       await apiService.deleteProjectTask(projectId, taskId);
       pushToast('Задача удалена', 'success');
       await loadFlatTasks();
     } catch (reason) {
+      setFlatTasks(previous);
       const normalized = normalizeApiError(reason);
       pushToast(normalized.message, 'error');
     }

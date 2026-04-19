@@ -11,6 +11,7 @@ import { GroupedTaskList } from '../components/tasks/GroupedTaskList';
 import { BoardView } from '../components/tasks/BoardView';
 import { TaskDetailsDrawer } from '../components/tasks/TaskDetailsDrawer';
 import { ViewSettingsPanel, type ViewMode, type VisibleColumns } from '../components/tasks/ViewSettingsPanel';
+import { Skeleton } from '../components/ui/Skeleton';
 import type { DirectionTag, TaskPriority, TaskStatus, TaskType, TeamMember } from '../types/models';
 
 type EditState = {
@@ -771,7 +772,26 @@ export const StageDetailsPage = () => {
                 </div>
               </header>
 
-              {loading && tasks.length === 0 ? <p className="stage-v5-message">Загрузка задач...</p> : null}
+              {loading && tasks.length === 0 ? (
+                <div className="gtl-skel-group" aria-busy="true" aria-label="Загрузка задач">
+                  {Array.from({ length: 2 }, (_, g) => (
+                    <div key={g}>
+                      <div className="gtl-skel-head">
+                        <Skeleton width={10} height={10} radius={999} />
+                        <Skeleton width={90} height={12} />
+                        <Skeleton width={24} height={12} />
+                      </div>
+                      {Array.from({ length: 4 }, (_, i) => (
+                        <div className="gtl-skel-row" key={i}>
+                          <Skeleton width={14} height={14} radius={4} />
+                          <Skeleton width={`${50 + ((i * 13) % 35)}%`} height={12} />
+                          <Skeleton width={60} height={12} />
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {error ? <p className="stage-v5-message error">{error.message}</p> : null}
 
               {!loading && !error && viewMode === 'board' ? (

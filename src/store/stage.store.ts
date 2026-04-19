@@ -156,6 +156,15 @@ export const useStageStore = create<StageState>((set, get) => ({
 
   async patchTaskMeta(projectId, stageId, taskId, payload) {
     const previous = get().tasks;
+    const current = previous.find((task) => task.id === taskId);
+    // Backend requires at least one of task_type / direction_ids / repository_id
+    // on /meta; always include the current task_type so priority/description-only
+    // patches don't 400.
+    const safePayload: PatchTaskMetaPayload = {
+      task_type: payload.task_type ?? current?.taskType,
+      ...payload,
+    };
+
     const optimistic = previous.map((task) =>
       task.id === taskId
         ? {
@@ -163,6 +172,7 @@ export const useStageStore = create<StageState>((set, get) => ({
             taskType: payload.task_type ?? task.taskType,
             directionIds: payload.direction_ids ?? task.directionIds,
             description: payload.description ?? task.description,
+            priority: payload.priority ?? task.priority,
           }
         : task,
     );
@@ -170,7 +180,7 @@ export const useStageStore = create<StageState>((set, get) => ({
     set({ tasks: optimistic, error: null });
 
     try {
-      await apiService.patchTaskMeta(projectId, stageId, taskId, payload);
+      await apiService.patchTaskMeta(projectId, stageId, taskId, safePayload);
       await get().fetchTasks(projectId, stageId);
     } catch (error) {
       set({ tasks: previous, error: normalizeApiError(error) });

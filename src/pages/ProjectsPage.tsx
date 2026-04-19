@@ -6,6 +6,7 @@ import { useProjectsStore } from '../store/projects.store';
 import { useUiStore } from '../store/ui.store';
 import { apiService } from '../lib/api/service';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
+import { Skeleton } from '../components/ui/Skeleton';
 import type { Project, Team, WorkflowType } from '../types/models';
 
 type ProjectForm = {
@@ -258,7 +259,26 @@ export const ProjectsPage = () => {
           </div>
 
           {error ? <p className="projects-v3-error">{error.message}</p> : null}
-          {loading && projects.length === 0 ? <p className="projects-v3-loading">Загружаем проекты...</p> : null}
+
+          {loading && projects.length === 0 ? (
+            <div className="projects-v3-grid" aria-busy="true" aria-label="Загружаем проекты">
+              {Array.from({ length: 6 }, (_, i) => (
+                <div className="projects-v3-skel-card" key={i}>
+                  <div className="projects-v3-skel-head">
+                    <Skeleton width={44} height={44} radius={12} />
+                    <Skeleton width={60} height={18} radius={999} />
+                  </div>
+                  <Skeleton width="70%" height={18} />
+                  <Skeleton width="100%" height={10} />
+                  <Skeleton width="85%" height={10} />
+                  <div className="projects-v3-skel-head">
+                    <Skeleton width={60} height={10} />
+                    <Skeleton width={80} height={10} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
 
           {!loading && projects.length === 0 ? (
             <section className="projects-v3-empty">

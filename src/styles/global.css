@@ -13394,3 +13394,70 @@ a.agent-v2-task-title:hover {
     width: 100%;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Reusable skeletons
+   ───────────────────────────────────────────────────────────────────────── */
+.ui-skeleton {
+  display: block;
+  background: linear-gradient(90deg, #eef1f5 0%, #e1e6ec 50%, #eef1f5 100%);
+  background-size: 200% 100%;
+  animation: ui-skeleton-shimmer 1.3s ease-in-out infinite;
+}
+
+.ui-skeleton-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes ui-skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* Projects grid skeleton */
+.projects-v3-skel-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #eef1f5;
+}
+.projects-v3-skel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Grouped task list skeleton */
+.gtl-skel-group {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+}
+.gtl-skel-row {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid #eef1f5;
+}
+.gtl-skel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+}
+
+/* Route fallback */
+.route-fallback {
+  min-height: 40vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 13px;
+}
