@@ -11,7 +11,7 @@ import { GroupedTaskList } from '../components/tasks/GroupedTaskList';
 import { BoardView } from '../components/tasks/BoardView';
 import { TaskDetailsDrawer } from '../components/tasks/TaskDetailsDrawer';
 import { ViewSettingsPanel, type ViewMode, type VisibleColumns } from '../components/tasks/ViewSettingsPanel';
-import type { DirectionTag, TaskStatus, TaskType, TeamMember } from '../types/models';
+import type { DirectionTag, TaskPriority, TaskStatus, TaskType, TeamMember } from '../types/models';
 
 type EditState = {
   [taskId: string]: string;
@@ -106,6 +106,8 @@ export const StageDetailsPage = () => {
   const [directionsLoading, setDirectionsLoading] = useState(false);
   const [taskTypeFilter, setTaskTypeFilter] = useState<'all' | TaskType>('all');
   const [directionFilter, setDirectionFilter] = useState<'all' | string>('all');
+  /** Multi-select priority filter. Empty set = no filter (show all). */
+  const [priorityFilter, setPriorityFilter] = useState<TaskPriority[]>([]);
   const [newDirectionName, setNewDirectionName] = useState('');
   const [activeTaskDetailsId, setActiveTaskDetailsId] = useState<string | null>(null);
   const [taskDescriptionEdits, setTaskDescriptionEdits] = useState<Record<string, string>>({});
@@ -318,6 +320,9 @@ export const StageDetailsPage = () => {
           if (directionFilter !== 'all' && !task.directionIds.includes(directionFilter)) {
             return false;
           }
+          if (priorityFilter.length > 0 && !priorityFilter.includes(task.priority)) {
+            return false;
+          }
           return true;
         })
         .sort((a, b) => {
@@ -331,7 +336,7 @@ export const StageDetailsPage = () => {
           return doneOrder !== 0 ? doneOrder : a.index - b.index;
         })
         .map(({ task }) => task),
-    [directionFilter, taskTypeFilter, tasks],
+    [directionFilter, taskTypeFilter, priorityFilter, tasks],
   );
   const directionNameById = useMemo(
     () => Object.fromEntries(directions.map((direction) => [direction.id, direction.name])),
@@ -560,6 +565,27 @@ export const StageDetailsPage = () => {
     }
   };
 
+  const onTaskPriorityChange = async (taskId: string, priority: TaskPriority) => {
+    if (!ensureStageRoute()) {
+      return;
+    }
+
+    // Optimistic update — instantly reflect in list/board/drawer.
+    const previous = tasks;
+    useStageStore.setState({
+      tasks: previous.map((t) => (t.id === taskId ? { ...t, priority } : t)),
+    });
+
+    try {
+      await patchTaskMeta(projectId, stageId, taskId, { priority });
+      // Refresh to pick up server-side re-sort.
+      await fetchTasks(projectId, stageId);
+    } catch (reason) {
+      useStageStore.setState({ tasks: previous });
+      pushToast(normalizeApiError(reason).message, 'error');
+    }
+  };
+
   const onToggleDirection = async (taskId: string, directionId: string) => {
     if (!ensureStageRoute()) {
       return;
@@ -738,6 +764,8 @@ export const StageDetailsPage = () => {
                       onShowEmptyGroupsChange={setShowEmptyGroups}
                       visibleColumns={visibleCols}
                       onVisibleColumnsChange={setVisibleCols}
+                      priorityFilter={priorityFilter}
+                      onPriorityFilterChange={setPriorityFilter}
                     />
                   </div>
                 </div>
@@ -760,6 +788,7 @@ export const StageDetailsPage = () => {
                     const removed = current.filter((id) => !directionIds.includes(id));
                     [...added, ...removed].forEach((id) => void onToggleDirection(taskId, id));
                   }}
+                  onPriorityChange={(taskId, priority) => void onTaskPriorityChange(taskId, priority)}
                   onOpenTask={openTaskDrawer}
                   onCreateTask={(title) => {
                     void apiService
@@ -791,6 +820,7 @@ export const StageDetailsPage = () => {
                     const removed = current.filter((id) => !directionIds.includes(id));
                     [...added, ...removed].forEach((id) => void onToggleDirection(taskId, id));
                   }}
+                  onPriorityChange={(taskId, priority) => void onTaskPriorityChange(taskId, priority)}
                   onOpenTask={openTaskDrawer}
                   onDelete={(taskId) => onDeleteTask(taskId)}
                   onTitleSave={(taskId, title) => {
@@ -1201,6 +1231,7 @@ export const StageDetailsPage = () => {
             const removed = current.filter((id) => !directionIds.includes(id));
             [...added, ...removed].forEach((id) => void onToggleDirection(taskId, id));
           }}
+          onPriorityChange={(taskId, priority) => void onTaskPriorityChange(taskId, priority)}
           onDelete={(taskId) => { closeTaskDrawer(); onDeleteTask(taskId); }}
         />
       )}

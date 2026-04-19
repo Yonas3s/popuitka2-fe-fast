@@ -12116,7 +12116,33 @@ a.agent-v2-task-title:hover {
 .vsp-section-label {
   font-size: 12px; color: #9ca3af;
   font-weight: 500; padding: 4px 8px 6px;
+  display: flex; align-items: center; justify-content: space-between;
 }
+
+.vsp-section-clear {
+  font-size: 11px;
+  font-weight: 500;
+  color: #3b82f6;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+.vsp-section-clear:hover { color: #2563eb; text-decoration: underline; }
+
+.vsp-col-chip-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vsp-chip-dot {
+  width: 8px; height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.vsp-col-chip.active .vsp-chip-dot { outline: 1.5px solid #fff; outline-offset: -1px; }
 
 .vsp-cols {
   display: flex; flex-wrap: wrap; gap: 4px;
@@ -12622,6 +12648,36 @@ a.agent-v2-task-title:hover {
   display: flex; align-items: center; justify-content: center;
   position: relative;
 }
+
+/* Clickable priority bars in list row */
+.li-prio-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px; height: 20px;
+  padding: 0;
+  border: 0; border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 120ms var(--ease-out);
+}
+.li-prio-btn:hover { background: #f3f4f6; }
+.li-prio-btn:focus-visible { outline: 2px solid #93c5fd; outline-offset: 1px; }
+
+/* Clickable priority bars on board card */
+.bv-c-prio-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  border: 0; border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 120ms var(--ease-out);
+  flex-shrink: 0;
+}
+.bv-c-prio-btn:hover { background: #f3f4f6; }
+.bv-c-prio-btn:focus-visible { outline: 2px solid #93c5fd; outline-offset: 1px; }
 
 /* Clickable type tag — same visual as .li-tag, but a button */
 .li-tag-btn {

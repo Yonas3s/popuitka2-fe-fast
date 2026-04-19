@@ -1,6 +1,13 @@
 import { useMemo, useState } from 'react';
-import type { Task, TaskStatus, TaskType, TeamMember, DirectionTag } from '../../types/models';
-import { TaskMetaMenu, TASK_TYPE_CFG, ALL_TASK_TYPES, type MetaMenuItem } from './TaskMetaMenu';
+import type { Task, TaskPriority, TaskStatus, TaskType, TeamMember, DirectionTag } from '../../types/models';
+import {
+  TaskMetaMenu,
+  TASK_TYPE_CFG,
+  ALL_TASK_TYPES,
+  TASK_PRIORITY_CFG,
+  ALL_TASK_PRIORITIES,
+  type MetaMenuItem,
+} from './TaskMetaMenu';
 
 type VisibleColumns = {
   id: boolean;
@@ -21,6 +28,7 @@ type Props = {
   onTaskTypeChange?: (taskId: string, taskType: TaskType) => void;
   onAssigneeChange?: (taskId: string, assigneeUserId: string | null) => void;
   onDirectionsChange?: (taskId: string, directionIds: string[]) => void;
+  onPriorityChange?: (taskId: string, priority: TaskPriority) => void;
   onOpenTask?: (taskId: string) => void;
   onDelete: (taskId: string) => void;
   onTitleSave: (taskId: string, title: string) => void;
@@ -116,6 +124,7 @@ export const GroupedTaskList = ({
   showEmptyGroups = true,
   visibleColumns,
   onStatusChange, onTaskTypeChange, onAssigneeChange, onDirectionsChange: _onDirectionsChange,
+  onPriorityChange,
   onOpenTask,
   onDelete: _onDelete, onTitleSave, onCreateTask,
 }: Props) => {
@@ -126,13 +135,13 @@ export const GroupedTaskList = ({
   const [addGroup, setAddGroup] = useState<string | null>(null);
   const [addVal, setAddVal] = useState('');
   const [menu, setMenu] = useState<
-    | { kind: 'type' | 'assignee' | 'directions'; taskId: string; anchor: HTMLElement }
+    | { kind: 'type' | 'assignee' | 'directions' | 'priority'; taskId: string; anchor: HTMLElement }
     | null
   >(null);
 
   const onDirectionsChange = _onDirectionsChange;
 
-  const openMenu = (kind: 'type' | 'assignee' | 'directions', taskId: string, e: React.MouseEvent) => {
+  const openMenu = (kind: 'type' | 'assignee' | 'directions' | 'priority', taskId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setMenu({ kind, taskId, anchor: e.currentTarget as HTMLElement });
   };
@@ -186,7 +195,23 @@ export const GroupedTaskList = ({
                         onOpenTask(task.id);
                       }}
                     >
-                      {cols.priority && <div className="li-r-prio"><PB p={task.priority}/></div>}
+                      {cols.priority && (
+                        <div className="li-r-prio">
+                          {onPriorityChange ? (
+                            <button
+                              type="button"
+                              className="li-prio-btn"
+                              onClick={(e) => openMenu('priority', task.id, e)}
+                              title={`Приоритет: ${TASK_PRIORITY_CFG[task.priority].label}`}
+                              aria-label={`Приоритет: ${TASK_PRIORITY_CFG[task.priority].label}. Изменить`}
+                            >
+                              <PB p={task.priority}/>
+                            </button>
+                          ) : (
+                            <PB p={task.priority}/>
+                          )}
+                        </div>
+                      )}
                       {cols.id && <div className="li-r-key">{task.issueKey?.toUpperCase()||''}</div>}
                       {cols.status && <div className="li-r-st">
                         <SC s={task.status}/>
@@ -309,6 +334,23 @@ export const GroupedTaskList = ({
               placeholder="Поиск направления…"
               emptyLabel="Нет направлений"
               onSelect={(vals) => onDirectionsChange(task.id, vals)}
+              onClose={closeMenu}
+            />
+          );
+        }
+        if (menu.kind === 'priority' && onPriorityChange) {
+          const items: MetaMenuItem[] = ALL_TASK_PRIORITIES.map((p) => ({
+            value: p, label: TASK_PRIORITY_CFG[p].label, dot: TASK_PRIORITY_CFG[p].color,
+          }));
+          return (
+            <TaskMetaMenu
+              anchor={menu.anchor}
+              items={items}
+              selected={[task.priority]}
+              onSelect={(vals) => {
+                const v = vals[0] as TaskPriority;
+                if (v && v !== task.priority) onPriorityChange(task.id, v);
+              }}
               onClose={closeMenu}
             />
           );

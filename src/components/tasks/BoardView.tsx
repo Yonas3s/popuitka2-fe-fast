@@ -10,8 +10,15 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import type { DirectionTag, Task, TaskStatus, TaskType, TeamMember } from '../../types/models';
-import { TaskMetaMenu, TASK_TYPE_CFG, ALL_TASK_TYPES, type MetaMenuItem } from './TaskMetaMenu';
+import type { DirectionTag, Task, TaskPriority, TaskStatus, TaskType, TeamMember } from '../../types/models';
+import {
+  TaskMetaMenu,
+  TASK_TYPE_CFG,
+  ALL_TASK_TYPES,
+  TASK_PRIORITY_CFG,
+  ALL_TASK_PRIORITIES,
+  type MetaMenuItem,
+} from './TaskMetaMenu';
 
 type BoardViewProps = {
   tasks: Task[];
@@ -21,6 +28,7 @@ type BoardViewProps = {
   onTaskTypeChange?: (taskId: string, taskType: TaskType) => void;
   onAssigneeChange?: (taskId: string, assigneeUserId: string | null) => void;
   onDirectionsChange?: (taskId: string, directionIds: string[]) => void;
+  onPriorityChange?: (taskId: string, priority: TaskPriority) => void;
   onOpenTask?: (taskId: string) => void;
   onCreateTask: (title: string) => void;
 };
@@ -69,7 +77,7 @@ const StatusDot = ({ status, color }: { status: TaskStatus; color: string }) => 
   );
 };
 
-type OpenMenu = { kind: 'type' | 'assignee' | 'directions'; taskId: string; anchor: HTMLElement } | null;
+type OpenMenu = { kind: 'type' | 'assignee' | 'directions' | 'priority'; taskId: string; anchor: HTMLElement } | null;
 
 type CardVisualProps = {
   task: Task;
@@ -79,7 +87,7 @@ type CardVisualProps = {
   dirs: string[];
   interactive?: boolean;
   directionsCount?: number;
-  onOpenMenu?: (kind: 'type' | 'assignee' | 'directions', taskId: string, el: HTMLElement) => void;
+  onOpenMenu?: (kind: 'type' | 'assignee' | 'directions' | 'priority', taskId: string, el: HTMLElement) => void;
   onOpenTask?: (taskId: string) => void;
 };
 
@@ -115,7 +123,20 @@ const CardContent = ({
       {task.title}
     </p>
     <div className="bv-c-bot">
-      <PrioBars p={task.priority} />
+      {interactive && onOpenMenu ? (
+        <button
+          type="button"
+          className="bv-c-prio-btn"
+          onPointerDown={stopDrag}
+          onClick={(e) => { e.stopPropagation(); onOpenMenu('priority', task.id, e.currentTarget); }}
+          title={`Приоритет: ${TASK_PRIORITY_CFG[task.priority].label}`}
+          aria-label={`Приоритет: ${TASK_PRIORITY_CFG[task.priority].label}. Изменить`}
+        >
+          <PrioBars p={task.priority} />
+        </button>
+      ) : (
+        <PrioBars p={task.priority} />
+      )}
       {interactive && onOpenMenu ? (
         <button
           type="button"
@@ -187,7 +208,7 @@ const DroppableColumn = ({
   setAddVal: (v: string) => void;
   onCreateTask: (t: string) => void;
   directionsCount: number;
-  onOpenMenu: (kind: 'type' | 'assignee' | 'directions', taskId: string, el: HTMLElement) => void;
+  onOpenMenu: (kind: 'type' | 'assignee' | 'directions' | 'priority', taskId: string, el: HTMLElement) => void;
   onOpenTask?: (taskId: string) => void;
 }) => {
   const { setNodeRef, isOver } = useDroppable({ id: status });
@@ -251,6 +272,7 @@ const DroppableColumn = ({
 export const BoardView = ({
   tasks, members, directions = [],
   onStatusChange, onTaskTypeChange, onAssigneeChange, onDirectionsChange,
+  onPriorityChange,
   onOpenTask,
   onCreateTask,
 }: BoardViewProps) => {
@@ -297,7 +319,7 @@ export const BoardView = ({
     }
   };
 
-  const openMenu = (kind: 'type' | 'assignee' | 'directions', taskId: string, anchor: HTMLElement) => {
+  const openMenu = (kind: 'type' | 'assignee' | 'directions' | 'priority', taskId: string, anchor: HTMLElement) => {
     setMenu({ kind, taskId, anchor });
   };
   const closeMenu = () => setMenu(null);
@@ -388,6 +410,23 @@ export const BoardView = ({
               placeholder="Поиск направления…"
               emptyLabel="Нет направлений"
               onSelect={(vals) => onDirectionsChange(task.id, vals)}
+              onClose={closeMenu}
+            />
+          );
+        }
+        if (menu.kind === 'priority' && onPriorityChange) {
+          const items: MetaMenuItem[] = ALL_TASK_PRIORITIES.map((p) => ({
+            value: p, label: TASK_PRIORITY_CFG[p].label, dot: TASK_PRIORITY_CFG[p].color,
+          }));
+          return (
+            <TaskMetaMenu
+              anchor={menu.anchor}
+              items={items}
+              selected={[task.priority]}
+              onSelect={(vals) => {
+                const v = vals[0] as TaskPriority;
+                if (v && v !== task.priority) onPriorityChange(task.id, v);
+              }}
               onClose={closeMenu}
             />
           );

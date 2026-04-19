@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { DirectionTag, Task, TaskStatus, TaskType, TeamMember } from '../../types/models';
-import { TaskMetaMenu, TASK_TYPE_CFG, ALL_TASK_TYPES, type MetaMenuItem } from './TaskMetaMenu';
+import type { DirectionTag, Task, TaskPriority, TaskStatus, TaskType, TeamMember } from '../../types/models';
+import {
+  TaskMetaMenu,
+  TASK_TYPE_CFG,
+  ALL_TASK_TYPES,
+  ALL_TASK_PRIORITIES,
+  TASK_PRIORITY_CFG,
+  type MetaMenuItem,
+} from './TaskMetaMenu';
 
 const STATUS_META: Record<TaskStatus, { label: string; color: string }> = {
   backlog:     { label: 'Backlog',     color: '#94a3b8' },
@@ -12,13 +19,8 @@ const STATUS_META: Record<TaskStatus, { label: string; color: string }> = {
 
 const STATUS_ORDER: TaskStatus[] = ['backlog', 'todo', 'in_progress', 'review', 'done'];
 
-const PRIORITY_META: Record<string, { label: string; color: string; bars: number }> = {
-  urgent: { label: 'Urgent', color: '#ef4444', bars: 4 },
-  high:   { label: 'High',   color: '#f97316', bars: 3 },
-  medium: { label: 'Medium', color: '#eab308', bars: 2 },
-  low:    { label: 'Low',    color: '#94a3b8', bars: 1 },
-  none:   { label: 'No priority', color: '#cbd5e1', bars: 0 },
-};
+/** Kept as a local alias for inline usage below; data comes from the shared TASK_PRIORITY_CFG. */
+const PRIORITY_META = TASK_PRIORITY_CFG as Record<string, { label: string; color: string; bars: number }>;
 
 const PrioBars = ({ p }: { p: string }) => {
   const info = PRIORITY_META[p];
@@ -48,7 +50,7 @@ const StatusDot = ({ s }: { s: TaskStatus }) => {
   return <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2.5 2"/></svg>;
 };
 
-type OpenMenu = { kind: 'status' | 'type' | 'assignee' | 'directions'; anchor: HTMLElement } | null;
+type OpenMenu = { kind: 'status' | 'type' | 'assignee' | 'directions' | 'priority'; anchor: HTMLElement } | null;
 
 export type TaskDetailsDrawerProps = {
   task: Task;
@@ -61,13 +63,14 @@ export type TaskDetailsDrawerProps = {
   onTypeChange: (taskId: string, type: TaskType) => void;
   onAssigneeChange: (taskId: string, assigneeUserId: string | null) => void;
   onDirectionsChange: (taskId: string, directionIds: string[]) => void;
+  onPriorityChange?: (taskId: string, priority: TaskPriority) => void;
   onDelete?: (taskId: string) => void;
 };
 
 export const TaskDetailsDrawer = ({
   task, members, directions,
   onClose, onTitleSave, onDescriptionSave,
-  onStatusChange, onTypeChange, onAssigneeChange, onDirectionsChange,
+  onStatusChange, onTypeChange, onAssigneeChange, onDirectionsChange, onPriorityChange,
   onDelete,
 }: TaskDetailsDrawerProps) => {
   const [title, setTitle] = useState(task.title);
@@ -190,10 +193,17 @@ export const TaskDetailsDrawer = ({
 
             <div className="tdd-prop">
               <span className="tdd-prop-lab">Приоритет</span>
-              <span className="tdd-prop-val tdd-prop-val-ro" title="Приоритет пока меняется только через агента">
-                <PrioBars p={task.priority} />
-                <span>{prMeta.label}</span>
-              </span>
+              {onPriorityChange ? (
+                <button type="button" className="tdd-prop-val" onClick={openMenu('priority')}>
+                  <PrioBars p={task.priority} />
+                  <span>{prMeta.label}</span>
+                </button>
+              ) : (
+                <span className="tdd-prop-val tdd-prop-val-ro">
+                  <PrioBars p={task.priority} />
+                  <span>{prMeta.label}</span>
+                </span>
+              )}
             </div>
 
             <div className="tdd-prop">
@@ -311,6 +321,23 @@ export const TaskDetailsDrawer = ({
                 placeholder="Поиск направления…"
                 emptyLabel="Нет направлений"
                 onSelect={(vals) => onDirectionsChange(task.id, vals)}
+                onClose={closeMenu}
+              />
+            );
+          }
+          if (menu.kind === 'priority' && onPriorityChange) {
+            const items: MetaMenuItem[] = ALL_TASK_PRIORITIES.map((p) => ({
+              value: p, label: TASK_PRIORITY_CFG[p].label, dot: TASK_PRIORITY_CFG[p].color,
+            }));
+            return (
+              <TaskMetaMenu
+                anchor={menu.anchor}
+                items={items}
+                selected={[task.priority]}
+                onSelect={(vals) => {
+                  const v = vals[0] as TaskPriority;
+                  if (v && v !== task.priority) onPriorityChange(task.id, v);
+                }}
                 onClose={closeMenu}
               />
             );

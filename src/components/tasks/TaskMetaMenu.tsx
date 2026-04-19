@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { TaskType } from '../../types/models';
+import type { TaskPriority, TaskType } from '../../types/models';
 
 /**
  * Shared config for task types — single source of truth for label/color.
@@ -14,6 +14,20 @@ export const TASK_TYPE_CFG: Record<TaskType, { label: string; color: string }> =
 };
 
 export const ALL_TASK_TYPES: TaskType[] = ['feature', 'bug', 'task', 'improvement', 'chore'];
+
+/**
+ * Shared priority config. Keeps backend order (urgent → high → medium → low → none)
+ * so sorting and filtering stay consistent across list / board / drawer / filters.
+ */
+export const TASK_PRIORITY_CFG: Record<TaskPriority, { label: string; color: string; bars: number }> = {
+  urgent: { label: 'Urgent', color: '#ef4444', bars: 4 },
+  high:   { label: 'High',   color: '#f97316', bars: 3 },
+  medium: { label: 'Medium', color: '#eab308', bars: 2 },
+  low:    { label: 'Low',    color: '#94a3b8', bars: 1 },
+  none:   { label: 'No priority', color: '#cbd5e1', bars: 0 },
+};
+
+export const ALL_TASK_PRIORITIES: TaskPriority[] = ['urgent', 'high', 'medium', 'low', 'none'];
 
 export type MetaMenuItem = {
   value: string;
