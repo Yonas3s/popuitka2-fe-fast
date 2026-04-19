@@ -47,6 +47,7 @@ import type {
   Stage,
   Task,
   TaskType,
+  TaskPriority,
   Team,
   TeamActiveInvite,
   TeamDetails,
@@ -86,6 +87,8 @@ export type UpdateStagePayload = {
 
 export type CreateTaskPayload = {
   title: string;
+  priority?: TaskPriority;
+  status?: TaskStatus;
 };
 
 export type CreateDirectionPayload = {
@@ -106,6 +109,7 @@ export type PatchTaskMetaPayload = {
   task_type?: TaskType;
   direction_ids?: string[];
   description?: string;
+  priority?: TaskPriority;
 };
 
 export type CreateAgentRunPayload = {

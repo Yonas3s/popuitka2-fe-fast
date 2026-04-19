@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import type { TaskPriority } from '../../types/models';
+import { ALL_TASK_PRIORITIES, TASK_PRIORITY_CFG } from './TaskMetaMenu';
 
 export type ViewMode = 'list' | 'board';
 export type Grouping = 'status' | 'priority' | 'none';
@@ -24,6 +26,8 @@ type ViewSettingsPanelProps = {
   onShowEmptyGroupsChange: (v: boolean) => void;
   visibleColumns: VisibleColumns;
   onVisibleColumnsChange: (cols: VisibleColumns) => void;
+  priorityFilter: TaskPriority[];
+  onPriorityFilterChange: (next: TaskPriority[]) => void;
 };
 
 const COL_LABELS: { key: keyof VisibleColumns; label: string }[] = [
@@ -41,6 +45,7 @@ export const ViewSettingsPanel = ({
   ordering, onOrderingChange,
   showEmptyGroups, onShowEmptyGroupsChange,
   visibleColumns, onVisibleColumnsChange,
+  priorityFilter, onPriorityFilterChange,
 }: ViewSettingsPanelProps) => {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -64,6 +69,12 @@ export const ViewSettingsPanel = ({
 
   const toggleCol = (key: keyof VisibleColumns) => {
     onVisibleColumnsChange({ ...visibleColumns, [key]: !visibleColumns[key] });
+  };
+
+  const togglePriority = (p: TaskPriority) => {
+    const set = new Set(priorityFilter);
+    if (set.has(p)) set.delete(p); else set.add(p);
+    onPriorityFilterChange(Array.from(set));
   };
 
   return (
@@ -98,6 +109,39 @@ export const ViewSettingsPanel = ({
         >
           <span className="vsp-toggle-thumb" />
         </button>
+      </div>
+
+      <div className="vsp-divider" />
+
+      {/* Filter: priority */}
+      <div className="vsp-section-label">
+        <span>Filter by priority</span>
+        {priorityFilter.length > 0 && (
+          <button
+            type="button"
+            className="vsp-section-clear"
+            onClick={() => onPriorityFilterChange([])}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <div className="vsp-cols">
+        {ALL_TASK_PRIORITIES.map((p) => {
+          const active = priorityFilter.includes(p);
+          return (
+            <button
+              key={p}
+              type="button"
+              className={`vsp-col-chip vsp-col-chip-dot ${active ? 'active' : ''}`}
+              onClick={() => togglePriority(p)}
+              aria-pressed={active}
+            >
+              <span className="vsp-chip-dot" style={{ background: TASK_PRIORITY_CFG[p].color }} />
+              {TASK_PRIORITY_CFG[p].label}
+            </button>
+          );
+        })}
       </div>
 
       <div className="vsp-divider" />
