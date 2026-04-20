@@ -7297,11 +7297,13 @@ p {
 }
 
 .stage-v5-layout {
+  width: 100%;
   max-width: 1320px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px;
+  justify-self: stretch;
 }
 
 .stage-v5-side-column {
@@ -7311,6 +7313,7 @@ p {
 .stage-v5-main-column,
 .stage-v5-side-column {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   align-content: start;
   min-width: 0;
@@ -13450,6 +13453,52 @@ a.agent-v2-task-title:hover {
   align-items: center;
   gap: 10px;
   padding: 6px 12px;
+}
+
+/* Flat-mode directions manager (mirrors stage tags/filters aside but inline) */
+.flat-directions-body {
+  padding: 14px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.flat-directions-empty {
+  color: #94a3b8;
+  font-size: 13px;
+}
+.flat-directions-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.flat-directions-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 12px;
+  font-weight: 500;
+}
+.flat-directions-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.flat-directions-add input {
+  flex: 1;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  font-size: 13px;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.flat-directions-add input:focus {
+  border-color: #6366f1;
 }
 
 /* Route fallback */

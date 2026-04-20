@@ -70,6 +70,7 @@ export const ProjectDetailsPage = () => {
     id: true, status: true, assignee: true, priority: true, labels: true, created: true,
   });
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority[]>([]);
+  const [newDirectionName, setNewDirectionName] = useState('');
 
   const {
     register,
@@ -427,6 +428,37 @@ export const ProjectDetailsPage = () => {
     }
   };
 
+  const onAddFlatDirection = async () => {
+    if (!projectId) return;
+    const name = newDirectionName.trim();
+    if (!name) {
+      pushToast('Введите название направления', 'info');
+      return;
+    }
+    try {
+      const created = await apiService.addDirection(projectId, { name });
+      setDirections((prev) => (prev.some((d) => d.id === created.id) ? prev : [...prev, created]));
+      setNewDirectionName('');
+      pushToast('Направление добавлено', 'success');
+    } catch (reason) {
+      const normalized = normalizeApiError(reason);
+      if (normalized.status === 409 || normalized.status === 500) {
+        try {
+          const refreshed = await apiService.getDirections(projectId);
+          setDirections(refreshed);
+          if (refreshed.some((d) => d.name.trim().toLowerCase() === name.toLowerCase())) {
+            setNewDirectionName('');
+            pushToast('Направление уже существует', 'info');
+            return;
+          }
+        } catch {
+          // fall through
+        }
+      }
+      pushToast(normalized.message, 'error');
+    }
+  };
+
   const openFlatTaskDrawer = (taskId: string) => setActiveFlatTaskId(taskId);
   const closeFlatTaskDrawer = () => setActiveFlatTaskId(null);
 
@@ -733,6 +765,41 @@ export const ProjectDetailsPage = () => {
           ) : (
             <section className="stage-v5-layout">
               <div className="stage-v5-main-column">
+                <article className="stage-v5-card">
+                  <header className="stage-v5-card-head">
+                    <h3>Направления</h3>
+                  </header>
+                  <div className="flat-directions-body">
+                    {directions.length === 0 ? (
+                      <span className="flat-directions-empty">Пока нет направлений</span>
+                    ) : (
+                      <div className="flat-directions-chips">
+                        {directions.map((direction) => (
+                          <span key={direction.id} className="flat-directions-chip">
+                            {direction.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flat-directions-add">
+                      <input
+                        value={newDirectionName}
+                        placeholder="Добавить направление"
+                        onChange={(event) => setNewDirectionName(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            void onAddFlatDirection();
+                          }
+                        }}
+                      />
+                      <button type="button" className="ui-btn ui-btn-secondary ui-btn-sm" onClick={() => void onAddFlatDirection()}>
+                        + Направление
+                      </button>
+                    </div>
+                  </div>
+                </article>
+
                 <article className="stage-v5-card">
                   <header className="stage-v5-card-head">
                     <h3>Задачи</h3>
