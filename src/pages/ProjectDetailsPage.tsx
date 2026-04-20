@@ -11,22 +11,26 @@ import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
 import { ProjectReposPanel } from '../components/github/ProjectReposPanel';
 import { WebhookEventsPanel } from '../components/github/WebhookEventsPanel';
 import { ProjectTelegramPanel } from '../components/telegram/ProjectTelegramPanel';
-import type { ApiError, BoundRepository, DirectionTag, Stage, Task, TaskType, TeamMember } from '../types/models';
+import { GroupedTaskList } from '../components/tasks/GroupedTaskList';
+import { BoardView } from '../components/tasks/BoardView';
+import { TaskDetailsDrawer } from '../components/tasks/TaskDetailsDrawer';
+import { ViewSettingsPanel, type ViewMode, type VisibleColumns } from '../components/tasks/ViewSettingsPanel';
+import { Skeleton } from '../components/ui/Skeleton';
+import type {
+  ApiError,
+  DirectionTag,
+  Stage,
+  Task,
+  TaskPriority,
+  TaskStatus,
+  TaskType,
+  TeamMember,
+} from '../types/models';
 
 type StageForm = {
   stage_name: string;
   description: string;
 };
-
-const taskTypeLabels: Record<TaskType, string> = {
-  task: 'Задача',
-  bug: 'Баг',
-  feature: 'Фича',
-  improvement: 'Улучшение',
-  chore: 'Техдолг',
-};
-
-const formatIssueKey = (value?: string) => (value ? value.toUpperCase() : null);
 
 export const ProjectDetailsPage = () => {
   const { projectId = '' } = useParams();
@@ -47,27 +51,25 @@ export const ProjectDetailsPage = () => {
   const [flatTasks, setFlatTasks] = useState<Task[]>([]);
   const [flatLoading, setFlatLoading] = useState(false);
   const [flatError, setFlatError] = useState<ApiError | null>(null);
-  const [flatTaskDraft, setFlatTaskDraft] = useState('');
-  const [flatTaskRepoDraft, setFlatTaskRepoDraft] = useState('');
-  const [flatTaskEdits, setFlatTaskEdits] = useState<Record<string, string>>({});
-  const [flatTaskDescriptionEdits, setFlatTaskDescriptionEdits] = useState<Record<string, string>>({});
   const [activeFlatTaskId, setActiveFlatTaskId] = useState<string | null>(null);
-  const [highlightedFlatTaskId, setHighlightedFlatTaskId] = useState<string | null>(null);
   const consumedFlatDeeplinkRef = useRef<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [assignableMembers, setAssignableMembers] = useState<TeamMember[]>([]);
-  const [membersLoading, setMembersLoading] = useState(false);
-  const [membersAccessDenied, setMembersAccessDenied] = useState(false);
+  const [, setMembersLoading] = useState(false);
+  const [, setMembersAccessDenied] = useState(false);
   const [directions, setDirections] = useState<DirectionTag[]>([]);
-  const [directionsLoading, setDirectionsLoading] = useState(false);
-  const [flatTypeFilter, setFlatTypeFilter] = useState<'all' | TaskType>('all');
-  const [flatDirectionFilter, setFlatDirectionFilter] = useState<'all' | string>('all');
-  const [projectRepos, setProjectRepos] = useState<BoundRepository[]>([]);
+  const [, setDirectionsLoading] = useState(false);
 
-  useEffect(() => {
-    if (!projectId) return;
-    apiService.getProjectRepositories(projectId).then(setProjectRepos).catch(() => setProjectRepos([]));
-  }, [projectId]);
+  // Stage-style view state for flat mode.
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewPanelOpen, setViewPanelOpen] = useState(false);
+  const [grouping, setGrouping] = useState<'status' | 'priority' | 'none'>('status');
+  const [ordering, setOrdering] = useState<'priority' | 'created' | 'manual'>('manual');
+  const [showEmptyGroups, setShowEmptyGroups] = useState(true);
+  const [visibleCols, setVisibleCols] = useState<VisibleColumns>({
+    id: true, status: true, assignee: true, priority: true, labels: true, created: true,
+  });
+  const [priorityFilter, setPriorityFilter] = useState<TaskPriority[]>([]);
 
   const {
     register,
@@ -94,7 +96,7 @@ export const ProjectDetailsPage = () => {
     }
   }, [fetchStages, project, projectId]);
 
-  // Deeplink: ?task=POPU-86 on a flat project opens/scrolls/highlights the task.
+  // Deeplink: ?task=POPU-86 on a flat project opens the task drawer.
   useEffect(() => {
     const rawKey = searchParams.get('task');
     if (!rawKey) return;
@@ -107,32 +109,10 @@ export const ProjectDetailsPage = () => {
 
     consumedFlatDeeplinkRef.current = rawKey;
     setActiveFlatTaskId(target.id);
-    setFlatTaskDescriptionEdits((prev) =>
-      prev[target.id] !== undefined
-        ? prev
-        : { ...prev, [target.id]: target.description ?? '' },
-    );
-    setHighlightedFlatTaskId(target.id);
-
-    const scrollTimer = window.setTimeout(() => {
-      const el = document.getElementById(`flat-task-${target.id}`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 80);
-
-    const clearTimer = window.setTimeout(() => {
-      setHighlightedFlatTaskId((current) => (current === target.id ? null : current));
-    }, 2400);
 
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete('task');
     setSearchParams(nextParams, { replace: true });
-
-    return () => {
-      window.clearTimeout(scrollTimer);
-      window.clearTimeout(clearTimer);
-    };
   }, [flatTasks, searchParams, setSearchParams]);
 
   const resolvedShare = useMemo(() => {
@@ -313,106 +293,6 @@ export const ProjectDetailsPage = () => {
     }
   };
 
-  const onCreateFlatTask = async () => {
-    const title = flatTaskDraft.trim();
-    if (!title) {
-      pushToast('Введите название задачи', 'info');
-      return;
-    }
-
-    try {
-      const payload: Record<string, unknown> = { title };
-      if (flatTaskRepoDraft) {
-        payload.repository_id = flatTaskRepoDraft;
-      }
-      await apiService.createProjectTask(projectId, payload as { title: string });
-      setFlatTaskDraft('');
-      setFlatTaskRepoDraft('');
-      pushToast('Задача добавлена', 'success');
-      await loadFlatTasks();
-    } catch (reason) {
-      const normalized = normalizeApiError(reason);
-      pushToast(normalized.message, 'error');
-    }
-  };
-
-  const onToggleFlatTask = async (taskId: string) => {
-    const previous = flatTasks;
-    const optimistic = previous.map((task) =>
-      task.id === taskId ? { ...task, done: !task.done } : task,
-    );
-    setFlatTasks(optimistic);
-
-    try {
-      await apiService.toggleProjectTask(projectId, taskId);
-    } catch (reason) {
-      setFlatTasks(previous);
-      const normalized = normalizeApiError(reason);
-      pushToast(normalized.message, 'error');
-    }
-  };
-
-  const onSaveFlatTaskTitle = async (taskId: string) => {
-    const current = flatTasks.find((task) => task.id === taskId);
-    if (!current) {
-      return;
-    }
-
-    const title = (flatTaskEdits[taskId] ?? current.title).trim();
-    if (!title) {
-      pushToast('Название задачи не может быть пустым', 'info');
-      setFlatTaskEdits((prev) => ({ ...prev, [taskId]: current.title }));
-      return;
-    }
-
-    const previous = flatTasks;
-    const optimistic = previous.map((task) => (task.id === taskId ? { ...task, title } : task));
-    setFlatTasks(optimistic);
-
-    try {
-      await apiService.editProjectTaskTitle(projectId, taskId, { title });
-    } catch (reason) {
-      setFlatTasks(previous);
-      const normalized = normalizeApiError(reason);
-      pushToast(normalized.message, 'error');
-    }
-  };
-
-  const onSaveFlatTaskDescription = async (taskId: string) => {
-    const current = flatTasks.find((task) => task.id === taskId);
-    if (!current) {
-      return;
-    }
-
-    const description = (flatTaskDescriptionEdits[taskId] ?? current.description ?? '').trim();
-    const original = current.description ?? '';
-    if (description === original) {
-      return;
-    }
-
-    const previous = flatTasks;
-    const optimistic = previous.map((task) =>
-      task.id === taskId
-        ? {
-            ...task,
-            description,
-          }
-        : task,
-    );
-    setFlatTasks(optimistic);
-
-    try {
-      await apiService.patchProjectTaskMeta(projectId, taskId, {
-        description,
-      });
-      pushToast('Описание задачи обновлено', 'success');
-    } catch (reason) {
-      setFlatTasks(previous);
-      const normalized = normalizeApiError(reason);
-      pushToast(normalized.message, 'error');
-    }
-  };
-
   const onDeleteFlatTask = async (taskId: string) => {
     const previous = flatTasks;
     setFlatTasks(previous.filter((task) => task.id !== taskId));
@@ -462,32 +342,93 @@ export const ProjectDetailsPage = () => {
     }
   };
 
-  const onToggleFlatDirection = async (taskId: string, directionId: string) => {
-    const current = flatTasks.find((task) => task.id === taskId);
-    if (!current) {
-      return;
-    }
+  // --- Stage-style handlers bridging GroupedTaskList/BoardView/Drawer ---
 
-    const nextDirectionIds = current.directionIds.includes(directionId)
-      ? current.directionIds.filter((id) => id !== directionId)
-      : [...current.directionIds, directionId];
+  const onChangeFlatTaskStatus = async (taskId: string, status: TaskStatus) => {
     const previous = flatTasks;
-    const optimistic = previous.map((task) =>
-      task.id === taskId ? { ...task, directionIds: nextDirectionIds } : task,
-    );
-    setFlatTasks(optimistic);
-
+    setFlatTasks(previous.map((t) => (t.id === taskId ? { ...t, status, done: status === 'done' } : t)));
     try {
-      await apiService.patchProjectTaskMeta(projectId, taskId, {
-        direction_ids: nextDirectionIds,
-      });
-      pushToast('Направления обновлены', 'success');
+      await apiService.changeProjectTaskStatus(projectId, taskId, status);
     } catch (reason) {
       setFlatTasks(previous);
-      const normalized = normalizeApiError(reason);
-      pushToast(normalized.message, 'error');
+      pushToast(normalizeApiError(reason).message, 'error');
     }
   };
+
+  const onFlatTaskPriorityChange = async (taskId: string, priority: TaskPriority) => {
+    const previous = flatTasks;
+    const current = previous.find((t) => t.id === taskId);
+    setFlatTasks(previous.map((t) => (t.id === taskId ? { ...t, priority } : t)));
+    try {
+      // Include task_type so backend's /meta validator (which requires at least
+      // one of task_type / direction_ids / repository_id) accepts the payload.
+      await apiService.patchProjectTaskMeta(projectId, taskId, {
+        task_type: current?.taskType,
+        priority,
+      });
+    } catch (reason) {
+      setFlatTasks(previous);
+      pushToast(normalizeApiError(reason).message, 'error');
+    }
+  };
+
+  const onFlatDirectionsChange = async (taskId: string, directionIds: string[]) => {
+    const previous = flatTasks;
+    const current = previous.find((t) => t.id === taskId);
+    setFlatTasks(previous.map((t) => (t.id === taskId ? { ...t, directionIds } : t)));
+    try {
+      await apiService.patchProjectTaskMeta(projectId, taskId, {
+        task_type: current?.taskType,
+        direction_ids: directionIds,
+      });
+    } catch (reason) {
+      setFlatTasks(previous);
+      pushToast(normalizeApiError(reason).message, 'error');
+    }
+  };
+
+  const onFlatCreateTaskFromList = async (title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    try {
+      await apiService.createProjectTask(projectId, { title: trimmed });
+      pushToast('Задача добавлена', 'success');
+      await loadFlatTasks();
+    } catch (reason) {
+      pushToast(normalizeApiError(reason).message, 'error');
+    }
+  };
+
+  const onFlatTitleSaveFromList = async (taskId: string, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    const previous = flatTasks;
+    setFlatTasks(previous.map((t) => (t.id === taskId ? { ...t, title: trimmed } : t)));
+    try {
+      await apiService.editProjectTaskTitle(projectId, taskId, { title: trimmed });
+    } catch (reason) {
+      setFlatTasks(previous);
+      pushToast(normalizeApiError(reason).message, 'error');
+    }
+  };
+
+  const onFlatDescriptionSaveFromDrawer = async (taskId: string, description: string) => {
+    const previous = flatTasks;
+    const current = previous.find((t) => t.id === taskId);
+    setFlatTasks(previous.map((t) => (t.id === taskId ? { ...t, description } : t)));
+    try {
+      await apiService.patchProjectTaskMeta(projectId, taskId, {
+        task_type: current?.taskType,
+        description,
+      });
+    } catch (reason) {
+      setFlatTasks(previous);
+      pushToast(normalizeApiError(reason).message, 'error');
+    }
+  };
+
+  const openFlatTaskDrawer = (taskId: string) => setActiveFlatTaskId(taskId);
+  const closeFlatTaskDrawer = () => setActiveFlatTaskId(null);
 
   const filteredFlatTasks = useMemo(
     () =>
@@ -508,10 +449,7 @@ export const ProjectDetailsPage = () => {
           };
         })
         .filter(({ task }) => {
-          if (flatTypeFilter !== 'all' && task.taskType !== flatTypeFilter) {
-            return false;
-          }
-          if (flatDirectionFilter !== 'all' && !task.directionIds.includes(flatDirectionFilter)) {
+          if (priorityFilter.length > 0 && !priorityFilter.includes(task.priority)) {
             return false;
           }
           return true;
@@ -527,7 +465,7 @@ export const ProjectDetailsPage = () => {
           return doneOrder !== 0 ? doneOrder : a.index - b.index;
         })
         .map(({ task }) => task),
-    [flatDirectionFilter, flatTasks, flatTypeFilter],
+    [flatTasks, priorityFilter],
   );
 
   const userInitials = useMemo(() => {
@@ -793,284 +731,144 @@ export const ProjectDetailsPage = () => {
               </button>
             </section>
           ) : (
-            <section className="project-v4-flat">
-              <div className="project-v4-flat-head">
-                <h2>Сквозные задачи</h2>
-                <span className="project-v4-flat-chip">Режим: flat</span>
-              </div>
-
-              <div className="project-v4-flat-filters">
-                <label>
-                  <span>Тип</span>
-                  <select
-                    value={flatTypeFilter}
-                    onChange={(event) => {
-                      setFlatTypeFilter(event.target.value as 'all' | TaskType);
-                    }}
-                  >
-                    <option value="all">Все типы</option>
-                    <option value="task">Задача</option>
-                    <option value="bug">Баг</option>
-                    <option value="feature">Фича</option>
-                    <option value="improvement">Улучшение</option>
-                    <option value="chore">Техдолг</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Направление</span>
-                  <select
-                    value={flatDirectionFilter}
-                    disabled={directionsLoading || directions.length === 0}
-                    onChange={(event) => {
-                      setFlatDirectionFilter(event.target.value as 'all' | string);
-                    }}
-                  >
-                    <option value="all">Все направления</option>
-                    {directions.map((direction) => (
-                      <option key={direction.id} value={direction.id}>
-                        {direction.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              {flatLoading ? <p className="project-v4-message">Загрузка задач...</p> : null}
-              {flatError ? <p className="project-v4-message error">{flatError.message}</p> : null}
-              {!flatLoading && !flatError && flatTasks.length === 0 ? (
-                <p className="project-v4-message">Задач пока нет. Добавьте первую задачу проекта.</p>
-              ) : null}
-
-              <div className="project-v4-flat-list">
-                {filteredFlatTasks.map((task) => {
-                  const value = flatTaskEdits[task.id] ?? task.title;
-                  const isHighlighted = highlightedFlatTaskId === task.id;
-                  return (
-                    <article
-                      key={task.id}
-                      id={`flat-task-${task.id}`}
-                      className={`project-v4-flat-item ${task.done ? 'is-done' : ''}${isHighlighted ? ' deeplink-highlight' : ''}`}
-                    >
-                      <label className="project-v4-flat-check">
-                        <input
-                          type="checkbox"
-                          checked={task.done}
-                          onChange={() => {
-                            void onToggleFlatTask(task.id);
-                          }}
+            <section className="stage-v5-layout">
+              <div className="stage-v5-main-column">
+                <article className="stage-v5-card">
+                  <header className="stage-v5-card-head">
+                    <h3>Задачи</h3>
+                    <div className="stage-v5-card-head-links" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <div className="vsp-pill-toggle">
+                        <button
+                          className={`vsp-pill-btn ${viewMode === 'list' ? 'active' : ''}`}
+                          onClick={() => setViewMode('list')}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 3.5h10M2 7h10M2 10.5h10" strokeLinecap="round"/></svg>
+                          List
+                        </button>
+                        <button
+                          className={`vsp-pill-btn ${viewMode === 'board' ? 'active' : ''}`}
+                          onClick={() => setViewMode('board')}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="2" width="3.5" height="10" rx="1"/><rect x="5.25" y="2" width="3.5" height="7" rx="1"/><rect x="9.5" y="2" width="3.5" height="10" rx="1"/></svg>
+                          Board
+                        </button>
+                      </div>
+                      <div className="vsp-trigger-wrap">
+                        <button className="vsp-trigger" onClick={() => setViewPanelOpen((p) => !p)} title="Настройки отображения">
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 4h4M10 4h4M2 8h8M12 8h2M2 12h2M6 12h8" strokeLinecap="round"/><circle cx="8" cy="4" r="1.5"/><circle cx="11" cy="8" r="1.5"/><circle cx="5" cy="12" r="1.5"/></svg>
+                        </button>
+                        <ViewSettingsPanel
+                          open={viewPanelOpen}
+                          onClose={() => setViewPanelOpen(false)}
+                          grouping={grouping}
+                          onGroupingChange={setGrouping}
+                          ordering={ordering}
+                          onOrderingChange={setOrdering}
+                          showEmptyGroups={showEmptyGroups}
+                          onShowEmptyGroupsChange={setShowEmptyGroups}
+                          visibleColumns={visibleCols}
+                          onVisibleColumnsChange={setVisibleCols}
+                          priorityFilter={priorityFilter}
+                          onPriorityFilterChange={setPriorityFilter}
                         />
-                      </label>
+                      </div>
+                    </div>
+                  </header>
 
-                      <div className="project-v4-flat-main">
-                        {task.issueKey ? <span className="project-v4-flat-issue-key">{formatIssueKey(task.issueKey)}</span> : null}
-                        <input
-                          className="project-v4-flat-input"
-                          value={value}
-                          onChange={(event) => {
-                            setFlatTaskEdits((prev) => ({ ...prev, [task.id]: event.target.value }));
-                          }}
-                          onBlur={() => {
-                            void onSaveFlatTaskTitle(task.id);
-                          }}
-                        />
-                        <div className="project-v4-flat-meta">
-                          <label className="project-v4-flat-type">
-                            <span>Тип</span>
-                            <select
-                              value={task.taskType}
-                              onChange={(event) => {
-                                void onChangeFlatTaskType(task.id, event.target.value as TaskType);
-                              }}
-                            >
-                              <option value="task">Задача</option>
-                              <option value="bug">Баг</option>
-                              <option value="feature">Фича</option>
-                              <option value="improvement">Улучшение</option>
-                              <option value="chore">Техдолг</option>
-                            </select>
-                          </label>
-                          <span className={`project-v4-flat-type-pill ${task.taskType}`}>
-                            {taskTypeLabels[task.taskType]}
-                          </span>
-                          <span className="project-v4-flat-assignee-id">
-                            assignee: {task.assigneeUserId ? assignableMembers.find((m) => m.id === task.assigneeUserId)?.username || task.assigneeUserId : '—'}
-                            {(() => {
-                              const member = assignableMembers.find((m) => m.id === task.assigneeUserId);
-                              if (!member?.telegramUsername) return null;
-                              return (
-                                <a
-                                  className="tg-assignee-link"
-                                  href={`https://t.me/${member.telegramUsername}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  title={`Telegram: @${member.telegramUsername}`}
-                                >
-                                  <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true">
-                                    <path d="M21.9 4.4 18.5 20c-.3 1.2-1 1.5-2 .9l-5.4-4-2.6 2.5c-.3.3-.5.5-1 .5l.4-5.4 9.8-8.8c.4-.4-.1-.6-.6-.2L4.7 12.1l-5.2-1.6c-1.1-.4-1.2-1.1.2-1.7L20.5 2.8c1-.3 1.7.2 1.4 1.6Z"/>
-                                  </svg>
-                                </a>
-                              );
-                            })()}
-                          </span>
-                          {project?.teamId && !membersAccessDenied ? (
-                            <label className="project-v4-flat-assign">
-                              <span>Исполнитель</span>
-                              <select
-                                value={task.assigneeUserId ?? ''}
-                                disabled={membersLoading}
-                                onChange={(event) => {
-                                  void onAssignFlatTask(task.id, event.target.value || null);
-                                }}
-                              >
-                                <option value="">Без исполнителя</option>
-                                {assignableMembers.map((member) => (
-                                  <option key={member.id} value={member.id}>
-                                    @{member.username} ({member.email})
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                          ) : project?.teamId ? (
-                            <span className="project-v4-flat-assign-note">Исполнители недоступны (нет доступа к команде)</span>
-                          ) : (
-                            <span className="project-v4-flat-assign-note">Личный проект</span>
-                          )}
+                  {flatLoading && flatTasks.length === 0 ? (
+                    <div className="gtl-skel-group" aria-busy="true" aria-label="Загрузка задач">
+                      {Array.from({ length: 2 }, (_, g) => (
+                        <div key={g}>
+                          <div className="gtl-skel-head">
+                            <Skeleton width={10} height={10} radius={999} />
+                            <Skeleton width={90} height={12} />
+                            <Skeleton width={24} height={12} />
+                          </div>
+                          {Array.from({ length: 4 }, (_, i) => (
+                            <div className="gtl-skel-row" key={i}>
+                              <Skeleton width={14} height={14} radius={4} />
+                              <Skeleton width={`${50 + ((i * 13) % 35)}%`} height={12} />
+                              <Skeleton width={60} height={12} />
+                            </div>
+                          ))}
                         </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  {flatError ? <p className="stage-v5-message error">{flatError.message}</p> : null}
 
-                        {directions.length > 0 ? (
-                          <div className="project-v4-flat-directions">
-                            {directions.map((direction) => {
-                              const active = task.directionIds.includes(direction.id);
-                              return (
-                                <button
-                                  key={direction.id}
-                                  type="button"
-                                  className={active ? 'active' : ''}
-                                  onClick={() => {
-                                    void onToggleFlatDirection(task.id, direction.id);
-                                  }}
-                                >
-                                  {direction.name}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        ) : null}
+                  {!flatLoading && !flatError && viewMode === 'board' ? (
+                    <BoardView
+                      tasks={filteredFlatTasks}
+                      members={assignableMembers}
+                      directions={directions}
+                      onStatusChange={(taskId, status) => void onChangeFlatTaskStatus(taskId, status)}
+                      onTaskTypeChange={(taskId, taskType) => void onChangeFlatTaskType(taskId, taskType)}
+                      onAssigneeChange={(taskId, assigneeUserId) => void onAssignFlatTask(taskId, assigneeUserId)}
+                      onDirectionsChange={(taskId, directionIds) => void onFlatDirectionsChange(taskId, directionIds)}
+                      onPriorityChange={(taskId, priority) => void onFlatTaskPriorityChange(taskId, priority)}
+                      onOpenTask={openFlatTaskDrawer}
+                      onCreateTask={(title) => void onFlatCreateTaskFromList(title)}
+                    />
+                  ) : null}
 
-                        {activeFlatTaskId === task.id ? (
-                          <div className="project-v4-flat-details">
-                            <label>
-                              <span>Описание</span>
-                              <textarea
-                                rows={3}
-                                value={flatTaskDescriptionEdits[task.id] ?? task.description ?? ''}
-                                placeholder="Добавьте описание задачи"
-                                onChange={(event) => {
-                                  const nextValue = event.target.value;
-                                  setFlatTaskDescriptionEdits((prev) => ({
-                                    ...prev,
-                                    [task.id]: nextValue,
-                                  }));
-                                }}
-                              />
-                            </label>
-                            <button
-                              type="button"
-                              className="project-v4-secondary-btn"
-                              onClick={() => {
-                                void onSaveFlatTaskDescription(task.id);
-                              }}
-                            >
-                              Сохранить описание
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
+                  {!flatLoading && !flatError && viewMode === 'list' ? (
+                    <GroupedTaskList
+                      tasks={filteredFlatTasks}
+                      members={assignableMembers}
+                      directions={directions}
+                      showEmptyGroups={showEmptyGroups}
+                      visibleColumns={visibleCols}
+                      onStatusChange={(taskId, status) => void onChangeFlatTaskStatus(taskId, status)}
+                      onTaskTypeChange={(taskId, taskType) => void onChangeFlatTaskType(taskId, taskType)}
+                      onAssigneeChange={(taskId, assigneeUserId) => void onAssignFlatTask(taskId, assigneeUserId)}
+                      onDirectionsChange={(taskId, directionIds) => void onFlatDirectionsChange(taskId, directionIds)}
+                      onPriorityChange={(taskId, priority) => void onFlatTaskPriorityChange(taskId, priority)}
+                      onOpenTask={openFlatTaskDrawer}
+                      onDelete={(taskId) => void onDeleteFlatTask(taskId)}
+                      onTitleSave={(taskId, title) => void onFlatTitleSaveFromList(taskId, title)}
+                      onCreateTask={(title) => void onFlatCreateTaskFromList(title)}
+                    />
+                  ) : null}
 
-                      <div className="project-v4-flat-actions">
-                        <button
-                          type="button"
-                          title="Открыть детали"
-                          onClick={() => {
-                            setFlatTaskDescriptionEdits((prev) =>
-                              prev[task.id] !== undefined
-                                ? prev
-                                : {
-                                    ...prev,
-                                    [task.id]: task.description ?? '',
-                                  },
-                            );
-                            setActiveFlatTaskId((prev) => (prev === task.id ? null : task.id));
-                          }}
-                        >
-                          ⋯
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            void onSaveFlatTaskTitle(task.id);
-                          }}
-                        >
-                          ✎
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            void onDeleteFlatTask(task.id);
-                          }}
-                        >
-                          🗑
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-
-              {!flatLoading && !flatError && flatTasks.length > 0 && filteredFlatTasks.length === 0 ? (
-                <p className="project-v4-message">По выбранным фильтрам задач нет.</p>
-              ) : null}
-
-              <div className="project-v4-flat-create">
-                <input
-                  value={flatTaskDraft}
-                  placeholder="Новая задача проекта"
-                  onChange={(event) => {
-                    setFlatTaskDraft(event.target.value);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      void onCreateFlatTask();
-                    }
-                  }}
-                />
-                {projectRepos.length > 0 ? (
-                  <select
-                    className="project-v4-flat-repo-select"
-                    value={flatTaskRepoDraft}
-                    onChange={(event) => setFlatTaskRepoDraft(event.target.value)}
-                  >
-                    <option value="">Без репозитория</option>
-                    {projectRepos.map((repo) => (
-                      <option key={repo.id} value={repo.id}>
-                        {repo.fullName}
-                      </option>
-                    ))}
-                  </select>
-                ) : null}
-                <button type="button" className="project-v4-primary-btn" onClick={() => void onCreateFlatTask()}>
-                  Добавить задачу
-                </button>
+                  {!flatLoading && !flatError && flatTasks.length > 0 && filteredFlatTasks.length === 0 ? (
+                    <p className="stage-v5-message">По выбранным фильтрам задач нет.</p>
+                  ) : null}
+                </article>
               </div>
             </section>
           )}
+
 
           <ProjectReposPanel projectId={projectId} />
           <ProjectTelegramPanel projectId={projectId} />
           <WebhookEventsPanel projectId={projectId} />
         </div>
       </main>
+
+      {isFlatWorkflow && activeFlatTaskId ? (() => {
+        const openedTask = flatTasks.find((t) => t.id === activeFlatTaskId);
+        if (!openedTask) return null;
+        return (
+          <TaskDetailsDrawer
+            task={openedTask}
+            members={assignableMembers}
+            directions={directions}
+            onClose={closeFlatTaskDrawer}
+            onTitleSave={(taskId, title) => void onFlatTitleSaveFromList(taskId, title)}
+            onDescriptionSave={(taskId, description) => void onFlatDescriptionSaveFromDrawer(taskId, description)}
+            onStatusChange={(taskId, status) => void onChangeFlatTaskStatus(taskId, status)}
+            onTypeChange={(taskId, taskType) => void onChangeFlatTaskType(taskId, taskType)}
+            onAssigneeChange={(taskId, assigneeUserId) => void onAssignFlatTask(taskId, assigneeUserId)}
+            onDirectionsChange={(taskId, directionIds) => void onFlatDirectionsChange(taskId, directionIds)}
+            onPriorityChange={(taskId, priority) => void onFlatTaskPriorityChange(taskId, priority)}
+            onDelete={(taskId) => {
+              void onDeleteFlatTask(taskId);
+              closeFlatTaskDrawer();
+            }}
+          />
+        );
+      })() : null}
 
       <footer className="project-v4-footer">
         <div className="project-v4-container project-v4-footer-row">

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { MenuSelect } from '../components/ui/MenuSelect';
 import { useProjectsStore } from '../store/projects.store';
@@ -101,6 +101,7 @@ export const ProjectsPage = () => {
   const fetchProjects = useProjectsStore((state) => state.fetchProjects);
   const createProject = useProjectsStore((state) => state.createProject);
   const pushToast = useUiStore((state) => state.pushToast);
+  const navigate = useNavigate();
   const [ownerTeams, setOwnerTeams] = useState<Team[]>([]);
   const [teamsLoading, setTeamsLoading] = useState(false);
   const [projectTarget, setProjectTarget] = useState<string>('personal');
@@ -173,7 +174,7 @@ export const ProjectsPage = () => {
   const onSubmit = handleSubmit(async (values) => {
     const teamId = selectedTarget.startsWith('team:') ? selectedTarget.slice(5) : '';
     try {
-      await createProject({
+      const created = await createProject({
         project_name: values.project_name,
         ...(teamId ? { team_id: teamId } : {}),
         workflow_type: workflowType,
@@ -183,6 +184,9 @@ export const ProjectsPage = () => {
       setProjectTarget('personal');
       setWorkflowType('stages');
       setCreateOpen(false);
+      if (created?.id) {
+        navigate(`/projects/${created.id}`);
+      }
     } catch {
       pushToast('Не удалось создать проект', 'error');
     }

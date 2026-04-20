@@ -11,7 +11,7 @@ type ProjectsState = {
   error: ApiError | null;
   shareLink: string;
   fetchProjects: () => Promise<void>;
-  createProject: (payload: CreateProjectPayload) => Promise<void>;
+  createProject: (payload: CreateProjectPayload) => Promise<Project>;
   fetchProject: (projectId: string) => Promise<void>;
   fetchStages: (projectId: string) => Promise<void>;
   createStage: (projectId: string, payload: CreateStagePayload) => Promise<void>;
@@ -40,9 +40,12 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
   async createProject(payload) {
     set({ loading: true, error: null });
     try {
-      await apiService.createProject(payload);
-      await get().fetchProjects();
+      const created = await apiService.createProject(payload);
+      // Refetch in the background so the projects list stays fresh without
+      // blocking the navigate-into-project flow.
+      void get().fetchProjects();
       set({ loading: false });
+      return created;
     } catch (error) {
       set({ loading: false, error: normalizeApiError(error) });
       throw error;
