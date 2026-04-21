@@ -7,24 +7,29 @@ import { SEO } from '../components/seo/SEO';
 import { useAuthStore } from '../store/auth.store';
 
 /**
- * Placeholder for an actual product screenshot. Renders a skeleton frame
- * with an explicit label describing what goes there — so we know exactly
- * which screenshot to drop in later. Keep `ratio` close to the real asset
- * aspect ratio so the layout doesn't jump when the image swaps in.
+ * Mac-style window frame for product screenshots. When `src` is provided,
+ * renders the image inside the frame (chrome on top with traffic lights,
+ * image fills the rest). Without `src`, falls back to a skeleton placeholder
+ * labeled with what should go there so the layout stays stable when the
+ * real screenshot drops in.
  */
 const MockupSlot = ({
   label,
   ratio = '16 / 10',
   minHeight,
   tone = 'light',
+  src,
+  alt,
 }: {
   label: string;
   ratio?: string;
   minHeight?: number;
   tone?: 'light' | 'dark';
+  src?: string;
+  alt?: string;
 }) => (
   <div
-    className={`landing-mockup landing-mockup--${tone}`}
+    className={`landing-mockup landing-mockup--${tone}${src ? ' landing-mockup--image' : ''}`}
     style={{ aspectRatio: ratio, minHeight }}
     aria-label={`Скрин: ${label}`}
   >
@@ -33,17 +38,25 @@ const MockupSlot = ({
       <span />
       <span />
     </div>
-    <div className="landing-mockup-grid">
-      <div className="lm-line lm-line-60" />
-      <div className="lm-line lm-line-85" />
-      <div className="lm-line lm-line-70" />
-      <div className="lm-line lm-line-50" />
-      <div className="lm-line lm-line-80" />
-    </div>
-    <div className="landing-mockup-label">
-      <span className="landing-mockup-label-kicker">Место под скрин</span>
-      <span className="landing-mockup-label-text">{label}</span>
-    </div>
+    {src ? (
+      <div className="landing-mockup-image">
+        <img src={src} alt={alt ?? label} loading="lazy" />
+      </div>
+    ) : (
+      <>
+        <div className="landing-mockup-grid">
+          <div className="lm-line lm-line-60" />
+          <div className="lm-line lm-line-85" />
+          <div className="lm-line lm-line-70" />
+          <div className="lm-line lm-line-50" />
+          <div className="lm-line lm-line-80" />
+        </div>
+        <div className="landing-mockup-label">
+          <span className="landing-mockup-label-kicker">Место под скрин</span>
+          <span className="landing-mockup-label-text">{label}</span>
+        </div>
+      </>
+    )}
   </div>
 );
 
@@ -156,9 +169,11 @@ export const LandingPage = () => {
           {/* Большой скрин продукта */}
           <div className="landing-hero-mockup">
             <MockupSlot
-              label="Страница этапа: List/Board, задачи с приоритетами и направлениями, drawer задачи"
+              label="Страница проекта: направления, задачи с приоритетами и типами"
               ratio="16 / 10"
               tone="light"
+              src="/screens/orbit-payments-list.png"
+              alt="Unit-labs — пример проекта Orbit Payments со списком задач и направлениями"
             />
           </div>
         </section>
