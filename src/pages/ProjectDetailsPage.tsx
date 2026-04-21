@@ -55,10 +55,10 @@ export const ProjectDetailsPage = () => {
   const consumedFlatDeeplinkRef = useRef<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [assignableMembers, setAssignableMembers] = useState<TeamMember[]>([]);
-  const [, setMembersLoading] = useState(false);
+  const [membersLoading, setMembersLoading] = useState(false);
   const [, setMembersAccessDenied] = useState(false);
   const [directions, setDirections] = useState<DirectionTag[]>([]);
-  const [, setDirectionsLoading] = useState(false);
+  const [directionsLoading, setDirectionsLoading] = useState(false);
 
   // Stage-style view state for flat mode.
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -161,6 +161,12 @@ export const ProjectDetailsPage = () => {
 
   const workflowType = project?.workflowType || 'stages';
   const isFlatWorkflow = workflowType === 'flat';
+
+  // Single gate for flat mode skeleton — don't un-skeleton until every
+  // dependency of the task card is ready (project + tasks + members + directions).
+  const flatInitialLoading =
+    isFlatWorkflow &&
+    (flatLoading || membersLoading || directionsLoading || !project);
 
   const loadFlatTasks = useCallback(async () => {
     if (!projectId) {
@@ -688,13 +694,28 @@ export const ProjectDetailsPage = () => {
                 <div>Действие</div>
               </div>
 
-              {loading ? <p className="project-v4-message">Загрузка стадий...</p> : null}
+              {loading || !project ? (
+                <div className="project-v4-stage-skel-list">
+                  {Array.from({ length: 3 }, (_, i) => (
+                    <div className="project-v4-stage-skel-row" key={i}>
+                      <Skeleton width={32} height={28} radius={8} />
+                      <div className="project-v4-stage-skel-main">
+                        <Skeleton width="40%" height={14} />
+                        <Skeleton width="70%" height={10} />
+                      </div>
+                      <Skeleton width={72} height={22} radius={999} />
+                      <Skeleton width={120} height={12} />
+                      <Skeleton width={20} height={12} />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {error ? <p className="project-v4-message error">{error.message}</p> : null}
-              {!loading && !error && stages.length === 0 ? (
+              {!loading && !error && project && stages.length === 0 ? (
                 <p className="project-v4-message">Стадий пока нет. Добавьте первый этап проекта.</p>
               ) : null}
 
-              {stages.map((stage, index) => {
+              {!loading && project && stages.map((stage, index) => {
                 const status = stageStatus(stage.status);
                 const progress = getProgress(stage.status);
                 const stageHref = `/projects/${projectId}/stages/${stage.id}`;
@@ -842,7 +863,7 @@ export const ProjectDetailsPage = () => {
                     </div>
                   </header>
 
-                  {flatLoading && flatTasks.length === 0 ? (
+                  {flatInitialLoading ? (
                     <div className="gtl-skel-group" aria-busy="true" aria-label="Загрузка задач">
                       {Array.from({ length: 2 }, (_, g) => (
                         <div key={g}>
@@ -864,7 +885,7 @@ export const ProjectDetailsPage = () => {
                   ) : null}
                   {flatError ? <p className="stage-v5-message error">{flatError.message}</p> : null}
 
-                  {!flatLoading && !flatError && viewMode === 'board' ? (
+                  {!flatInitialLoading && !flatError && viewMode === 'board' ? (
                     <BoardView
                       tasks={filteredFlatTasks}
                       members={assignableMembers}
@@ -879,7 +900,7 @@ export const ProjectDetailsPage = () => {
                     />
                   ) : null}
 
-                  {!flatLoading && !flatError && viewMode === 'list' ? (
+                  {!flatInitialLoading && !flatError && viewMode === 'list' ? (
                     <GroupedTaskList
                       tasks={filteredFlatTasks}
                       members={assignableMembers}
@@ -898,7 +919,7 @@ export const ProjectDetailsPage = () => {
                     />
                   ) : null}
 
-                  {!flatLoading && !flatError && flatTasks.length > 0 && filteredFlatTasks.length === 0 ? (
+                  {!flatInitialLoading && !flatError && flatTasks.length > 0 && filteredFlatTasks.length === 0 ? (
                     <p className="stage-v5-message">По выбранным фильтрам задач нет.</p>
                   ) : null}
                 </article>

@@ -13455,6 +13455,29 @@ a.agent-v2-task-title:hover {
   padding: 6px 12px;
 }
 
+/* Stage list skeleton (project details, stages mode) */
+.project-v4-stage-skel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.project-v4-stage-skel-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 90px 140px 30px;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid #eef1f5;
+  border-radius: 12px;
+  background: #fff;
+}
+.project-v4-stage-skel-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
 /* Flat-mode directions manager (mirrors stage tags/filters aside but inline) */
 .flat-directions-body {
   padding: 14px 18px 18px;

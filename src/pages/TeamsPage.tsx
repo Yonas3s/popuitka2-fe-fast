@@ -4,6 +4,7 @@ import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { useUiStore } from '../store/ui.store';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
+import { Skeleton } from '../components/ui/Skeleton';
 import type { ApiError, Team, TeamDetails } from '../types/models';
 
 const getInitials = (value: string) => {
@@ -202,7 +203,25 @@ export const TeamsPage = () => {
           ) : null}
 
           {teamsError ? <p className="teams-v3-error">{teamsError.message}</p> : null}
-          {teamsLoading ? <p className="teams-v3-loading">Загружаем команды...</p> : null}
+
+          {teamsLoading && teams.length === 0 ? (
+            <section className="teams-v3-grid" aria-busy="true" aria-label="Загружаем команды">
+              {Array.from({ length: 4 }, (_, i) => (
+                <article className="teams-v3-card" key={i}>
+                  <div className="teams-v3-card-head">
+                    <Skeleton width={40} height={40} radius={10} />
+                    <Skeleton width={18} height={18} radius={999} />
+                  </div>
+                  <Skeleton width="60%" height={18} />
+                  <Skeleton width="90%" height={10} />
+                  <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                    <Skeleton width={70} height={10} />
+                    <Skeleton width={70} height={10} />
+                  </div>
+                </article>
+              ))}
+            </section>
+          ) : null}
 
           {!teamsLoading && teams.length === 0 ? (
             <section className="teams-v3-empty">
@@ -211,7 +230,7 @@ export const TeamsPage = () => {
             </section>
           ) : null}
 
-          <section className="teams-v3-grid">
+          <section className="teams-v3-grid" style={{ display: teamsLoading && teams.length === 0 ? 'none' : undefined }}>
             {teams.map((team) => {
               const details = teamDetailsById[team.id];
               const membersCount = details?.stats.members;

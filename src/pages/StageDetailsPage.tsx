@@ -126,6 +126,16 @@ export const StageDetailsPage = () => {
     void fetchTasks(projectId, stageId);
   }, [fetchProject, fetchStage, fetchTasks, projectId, stageId]);
 
+  // Single gate for all initial fetches on this page. Show skeleton until
+  // project + stage + tasks + members + directions are all ready, so the
+  // UI doesn't pop in piece-by-piece.
+  const initialLoading =
+    loading ||
+    membersLoading ||
+    directionsLoading ||
+    !currentStage ||
+    !project;
+
   useEffect(() => {
     setContextDraft(currentStage?.description ?? '');
     setWorkLinkDraft(currentStage?.workLink ?? '');
@@ -767,7 +777,7 @@ export const StageDetailsPage = () => {
                 </div>
               </header>
 
-              {loading && tasks.length === 0 ? (
+              {initialLoading ? (
                 <div className="gtl-skel-group" aria-busy="true" aria-label="Загрузка задач">
                   {Array.from({ length: 2 }, (_, g) => (
                     <div key={g}>
@@ -789,7 +799,7 @@ export const StageDetailsPage = () => {
               ) : null}
               {error ? <p className="stage-v5-message error">{error.message}</p> : null}
 
-              {!loading && !error && viewMode === 'board' ? (
+              {!initialLoading && !error && viewMode === 'board' ? (
                 <BoardView
                   tasks={filteredTasks}
                   members={assignableMembers}
@@ -819,7 +829,7 @@ export const StageDetailsPage = () => {
                 />
               ) : null}
 
-              {!loading && !error && viewMode === 'list' ? (
+              {!initialLoading && !error && viewMode === 'list' ? (
                 <GroupedTaskList
                   tasks={filteredTasks}
                   members={assignableMembers}
@@ -1060,7 +1070,7 @@ export const StageDetailsPage = () => {
                   );
                 })}
 
-                {!loading && !error && tasks.length > 0 && filteredTasks.length === 0 ? (
+                {!initialLoading && !error && tasks.length > 0 && filteredTasks.length === 0 ? (
                   <p className="stage-v5-message">По выбранным фильтрам задач нет.</p>
                 ) : null}
 

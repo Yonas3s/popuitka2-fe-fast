@@ -291,7 +291,7 @@ export const ProjectsPage = () => {
             </section>
           ) : null}
 
-          <div className="projects-v3-grid">
+          <div className="projects-v3-grid" style={{ display: loading && projects.length === 0 ? 'none' : undefined }}>
             {projects.map((project, index) => {
               const accentClass = PROJECT_ACCENT_CLASSES[index % PROJECT_ACCENT_CLASSES.length];
               const status = getProjectStatusMeta(project.status);
