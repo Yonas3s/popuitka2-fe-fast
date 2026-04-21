@@ -328,6 +328,7 @@ const directionSchema = z
     _id: z.string().optional(),
     id: z.string().optional(),
     name: z.string().optional(),
+    color: z.string().nullable().optional(),
   })
   .passthrough();
 
@@ -689,10 +690,13 @@ export const normalizeDirection = (value: unknown, index = 0): DirectionTag => {
   const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
   const name =
     (typeof record.name === 'string' && record.name.trim()) || `Направление ${index + 1}`;
+  const color =
+    typeof record.color === 'string' && record.color.trim() ? record.color.trim() : null;
 
   return {
     id: normalizeId(record, `direction-${index}`),
     name,
+    color,
     raw: record,
   };
 };

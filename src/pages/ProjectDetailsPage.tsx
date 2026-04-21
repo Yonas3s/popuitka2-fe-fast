@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/auth.store';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { FRONTEND_BASE_URL } from '../lib/config/env';
+import { DirectionColorPicker } from '../components/directions/DirectionColorPicker';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
 import { ProjectReposPanel } from '../components/github/ProjectReposPanel';
 import { WebhookEventsPanel } from '../components/github/WebhookEventsPanel';
@@ -465,6 +466,23 @@ export const ProjectDetailsPage = () => {
     }
   };
 
+  const onChangeDirectionColor = async (directionId: string, paletteKey: string) => {
+    // Optimistic: update the chip immediately, roll back on failure.
+    const previous = directions;
+    setDirections((prev) =>
+      prev.map((d) => (d.id === directionId ? { ...d, color: paletteKey } : d)),
+    );
+    try {
+      const updated = await apiService.updateDirection(projectId, directionId, {
+        color: paletteKey,
+      });
+      setDirections((prev) => prev.map((d) => (d.id === directionId ? updated : d)));
+    } catch (reason) {
+      setDirections(previous);
+      pushToast(normalizeApiError(reason).message, 'error');
+    }
+  };
+
   const openFlatTaskDrawer = (taskId: string) => setActiveFlatTaskId(taskId);
   const closeFlatTaskDrawer = () => setActiveFlatTaskId(null);
 
@@ -796,9 +814,13 @@ export const ProjectDetailsPage = () => {
                     ) : (
                       <div className="flat-directions-chips">
                         {directions.map((direction) => (
-                          <span key={direction.id} className="flat-directions-chip">
-                            {direction.name}
-                          </span>
+                          <DirectionColorPicker
+                            key={direction.id}
+                            directionId={direction.id}
+                            name={direction.name}
+                            color={direction.color}
+                            onPickColor={(key) => onChangeDirectionColor(direction.id, key)}
+                          />
                         ))}
                       </div>
                     )}

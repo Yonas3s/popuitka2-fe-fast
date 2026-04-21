@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Task, TaskPriority, TaskStatus, TaskType, TeamMember, DirectionTag } from '../../types/models';
+import { getDirectionColor } from '../../lib/directions/color';
 import {
   TaskMetaMenu,
   TASK_TYPE_CFG,
@@ -148,7 +149,10 @@ export const GroupedTaskList = ({
   const closeMenu = () => setMenu(null);
 
   const mMap = useMemo(() => Object.fromEntries(members.map(m => [m.id, m])), [members]);
-  const dMap = useMemo(() => Object.fromEntries(directions.map(d => [d.id, d.name])), [directions]);
+  const dMap = useMemo(
+    () => Object.fromEntries(directions.map(d => [d.id, d])),
+    [directions],
+  );
   const groups = useMemo(() => STATUS_ORDER.map(s => ({ s, t: tasks.filter(t => t.status === s) })), [tasks]);
 
   return (
@@ -178,7 +182,6 @@ export const GroupedTaskList = ({
                 {gt.map(task => {
                   const tp = T[task.taskType] || T.task;
                   const mem = task.assigneeUserId ? mMap[task.assigneeUserId] : null;
-                  const dirs = task.directionIds.map(id => dMap[id]).filter(Boolean);
                   const date = fmtDate(task.raw);
                   const editing = editId === task.id;
 
@@ -242,7 +245,18 @@ export const GroupedTaskList = ({
                         ) : (
                           <span className="li-tag" style={{'--tc':tp.color} as React.CSSProperties}>{tp.label}</span>
                         )}
-                        {dirs.map(n=><span key={n} className="li-tag" style={{'--tc':'#3b82f6'} as React.CSSProperties}>{n}</span>)}
+                        {task.directionIds.map(did => {
+                          const dir = dMap[did];
+                          if (!dir) return null;
+                          const dc = getDirectionColor(dir.color, dir.name);
+                          return (
+                            <span
+                              key={did}
+                              className="li-tag li-tag-dir"
+                              style={{ background: dc.bg, color: dc.fg, borderColor: 'transparent' }}
+                            >{dir.name}</span>
+                          );
+                        })}
                         {onDirectionsChange && directions.length > 0 && (
                           <button
                             type="button"

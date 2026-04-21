@@ -94,6 +94,12 @@ export type CreateTaskPayload = {
 export type CreateDirectionPayload = {
   name: string;
   direction_name?: string;
+  color?: string | null;
+};
+
+export type UpdateDirectionPayload = {
+  name?: string;
+  color?: string | null;
 };
 
 export type EditTaskTitlePayload = {
@@ -306,6 +312,18 @@ export const apiService = {
       // Backward compatibility for old BE contract.
       direction_name: normalizedName,
     });
+    return extractDirection(response.data);
+  },
+
+  async updateDirection(
+    projectId: string,
+    directionId: string,
+    payload: UpdateDirectionPayload,
+  ): Promise<DirectionTag> {
+    const response = await apiClient.patch(
+      endpoints.directionById(projectId, directionId),
+      payload,
+    );
     return extractDirection(response.data);
   },
 

@@ -12624,12 +12624,13 @@ a.agent-v2-task-title:hover {
 /* Tags — pills with colored dot like Linear */
 .li-r-tags {
   display: flex; align-items: center; gap: 6px;
-  flex-shrink: 1; min-width: 0; max-width: 180px; margin-left: 12px;
+  flex-shrink: 0; min-width: 0; max-width: 360px; margin-left: 12px;
   overflow: hidden;
 }
 
 .li-tag {
   display: inline-flex; align-items: center; gap: 4px;
+  flex-shrink: 0;
   font-size: 12px; font-weight: 400; color: #6b7280;
   white-space: nowrap;
   padding: 1px 6px;
@@ -12643,6 +12644,14 @@ a.agent-v2-task-title:hover {
   width: 8px; height: 8px; border-radius: 999px;
   background: var(--tc, #9ca3af); flex-shrink: 0;
 }
+
+/* Direction pill — rounded, colored per direction (inline style sets bg/fg) */
+.li-tag-dir {
+  border-radius: 999px;
+  font-weight: 500;
+  padding: 1px 8px;
+}
+.li-tag-dir::before { display: none; }
 
 /* Avatar — 20px round like Linear */
 .li-r-av {
@@ -12684,9 +12693,12 @@ a.agent-v2-task-title:hover {
 
 /* Clickable type tag — same visual as .li-tag, but a button */
 .li-tag-btn {
-  font: inherit;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
   cursor: pointer;
-  color: inherit;
+  color: #6b7280;
   transition: background 120ms var(--ease-out), border-color 120ms var(--ease-out);
 }
 .li-tag-btn:hover { border-color: #c7ced6; background: #f6f7f9; }
@@ -14058,6 +14070,47 @@ a.agent-v2-task-title:hover {
   font-size: 12px;
   font-weight: 500;
 }
+
+/* Direction color picker ─────────────────────────────────── */
+.dcp-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.dcp-chip {
+  border: 1px solid transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  transition: transform 120ms var(--ease-out), box-shadow 120ms var(--ease-out);
+}
+.dcp-chip:hover { box-shadow: 0 2px 6px rgba(17, 24, 39, 0.1); }
+.dcp-chip:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+
+.dcp-pop {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 100;
+  display: inline-flex; gap: 6px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.14);
+  white-space: nowrap;
+}
+.dcp-sw {
+  flex: 0 0 auto;
+  width: 26px; height: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 2px solid transparent; border-radius: 6px;
+  font-size: 10.5px; font-weight: 600; line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 100ms var(--ease-out), border-color 100ms var(--ease-out);
+}
+.dcp-sw:hover { transform: scale(1.08); }
+.dcp-sw-active { border-color: #111827; }
+.dcp-sw:focus-visible { outline: 2px solid #3b82f6; outline-offset: 1px; }
 .flat-directions-add {
   display: flex;
   gap: 8px;

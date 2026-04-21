@@ -23,6 +23,8 @@ export const endpoints = {
   projects: () => '/projects',
   projectById: (projectId: string) => `/projects/${projectId}`,
   directions: (projectId: string) => `/projects/${projectId}/directions`,
+  directionById: (projectId: string, directionId: string) =>
+    `/projects/${projectId}/directions/${directionId}`,
   stages: (projectId: string) => `/projects/${projectId}/stages`,
   stageById: (projectId: string, stageId: string) => `/projects/${projectId}/stages/${stageId}`,
   tasks: (projectId: string, stageId: string) => `/projects/${projectId}/stages/${stageId}/tasks`,

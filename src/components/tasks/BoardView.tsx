@@ -11,6 +11,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import type { DirectionTag, Task, TaskPriority, TaskStatus, TaskType, TeamMember } from '../../types/models';
+import { getDirectionColor } from '../../lib/directions/color';
 import {
   TaskMetaMenu,
   TASK_TYPE_CFG,
@@ -84,7 +85,7 @@ type CardVisualProps = {
   mem: TeamMember | null;
   tp: { label: string; color: string };
   color: string;
-  dirs: string[];
+  dirs: { id: string; name: string; color: string | null }[];
   interactive?: boolean;
   directionsCount?: number;
   onOpenMenu?: (kind: 'type' | 'assignee' | 'directions' | 'priority', taskId: string, el: HTMLElement) => void;
@@ -151,9 +152,16 @@ const CardContent = ({
           {tp.label}
         </span>
       )}
-      {dirs.slice(0, 2).map((name) => (
-        <span key={name} className="bv-c-label" style={{ '--lc': '#3b82f6' } as React.CSSProperties}>{name}</span>
-      ))}
+      {dirs.slice(0, 2).map((d) => {
+        const dc = getDirectionColor(d.color, d.name);
+        return (
+          <span
+            key={d.id}
+            className="bv-c-label bv-c-label-dir"
+            style={{ background: dc.bg, color: dc.fg, borderColor: 'transparent' }}
+          >{d.name}</span>
+        );
+      })}
       {interactive && onOpenMenu && (directionsCount ?? 0) > 0 && (
         <button
           type="button"
@@ -201,7 +209,7 @@ const DroppableColumn = ({
   color: string;
   tasks: Task[];
   memberMap: Record<string, TeamMember>;
-  directionMap: Record<string, string>;
+  directionMap: Record<string, DirectionTag>;
   addCol: string | null;
   addVal: string;
   setAddCol: (v: string | null) => void;
@@ -230,7 +238,12 @@ const DroppableColumn = ({
         {ct.map((task) => {
           const mem = task.assigneeUserId ? memberMap[task.assigneeUserId] : null;
           const tp = TASK_TYPE_CFG[task.taskType] || TASK_TYPE_CFG.task;
-          const dirs = task.directionIds.map((id) => directionMap[id]).filter(Boolean);
+          const dirs = task.directionIds
+            .map((id) => {
+              const d = directionMap[id];
+              return d ? { id: d.id, name: d.name, color: d.color } : null;
+            })
+            .filter((d): d is { id: string; name: string; color: string | null } => d !== null);
           return (
             <DraggableCard
               key={task.id}
@@ -291,7 +304,7 @@ export const BoardView = ({
   );
 
   const directionMap = useMemo(
-    () => Object.fromEntries(directions.map((d) => [d.id, d.name])),
+    () => Object.fromEntries(directions.map((d) => [d.id, d])),
     [directions],
   );
 
@@ -356,7 +369,12 @@ export const BoardView = ({
               mem={activeTask.assigneeUserId ? memberMap[activeTask.assigneeUserId] : null}
               tp={TASK_TYPE_CFG[activeTask.taskType] || TASK_TYPE_CFG.task}
               color={COLUMNS.find((c) => c.status === activeTask.status)?.color || '#94a3b8'}
-              dirs={activeTask.directionIds.map((id) => directionMap[id]).filter(Boolean)}
+              dirs={activeTask.directionIds
+                .map((id) => {
+                  const d = directionMap[id];
+                  return d ? { id: d.id, name: d.name, color: d.color } : null;
+                })
+                .filter((d): d is { id: string; name: string; color: string | null } => d !== null)}
             />
           </div>
         ) : null}

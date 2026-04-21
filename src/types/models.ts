@@ -105,6 +105,7 @@ export type TeamMember = {
 export type DirectionTag = {
   id: string;
   name: string;
+  color: string | null;
   raw: Record<string, unknown>;
 };
 
