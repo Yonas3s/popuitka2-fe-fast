@@ -13,12 +13,15 @@ import { useAuthStore } from '../store/auth.store';
  * labeled with what should go there so the layout stays stable when the
  * real screenshot drops in.
  */
+const MOBILE_MQ = '(max-width: 700px)';
+
 const MockupSlot = ({
   label,
   ratio = '16 / 10',
   minHeight,
   tone = 'light',
   src,
+  srcMobile,
   alt,
 }: {
   label: string;
@@ -26,39 +29,55 @@ const MockupSlot = ({
   minHeight?: number;
   tone?: 'light' | 'dark';
   src?: string;
+  /** Optional mobile-specific screenshot. Swapped in via <picture> at ≤700px. */
+  srcMobile?: string;
   alt?: string;
-}) => (
-  <div
-    className={`landing-mockup landing-mockup--${tone}${src ? ' landing-mockup--image' : ''}`}
-    style={{ aspectRatio: ratio, minHeight }}
-    aria-label={`Скрин: ${label}`}
-  >
-    <div className="landing-mockup-chrome">
-      <span />
-      <span />
-      <span />
-    </div>
-    {src ? (
-      <div className="landing-mockup-image">
-        <img src={src} alt={alt ?? label} loading="lazy" />
+}) => {
+  const rootClass = [
+    'landing-mockup',
+    `landing-mockup--${tone}`,
+    src ? 'landing-mockup--image' : '',
+    srcMobile ? 'landing-mockup--has-mobile' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <div
+      className={rootClass}
+      style={{ aspectRatio: ratio, minHeight }}
+      aria-label={`Скрин: ${label}`}
+    >
+      <div className="landing-mockup-chrome">
+        <span />
+        <span />
+        <span />
       </div>
-    ) : (
-      <>
-        <div className="landing-mockup-grid">
-          <div className="lm-line lm-line-60" />
-          <div className="lm-line lm-line-85" />
-          <div className="lm-line lm-line-70" />
-          <div className="lm-line lm-line-50" />
-          <div className="lm-line lm-line-80" />
+      {src ? (
+        <div className="landing-mockup-image">
+          <picture>
+            {srcMobile && <source media={MOBILE_MQ} srcSet={srcMobile} />}
+            <img src={src} alt={alt ?? label} loading="lazy" />
+          </picture>
         </div>
-        <div className="landing-mockup-label">
-          <span className="landing-mockup-label-kicker">Место под скрин</span>
-          <span className="landing-mockup-label-text">{label}</span>
-        </div>
-      </>
-    )}
-  </div>
-);
+      ) : (
+        <>
+          <div className="landing-mockup-grid">
+            <div className="lm-line lm-line-60" />
+            <div className="lm-line lm-line-85" />
+            <div className="lm-line lm-line-70" />
+            <div className="lm-line lm-line-50" />
+            <div className="lm-line lm-line-80" />
+          </div>
+          <div className="landing-mockup-label">
+            <span className="landing-mockup-label-kicker">Место под скрин</span>
+            <span className="landing-mockup-label-text">{label}</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 export const LandingPage = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -170,9 +189,10 @@ export const LandingPage = () => {
           <div className="landing-hero-mockup">
             <MockupSlot
               label="Страница проекта: направления, задачи с приоритетами и типами"
-              ratio="16 / 10"
+              ratio="16 / 12"
               tone="light"
               src="/screens/orbit-payments-list.png"
+              srcMobile="/screens/orbit-payments-list-mobile.png"
               alt="Unit-labs — пример проекта Orbit Payments со списком задач и направлениями"
             />
           </div>
