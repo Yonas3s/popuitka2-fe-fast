@@ -553,6 +553,7 @@ unit-labs task done POPU-42`}</pre>
             <a href="#how">Как работает</a>
             <a href="#integrations">Интеграции</a>
             <a href="#pricing">Цена</a>
+            <Link to="/about">О нас</Link>
             <a
               href="https://www.npmjs.com/package/@yokio42/unit-labs-cli"
               target="_blank"

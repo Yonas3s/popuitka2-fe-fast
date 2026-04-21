@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { GuestOnly, RequireAuth } from './guards';
 import { LandingPage } from '../pages/LandingPage';
+import { AboutPage } from '../pages/AboutPage';
 import { SignInPage } from '../pages/SignInPage';
 import { SignUpPage } from '../pages/SignUpPage';
 import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
@@ -42,6 +43,7 @@ export const AppRoutes = () => {
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/about" element={<AboutPage />} />
 
         <Route element={<GuestOnly />}>
           <Route path="/signin" element={<SignInPage />} />
