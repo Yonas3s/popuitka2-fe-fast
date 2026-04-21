@@ -79,7 +79,7 @@ export const LandingPage = () => {
       <SEO
         title="unit-labs — трекер задач, который закрывается сам"
         rawTitle
-        description="Релиз-менеджмент для dev-команд: задачи, этапы, GitHub auto-close, апрув клиента по ссылке, Telegram-бот, который читает код. Работайте из UI, CLI, Cursor или Claude."
+        description="Релиз-менеджмент для dev-команд: задачи, этапы, GitHub auto-close, апрув клиента по ссылке, Telegram-бот, который читает код. Работайте из UI, CLI, Claude Code или Codex."
         canonicalPath="/"
       />
 
@@ -135,7 +135,7 @@ export const LandingPage = () => {
           </h1>
 
           <p className="landing-hero-lead">
-            Настройте один раз — и <b>работайте из своих инструментов</b>. Задачи создаются из Telegram и Cursor, статус меняется при merge, клиент апрувит релиз по ссылке. <b>Открывать сайт необязательно</b> — доска обновляется сама.
+            Настройте один раз — и <b>работайте из своих инструментов</b>. Задачи создаются из Telegram и Claude Code, статус меняется при merge, клиент апрувит релиз по ссылке. <b>Открывать сайт необязательно</b> — доска обновляется сама.
           </p>
 
           <div className="landing-hero-actions">
@@ -147,8 +147,8 @@ export const LandingPage = () => {
             <div className="landing-proof-logos">
               <span className="landing-proof-chip">GitHub</span>
               <span className="landing-proof-chip">Telegram</span>
-              <span className="landing-proof-chip">Cursor (MCP)</span>
               <span className="landing-proof-chip">Claude Code</span>
+              <span className="landing-proof-chip">Codex</span>
               <span className="landing-proof-chip">CLI</span>
             </div>
           </div>
@@ -281,7 +281,7 @@ export const LandingPage = () => {
                 <h3>Добавь задачи</h3>
               </div>
               <p>
-                Вручную, через CLI <code>unit-labs task new</code>, из Cursor через MCP или попроси <b>AI-агента</b> разложить промпт на задачи — 5-10 штук за пару секунд.
+                Вручную, через CLI <code>unit-labs task new</code>, из Claude Code или Codex через MCP или попроси <b>AI-агента</b> разложить промпт на задачи — 5-10 штук за пару секунд.
               </p>
               <MockupSlot label="Список задач + запуск Agent run с промптом" ratio="4 / 3" />
             </article>
@@ -323,7 +323,7 @@ export const LandingPage = () => {
               <div className="landing-audience-role">Разработчик</div>
               <h3>Не выходи из терминала.</h3>
               <p>
-                CLI и MCP-сервер. Команды <code>task new</code>, <code>task done</code>, <code>task ls --priority urgent</code>. В Cursor/Claude — подключаешь MCP и все эндпоинты становятся tools.
+                CLI и MCP-сервер. Команды <code>task new</code>, <code>task done</code>, <code>task ls --priority urgent</code>. В Claude Code и Codex — подключаете MCP и все эндпоинты становятся tools.
               </p>
               <ul className="landing-audience-list">
                 <li>PAT-токены в /settings/tokens</li>
@@ -397,7 +397,7 @@ unit-labs task done POPU-42`}</pre>
                 <h3>MCP Server</h3>
                 <span className="stitch-integration-badge">npx</span>
               </div>
-              <p>Подключи unit-labs к Claude, Cursor, или любому MCP-клиенту. Все эндпоинты — как tools.</p>
+              <p>Подключите unit-labs к Claude Code, Codex или любому MCP-клиенту. Все эндпоинты — как tools.</p>
               <pre className="stitch-integration-code">{`{
   "unit-labs": {
     "command": "npx",
