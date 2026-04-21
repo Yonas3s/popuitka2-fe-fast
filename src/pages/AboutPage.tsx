@@ -85,7 +85,7 @@ export const AboutPage = () => {
             Нашли баг, хотите интеграцию, идею или просто поздороваться — напишите.
           </p>
           <div className="about-contact-links">
-            <a href="mailto:hello@unit-labs.io" className="ui-btn ui-btn-secondary">hello@unit-labs.io</a>
+            <a href="mailto:info@unit-labs.ru" className="ui-btn ui-btn-secondary">info@unit-labs.ru</a>
             <a
               href="https://t.me/yokio42"
               target="_blank"
