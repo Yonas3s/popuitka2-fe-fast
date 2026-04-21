@@ -135,23 +135,11 @@ export const LandingPage = () => {
           </h1>
 
           <p className="landing-hero-lead">
-            Мерджите PR — задача <b>уходит в done</b>. Клиент открывает ссылку — <b>апрувит релиз</b>. Упоминаете бота в Telegram — <b>задача создаётся со ссылками на файлы</b>.
-          </p>
-
-          <p className="landing-hero-sub">
-            unit-labs — платформа релиз-менеджмента для dev-команд. Единое пространство для задач, этапов и согласования с клиентом. Работает из веб-интерфейса, терминала, Cursor и Claude.
+            unit-labs — платформа релиз-менеджмента для dev-команд. Единое пространство для <b>задач, этапов и согласования с клиентом</b>. Работает из веб-интерфейса, терминала, Cursor и Claude.
           </p>
 
           <div className="landing-hero-actions">
             <Link to="/signup" className="stitch-ghost-cta">Создать проект — бесплатно</Link>
-            <a
-              href="https://www.npmjs.com/package/@yokio42/unit-labs-cli"
-              className="stitch-link-button"
-              target="_blank"
-              rel="noreferrer"
-            >
-              npm i -g @yokio42/unit-labs-cli
-            </a>
           </div>
 
           <div className="landing-hero-proof">
