@@ -13694,13 +13694,22 @@ a.agent-v2-task-title:hover {
   object-position: top center;
 }
 
-/* Portrait aspect on narrow viewports — the mobile screenshot is tall,
-   stretching it inside a 16/10 frame would letterbox awkwardly. */
+/* Narrow viewports — drop the fixed aspect ratio and let the image itself
+   define the frame height so the whole mobile screenshot is visible (not
+   cropped to 9/16 — phones are typically 9/19+ and any fixed ratio clips
+   a chunk). Frame width is capped so the chrome strip stays reasonable. */
 @media (max-width: 700px) {
   .landing-mockup--has-mobile {
-    aspect-ratio: 9 / 16 !important;
+    aspect-ratio: auto !important;
     max-width: 360px;
     margin-inline: auto;
+  }
+  .landing-mockup--has-mobile .landing-mockup-image {
+    flex: none;
+  }
+  .landing-mockup--has-mobile .landing-mockup-image img {
+    height: auto;
+    object-fit: contain;
   }
 }
 
