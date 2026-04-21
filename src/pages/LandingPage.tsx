@@ -6,6 +6,47 @@ import { UnifiedHeader } from '../components/layout/UnifiedHeader';
 import { SEO } from '../components/seo/SEO';
 import { useAuthStore } from '../store/auth.store';
 
+/**
+ * Placeholder for an actual product screenshot. Renders a skeleton frame
+ * with an explicit label describing what goes there — so we know exactly
+ * which screenshot to drop in later. Keep `ratio` close to the real asset
+ * aspect ratio so the layout doesn't jump when the image swaps in.
+ */
+const MockupSlot = ({
+  label,
+  ratio = '16 / 10',
+  minHeight,
+  tone = 'light',
+}: {
+  label: string;
+  ratio?: string;
+  minHeight?: number;
+  tone?: 'light' | 'dark';
+}) => (
+  <div
+    className={`landing-mockup landing-mockup--${tone}`}
+    style={{ aspectRatio: ratio, minHeight }}
+    aria-label={`Скрин: ${label}`}
+  >
+    <div className="landing-mockup-chrome">
+      <span />
+      <span />
+      <span />
+    </div>
+    <div className="landing-mockup-grid">
+      <div className="lm-line lm-line-60" />
+      <div className="lm-line lm-line-85" />
+      <div className="lm-line lm-line-70" />
+      <div className="lm-line lm-line-50" />
+      <div className="lm-line lm-line-80" />
+    </div>
+    <div className="landing-mockup-label">
+      <span className="landing-mockup-label-kicker">Место под скрин</span>
+      <span className="landing-mockup-label-text">{label}</span>
+    </div>
+  </div>
+);
+
 export const LandingPage = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
@@ -20,7 +61,7 @@ export const LandingPage = () => {
     }
   }, [isAuthenticated, user, meLoading, meLoaded, loadMe]);
 
-  const liveLabel = health === 'online' ? 'v1.0.4 Онлайн' : 'v1.0.4 Проверка';
+  const liveLabel = health === 'online' ? 'API v1 · онлайн' : 'API · проверка';
   const healthClass = `health-${health}`;
   const year = useMemo(() => new Date().getFullYear(), []);
 
@@ -36,11 +77,12 @@ export const LandingPage = () => {
   return (
     <div className="stitch-landing">
       <SEO
-        title="unit-labs — релиз-менеджмент для dev-команд"
+        title="unit-labs — трекер задач, который закрывается сам"
         rawTitle
-        description="unit-labs — SaaS для управления релизами. Проекты, этапы, задачи, интеграция с GitHub и Telegram, апрув клиента по публичной ссылке, AI-агент для декомпозиции задач."
+        description="Релиз-менеджмент для dev-команд: задачи, этапы, GitHub auto-close, апрув клиента по ссылке, Telegram-бот, который читает код. Работайте из UI, CLI, Cursor или Claude."
         canonicalPath="/"
       />
+
       {/* ── Nav ── */}
       <UnifiedHeader
         as="nav"
@@ -51,9 +93,10 @@ export const LandingPage = () => {
         centerClassName="stitch-nav-links"
         centerContent={
           <>
-            <a href="#features">Возможности</a>
+            <a href="#product">Продукт</a>
             <a href="#how">Как работает</a>
             <a href="#integrations">Интеграции</a>
+            <a href="#pricing">Цена</a>
           </>
         }
         rightClassName="stitch-nav-actions"
@@ -64,7 +107,7 @@ export const LandingPage = () => {
                 <strong>{user?.username || 'Загрузка...'}</strong>
                 <span>{user?.email || ''}</span>
               </div>
-              <Link to="/projects" className="stitch-solid-button">Перейти к проектам</Link>
+              <Link to="/projects" className="stitch-solid-button">К проектам</Link>
             </>
           ) : (
             <>
@@ -75,164 +118,256 @@ export const LandingPage = () => {
         }
       />
 
-      {/* ── 1. Hero ── */}
+      {/* ── 1. Hero — объясняет за 5 секунд ── */}
       <main className="stitch-main">
         <div className="stitch-main-bg" />
         <div className="stitch-main-glow" />
 
-        <section className="stitch-container stitch-hero">
-          <div className="stitch-live-badge">
+        <section className="stitch-container landing-hero">
+          <div className="landing-hero-badge">
             <span className={`stitch-live-dot ${healthClass}`} />
             <span>{liveLabel}</span>
           </div>
 
-          <h1 className="stitch-title">
-            Релиз-менеджмент<br />
-            <span>для dev-команд.</span>
+          <h1 className="landing-hero-title">
+            Трекер задач,<br />
+            <span>который закрывается сам.</span>
           </h1>
 
-          <p className="stitch-gradient-title">Задачи. Этапы. GitHub. Апрув клиента.</p>
-
-          <p className="stitch-subtitle">
-            Создайте проект, разбейте на задачи, привяжите репозиторий.
-            Клиент видит прогресс и апрувит сборку по ссылке.
+          <p className="landing-hero-lead">
+            Мерджишь PR — задача <b>в done</b>. Клиент кликает ссылку — <b>апрувит релиз</b>. Пишешь боту в тележку — <b>задача заведена со ссылками на код</b>.
           </p>
 
-          <p className="stitch-subtitle stitch-subtitle-agent">
-            AI-агент умеет декомпозировать задачи за вас — опишите что нужно сделать,
-            остальное он разложит сам.
+          <p className="landing-hero-sub">
+            unit-labs — релиз-менеджмент для dev-команд. Без Jira, без ритуалов, без 12 вкладок. Работает из UI, терминала, Cursor и Claude.
           </p>
 
-          <div className="stitch-hero-actions">
-            <Link to="/signup" className="stitch-ghost-cta">Начать бесплатно</Link>
+          <div className="landing-hero-actions">
+            <Link to="/signup" className="stitch-ghost-cta">Создать проект — бесплатно</Link>
+            <a
+              href="https://www.npmjs.com/package/@yokio42/unit-labs-cli"
+              className="stitch-link-button"
+              target="_blank"
+              rel="noreferrer"
+            >
+              npm i -g @yokio42/unit-labs-cli
+            </a>
           </div>
 
-          <div className="stitch-showcase">
-            <div className="stitch-showcase-head">
-              <span /><span /><span />
+          <div className="landing-hero-proof">
+            <span>Работает с</span>
+            <div className="landing-proof-logos">
+              <span className="landing-proof-chip">GitHub</span>
+              <span className="landing-proof-chip">Telegram</span>
+              <span className="landing-proof-chip">Cursor (MCP)</span>
+              <span className="landing-proof-chip">Claude Code</span>
+              <span className="landing-proof-chip">CLI</span>
             </div>
-            <div className="stitch-showcase-grid">
-              <aside className="stitch-showcase-side">
-                <div className="line w40" />
-                <div className="line w80" />
-                <div className="line w68" />
-                <div className="line w76" />
-              </aside>
-              <div className="stitch-showcase-main">
-                <div className="line w34" />
-                <div className="stitch-showcase-tasks">
-                  <article>
-                    <div className="task-left"><span className="box" /><div className="line w72" /></div>
-                    <span className="badge ok">одобрено</span>
-                  </article>
-                  <article>
-                    <div className="task-left"><span className="box" /><div className="line w56" /></div>
-                    <span className="badge review">ревью</span>
-                  </article>
-                  <article>
-                    <div className="task-left"><span className="box" /><div className="line w64" /></div>
-                    <span className="badge wait">активно</span>
-                  </article>
-                </div>
-              </div>
-            </div>
+          </div>
+
+          {/* Большой скрин продукта */}
+          <div className="landing-hero-mockup">
+            <MockupSlot
+              label="Страница этапа: List/Board, задачи с приоритетами и направлениями, drawer задачи"
+              ratio="16 / 10"
+              tone="light"
+            />
           </div>
         </section>
       </main>
 
-      {/* ── 2. Для кого ── */}
-      <section className="stitch-audience" id="audience">
+      {/* ── 2. Три убийственных фичи — которых нет у конкурентов ── */}
+      <section className="landing-killers" id="product">
         <div className="stitch-container">
           <div className="stitch-section-head">
-            <h2>Для кого это</h2>
-            <p>Каждый участник процесса получает то, что ему нужно.</p>
+            <h2>Три вещи, из-за которых стоит переехать</h2>
+            <p>Одна закрывает задачи, вторая релизит клиенту, третья заводит задачи сама.</p>
           </div>
-          <div className="stitch-audience-grid">
-            <article className="stitch-audience-card">
-              <div className="stitch-audience-icon">D</div>
-              <h3>Разработчики</h3>
-              <p>CLI, MCP-сервер, API-токены. Работайте из терминала и агентов, без лишних вкладок.</p>
-            </article>
-            <article className="stitch-audience-card">
-              <div className="stitch-audience-icon">L</div>
-              <h3>Тимлиды</h3>
-              <p>Полная картина: кто над чем работает, на каком этапе релиз, что блокирует деплой.</p>
-            </article>
-            <article className="stitch-audience-card">
-              <div className="stitch-audience-icon">C</div>
-              <h3>Клиенты</h3>
-              <p>Публичная страница релиза. Смотрят прогресс и апрувят сборку в один клик.</p>
-            </article>
-          </div>
-        </div>
-      </section>
 
-      {/* ── 3. Возможности ── */}
-      <section className="stitch-section" id="features">
-        <div className="stitch-container">
-          <div className="stitch-section-head">
-            <h2>Возможности</h2>
-            <p>Всё что нужно для управления релизным пайплайном.</p>
-          </div>
-          <div className="stitch-features-grid">
-            <article className="stitch-feature-card">
-              <div className="stitch-feature-icon">B</div>
-              <h3>Структурный бэклог</h3>
-              <p>Задачи, баги, фичи в одном месте. Типизация, направления, фильтры.</p>
-              <div className="stitch-feature-visual list"><span /><span /></div>
+          <div className="landing-killers-grid">
+            {/* Killer 1: GitHub auto-close */}
+            <article className="landing-killer">
+              <div className="landing-killer-head">
+                <span className="landing-killer-num">01</span>
+                <span className="landing-killer-tag">GitHub Sync</span>
+              </div>
+              <h3>Merge PR → задача done.</h3>
+              <p>
+                Привязываешь репозиторий через GitHub App. В имени ветки или теле PR должен быть <code>POPU-42</code> — наш webhook парсит, закрывает задачу, двигает статус. Всё async, лог в webhook-панели проекта.
+              </p>
+              <div className="landing-killer-visual">
+                <div className="landing-flow-step">
+                  <span className="landing-flow-chip gh">git push feat/popu-87-login</span>
+                </div>
+                <div className="landing-flow-arrow">→</div>
+                <div className="landing-flow-step">
+                  <span className="landing-flow-chip pr">PR merged</span>
+                </div>
+                <div className="landing-flow-arrow">→</div>
+                <div className="landing-flow-step">
+                  <span className="landing-flow-chip done">POPU-87 · done ✓</span>
+                </div>
+              </div>
             </article>
-            <article className="stitch-feature-card">
-              <div className="stitch-feature-icon">S</div>
-              <h3>Этапы релиза</h3>
-              <p>Разработка, предпрод, продакшн. Каждый этап со своим статусом и задачами.</p>
-              <div className="stitch-feature-visual flow"><span /><span /><span /></div>
+
+            {/* Killer 2: Client approve */}
+            <article className="landing-killer">
+              <div className="landing-killer-head">
+                <span className="landing-killer-num">02</span>
+                <span className="landing-killer-tag">Client Link</span>
+              </div>
+              <h3>Клиент апрувит релиз по ссылке.</h3>
+              <p>
+                Генерируешь <code>/p/&lt;token&gt;</code> — клиент видит публичную страницу с этапами и статусами. Нажимает Approve — этап уходит в <b>completed</b>, следующий автоматически становится <b>active</b>. Без звонков и писем.
+              </p>
+              <MockupSlot
+                label="Публичная страница клиента — список этапов + кнопка Approve"
+                ratio="16 / 10"
+                tone="light"
+              />
             </article>
-            <article className="stitch-feature-card">
-              <div className="stitch-feature-icon">A</div>
-              <h3>Апрув клиента</h3>
-              <p>Публичная ссылка на релиз. Клиент видит что готово и подтверждает.</p>
-              <div className="stitch-feature-visual approve"><span>Одобрено</span></div>
-            </article>
-            <article className="stitch-feature-card">
-              <div className="stitch-feature-icon stitch-feature-icon-ai">AI</div>
-              <h3>AI-агент</h3>
-              <p>Генерация задач по промпту. Выберите модель, задайте лимит — агент разложит работу на задачи.</p>
-              <div className="stitch-feature-visual agent">
-                <span>7 задач</span>
-                <span>gemini-2.5</span>
+
+            {/* Killer 3: Telegram research bot */}
+            <article className="landing-killer">
+              <div className="landing-killer-head">
+                <span className="landing-killer-num">03</span>
+                <span className="landing-killer-tag">AI · Telegram</span>
+              </div>
+              <h3>Бот читает код и заводит задачу.</h3>
+              <p>
+                Упомяни <code>@unit_duck_bot</code> в чате команды — он <b>реально читает репо</b> через GitHub Contents API, собирает контекст, делает один LLM-вызов и предлагает драфт задачи с приоритетом и блоком «Источники» — прямыми ссылками на файлы. Жмёшь «создать» — задача в проекте.
+              </p>
+              <div className="landing-tg-demo">
+                <div className="stitch-tg-msg user">
+                  <div className="stitch-tg-avatar">Я</div>
+                  <div className="stitch-tg-bubble">
+                    <b>@unit_duck_bot</b> посмотри как реализован rate-limit на signin и заведи задачу если что-то не так
+                  </div>
+                </div>
+                <div className="stitch-tg-msg bot">
+                  <div className="stitch-tg-avatar bot-avatar">🦆</div>
+                  <div className="stitch-tg-bubble bot-bubble">
+                    <div className="stitch-tg-task">
+                      <span className="landing-prio high" />
+                      <span className="stitch-tg-task-key">POPU-103</span>
+                      <span className="stitch-tg-task-title">Ужесточить rate-limit на /signin до 5/мин</span>
+                    </div>
+                    <div className="stitch-tg-sources">
+                      📁 <a>routes/auth.js</a> · <a>middleware/rateLimit.js</a>
+                    </div>
+                    <div className="landing-tg-actions">
+                      <span className="landing-tg-btn">✓ Создать</span>
+                      <span className="landing-tg-btn ghost">Изменить</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </article>
           </div>
         </div>
       </section>
 
-      {/* ── 4. Как это работает ── */}
+      {/* ── 3. Как работает — flow на скринах ── */}
       <section className="stitch-how" id="how">
         <div className="stitch-container">
           <div className="stitch-section-head">
-            <h2>Как это работает</h2>
-            <p>Четыре шага от идеи до подтверждения клиента.</p>
+            <h2>От идеи до апрува — 4 шага</h2>
+            <p>Никаких долгих онбордингов. Сетап проекта — 2 минуты.</p>
           </div>
-          <div className="stitch-steps-grid">
-            <article className="stitch-step">
-              <div className="stitch-step-number">01</div>
-              <h3>Создайте проект</h3>
-              <p>Выберите режим: этапы для сложных релизов или плоский список для быстрых задач.</p>
+
+          <div className="landing-how-grid">
+            <article className="landing-how-step">
+              <div className="landing-how-step-head">
+                <span className="stitch-step-number">01</span>
+                <h3>Создай проект</h3>
+              </div>
+              <p>
+                Режим <b>stages</b> — для релизов с этапами (dev → staging → prod). Режим <b>flat</b> — если задачи плоским списком. Переключается при создании.
+              </p>
+              <MockupSlot label="Модалка создания проекта (имя + workflow_type)" ratio="4 / 3" />
             </article>
-            <article className="stitch-step">
-              <div className="stitch-step-number">02</div>
-              <h3>Добавьте задачи</h3>
-              <p>Вручную, через CLI, MCP-агента или автогенерацию. Типизируйте и назначайте.</p>
+
+            <article className="landing-how-step">
+              <div className="landing-how-step-head">
+                <span className="stitch-step-number">02</span>
+                <h3>Добавь задачи</h3>
+              </div>
+              <p>
+                Вручную, через CLI <code>unit-labs task new</code>, из Cursor через MCP или попроси <b>AI-агента</b> разложить промпт на задачи — 5-10 штук за пару секунд.
+              </p>
+              <MockupSlot label="Список задач + запуск Agent run с промптом" ratio="4 / 3" />
             </article>
-            <article className="stitch-step">
-              <div className="stitch-step-number">03</div>
-              <h3>Привяжите репозиторий</h3>
-              <p>GitHub App отслеживает push и merge. Задачи закрываются автоматически.</p>
+
+            <article className="landing-how-step">
+              <div className="landing-how-step-head">
+                <span className="stitch-step-number">03</span>
+                <h3>Привяжи репозиторий</h3>
+              </div>
+              <p>
+                Один клик — устанавливаешь GitHub App, выбираешь репо, включаешь <b>auto-close on merge</b>. Дальше merge → done происходит сам.
+              </p>
+              <MockupSlot label="Панель привязки репо + список webhook-событий" ratio="4 / 3" />
             </article>
-            <article className="stitch-step">
-              <div className="stitch-step-number">04</div>
-              <h3>Отправьте клиенту</h3>
-              <p>Сгенерируйте публичную ссылку. Клиент видит прогресс и апрувит сборку.</p>
+
+            <article className="landing-how-step">
+              <div className="landing-how-step-head">
+                <span className="stitch-step-number">04</span>
+                <h3>Отправь клиенту</h3>
+              </div>
+              <p>
+                Сгенерируй <code>/p/&lt;token&gt;</code>, отправь в мессенджер. Клиент смотрит прогресс, ставит Approve — этап закрыт, следующий активен.
+              </p>
+              <MockupSlot label="Кнопка «Запросить ревью» + копирование клиент-ссылки" ratio="4 / 3" />
+            </article>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 4. Три аудитории — с конкретикой, а не D/L/C ── */}
+      <section className="stitch-audience" id="audience">
+        <div className="stitch-container">
+          <div className="stitch-section-head">
+            <h2>Для кого</h2>
+            <p>У каждой роли — своя точка входа и своя ценность.</p>
+          </div>
+          <div className="landing-audience-grid">
+            <article className="landing-audience-card">
+              <div className="landing-audience-role">Разработчик</div>
+              <h3>Не выходи из терминала.</h3>
+              <p>
+                CLI и MCP-сервер. Команды <code>task new</code>, <code>task done</code>, <code>task ls --priority urgent</code>. В Cursor/Claude — подключаешь MCP и все эндпоинты становятся tools.
+              </p>
+              <ul className="landing-audience-list">
+                <li>PAT-токены в /settings/tokens</li>
+                <li>Issue keys автогенерятся (<code>POPU-42</code>)</li>
+                <li>Merge PR закрывает задачу</li>
+              </ul>
+            </article>
+
+            <article className="landing-audience-card">
+              <div className="landing-audience-role">Тимлид</div>
+              <h3>Вижу всё. Ничего не теряю.</h3>
+              <p>
+                Доска по статусам (backlog/todo/in progress/review/done). Фильтры по приоритету и направлению. Webhook-лог показывает какой merge закрыл какую задачу.
+              </p>
+              <ul className="landing-audience-list">
+                <li>Board-вью с drag-n-drop</li>
+                <li>Приоритеты: urgent → high → medium → low</li>
+                <li>Запрос ревью — один клик</li>
+              </ul>
+            </article>
+
+            <article className="landing-audience-card">
+              <div className="landing-audience-role">Клиент</div>
+              <h3>Один линк. Один клик.</h3>
+              <p>
+                Клиенту не нужен аккаунт. Даёшь ссылку <code>unit-labs.ru/p/&lt;token&gt;</code> — он видит этапы, статусы и задачи. Кликает Approve — этап завершён.
+              </p>
+              <ul className="landing-audience-list">
+                <li>Публичный вью без регистрации</li>
+                <li>Прогресс в реальном времени</li>
+                <li>Апрув в один клик</li>
+              </ul>
             </article>
           </div>
         </div>
@@ -242,18 +377,63 @@ export const LandingPage = () => {
       <section className="stitch-integrations" id="integrations">
         <div className="stitch-container">
           <div className="stitch-section-head">
-            <h2>Интеграции</h2>
-            <p>Подключайтесь к unit-labs из любого инструмента.</p>
+            <h2>Работай откуда удобно</h2>
+            <p>Четыре точки входа в одну и ту же модель данных.</p>
           </div>
 
           <div className="stitch-integrations-grid">
+            {/* CLI */}
+            <article className="stitch-integration-card">
+              <div className="stitch-integration-head">
+                <h3>CLI</h3>
+                <span className="stitch-integration-badge">npm</span>
+              </div>
+              <p>Управляй проектами и задачами из терминала. PAT или JWT — без разницы.</p>
+              <pre className="stitch-integration-code">{`npm i -g @yokio42/unit-labs-cli
+unit-labs auth login
+unit-labs task new "фикс роутинга" --priority high
+unit-labs task done POPU-42`}</pre>
+              <a
+                className="stitch-dev-doc-link"
+                href="https://www.npmjs.com/package/@yokio42/unit-labs-cli?activeTab=readme"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Документация CLI →
+              </a>
+            </article>
+
+            {/* MCP */}
+            <article className="stitch-integration-card">
+              <div className="stitch-integration-head">
+                <h3>MCP Server</h3>
+                <span className="stitch-integration-badge">npx</span>
+              </div>
+              <p>Подключи unit-labs к Claude, Cursor, или любому MCP-клиенту. Все эндпоинты — как tools.</p>
+              <pre className="stitch-integration-code">{`{
+  "unit-labs": {
+    "command": "npx",
+    "args": ["-y", "@yokio42/unit-labs-mcp"],
+    "env": { "UNIT_LABS_TOKEN": "ul_..." }
+  }
+}`}</pre>
+              <a
+                className="stitch-dev-doc-link"
+                href="https://www.npmjs.com/package/@yokio42/unit-labs-mcp"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Документация MCP →
+              </a>
+            </article>
+
             {/* GitHub */}
             <article className="stitch-integration-card">
               <div className="stitch-integration-head">
-                <h3>GitHub Sync</h3>
+                <h3>GitHub App</h3>
                 <span className="stitch-integration-badge">App</span>
               </div>
-              <p>Привяжите репозитории. Merge закрывает задачи. Все события в webhook-логе.</p>
+              <p>Привяжи репо — webhook'и приходят на <code>/webhooks/github</code>. Merge PR с issue-key в ветке = задача done.</p>
               <div className="stitch-github-demo">
                 <div className="stitch-github-demo-row">
                   <span className="stitch-github-dot connected" />
@@ -271,51 +451,13 @@ export const LandingPage = () => {
                   <span className="stitch-github-badge-outline">привязать</span>
                 </div>
               </div>
-            </article>
-
-            {/* CLI */}
-            <article className="stitch-integration-card">
-              <div className="stitch-integration-head">
-                <h3>CLI</h3>
-                <span className="stitch-integration-badge">npm</span>
-              </div>
-              <p>Управляйте проектами и задачами из терминала. Никаких вкладок.</p>
-              <pre className="stitch-integration-code">{`npm i -g @yokio42/unit-labs-cli
-unit-labs auth login
-unit-labs projects list`}</pre>
               <a
                 className="stitch-dev-doc-link"
-                href="https://www.npmjs.com/package/@yokio42/unit-labs-cli?activeTab=readme"
+                href="https://github.com/apps/popuitkav2"
                 target="_blank"
                 rel="noreferrer"
               >
-                Документация CLI
-              </a>
-            </article>
-
-            {/* MCP */}
-            <article className="stitch-integration-card">
-              <div className="stitch-integration-head">
-                <h3>MCP Server</h3>
-                <span className="stitch-integration-badge">npx</span>
-              </div>
-              <p>Подключите unit-labs к Claude, Cursor или любому MCP-клиенту.</p>
-              <pre className="stitch-integration-code">{`{
-  "unit-labs": {
-    "command": "npx",
-    "args": ["-y", "@yokio42/unit-labs-mcp"],
-    "env": {
-      "UNIT_LABS_TOKEN": "ul_..."
-    }
-  }
-}`}</pre>
-              <a
-                className="stitch-dev-doc-link"
-                href="https://www.npmjs.com/package/@yokio42/unit-labs-mcp"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Документация MCP
+                Установить App →
               </a>
             </article>
 
@@ -323,47 +465,48 @@ unit-labs projects list`}</pre>
             <article className="stitch-integration-card">
               <div className="stitch-integration-head">
                 <h3>Telegram Bot</h3>
-                <span className="stitch-integration-badge stitch-integration-badge-live">Bot</span>
+                <span className="stitch-integration-badge stitch-integration-badge-live">@unit_duck_bot</span>
               </div>
               <p>
-                Упомяни бота в чате — он прочитает код и сам заведёт задачу со ссылками на файлы.
+                Команды <code>/tasks</code>, <code>/mine</code>, <code>/task POPU-15</code>. Или просто упомяни бота — прочитает код и заведёт задачу.
               </p>
-              <div className="stitch-tg-chat">
-                <div className="stitch-tg-msg user">
-                  <div className="stitch-tg-avatar">Я</div>
-                  <div className="stitch-tg-bubble">
-                    <b>@unit_duck_bot</b> проанализируй авторизацию на фронте и заведи задачу по безопасности
-                  </div>
-                </div>
-                <div className="stitch-tg-msg bot">
-                  <div className="stitch-tg-avatar bot-avatar">🦆</div>
-                  <div className="stitch-tg-bubble bot-bubble">
-                    <div className="stitch-tg-task">
-                      <span className="stitch-tg-check">✓</span>
-                      <span className="stitch-tg-task-key">POPU-87</span>
-                      <span className="stitch-tg-task-title">Улучшить защиту авторизации</span>
-                    </div>
-                    <div className="stitch-tg-sources">
-                      📁 LoginPage.tsx · authClient.ts · middleware/auth.js
-                    </div>
-                  </div>
-                </div>
-              </div>
               <div className="stitch-tg-commands">
                 <span className="stitch-tg-cmd">/tasks</span>
                 <span className="stitch-tg-cmd">/mine</span>
                 <span className="stitch-tg-cmd">/task POPU-15</span>
+                <span className="stitch-tg-cmd">@unit_duck_bot &lt;промпт&gt;</span>
               </div>
+              <MockupSlot label="Реальный скрин ТГ-чата с командой + меню бота" ratio="16 / 9" />
             </article>
           </div>
         </div>
       </section>
 
-      {/* ── 6. CTA ── */}
+      {/* ── 6. Pricing hint ── */}
+      <section className="landing-pricing" id="pricing">
+        <div className="stitch-container landing-pricing-inner">
+          <div className="landing-pricing-head">
+            <h2>Цена</h2>
+            <p>Сейчас — бесплатно. Сразу, без карты. Пиши фичи — добавим.</p>
+          </div>
+          <div className="landing-pricing-card">
+            <div className="landing-pricing-big">$0</div>
+            <ul className="landing-pricing-list">
+              <li>Неограничено проектов и команд</li>
+              <li>GitHub App, Telegram-бот, CLI, MCP</li>
+              <li>AI-агент (Groq / Gemini / OpenAI)</li>
+              <li>Публичные клиент-ссылки</li>
+            </ul>
+            <Link to="/signup" className="stitch-ghost-cta">Получить доступ</Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 7. Final CTA ── */}
       <section className="stitch-final-cta">
         <div className="stitch-container stitch-final-cta-inner">
-          <h2>Начните за 2 минуты</h2>
-          <p>Бесплатно. Без карты. Создайте первый проект и пригласите команду.</p>
+          <h2>Настрой проект за 2 минуты</h2>
+          <p>Создай аккаунт, привяжи репо, отправь линк клиенту. Первый апрув — через час.</p>
           <div className="stitch-final-cta-actions">
             <Link to="/signup" className="stitch-ghost-cta">Создать аккаунт</Link>
             <a
@@ -372,20 +515,21 @@ unit-labs projects list`}</pre>
               rel="noreferrer"
               className="stitch-link-button"
             >
-              Или начните из CLI
+              Или начать из CLI
             </a>
           </div>
         </div>
       </section>
 
-      {/* ── 7. Footer ── */}
+      {/* ── Footer ── */}
       <footer className="stitch-footer">
         <div className="stitch-container stitch-footer-row">
           <p>© {year} {APP_TITLE}</p>
           <div className="stitch-footer-links">
-            <a href="#features">Возможности</a>
+            <a href="#product">Продукт</a>
             <a href="#how">Как работает</a>
             <a href="#integrations">Интеграции</a>
+            <a href="#pricing">Цена</a>
             <a
               href="https://www.npmjs.com/package/@yokio42/unit-labs-cli"
               target="_blank"
@@ -398,7 +542,7 @@ unit-labs projects list`}</pre>
               target="_blank"
               rel="noreferrer"
             >
-              GitHub
+              GitHub App
             </a>
           </div>
         </div>
