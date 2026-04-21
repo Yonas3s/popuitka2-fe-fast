@@ -181,67 +181,25 @@ export const LandingPage = () => {
         <div className="stitch-container">
           <div className="stitch-section-head">
             <h2>Три сценария, которые экономят часы</h2>
-            <p>Один закрывает задачи, второй согласует релиз с клиентом, третий создаёт задачи по обращению в Telegram.</p>
+            <p>Первый создаёт задачи по обращению в Telegram, второй согласует релиз с клиентом, третий закрывает задачи при merge в GitHub.</p>
           </div>
 
           <div className="landing-killers-grid">
-            {/* Killer 1: GitHub auto-close */}
+            {/* Killer 1: Telegram research bot */}
             <article className="landing-killer">
               <div className="landing-killer-head">
                 <span className="landing-killer-num">01</span>
-                <span className="landing-killer-tag">GitHub Sync</span>
-              </div>
-              <h3>Merge PR → задача done.</h3>
-              <p>
-                Привязываешь репозиторий через GitHub App. В имени ветки или теле PR должен быть <code>POPU-42</code> — наш webhook парсит, закрывает задачу, двигает статус. Всё async, лог в webhook-панели проекта.
-              </p>
-              <div className="landing-killer-visual">
-                <div className="landing-flow-step">
-                  <span className="landing-flow-chip gh">git push feat/popu-87-login</span>
-                </div>
-                <div className="landing-flow-arrow">→</div>
-                <div className="landing-flow-step">
-                  <span className="landing-flow-chip pr">PR merged</span>
-                </div>
-                <div className="landing-flow-arrow">→</div>
-                <div className="landing-flow-step">
-                  <span className="landing-flow-chip done">POPU-87 · done ✓</span>
-                </div>
-              </div>
-            </article>
-
-            {/* Killer 2: Client approve */}
-            <article className="landing-killer">
-              <div className="landing-killer-head">
-                <span className="landing-killer-num">02</span>
-                <span className="landing-killer-tag">Client Link</span>
-              </div>
-              <h3>Клиент апрувит релиз по ссылке.</h3>
-              <p>
-                Генерируешь <code>/p/&lt;token&gt;</code> — клиент видит публичную страницу с этапами и статусами. Нажимает Approve — этап уходит в <b>completed</b>, следующий автоматически становится <b>active</b>. Без звонков и писем.
-              </p>
-              <MockupSlot
-                label="Публичная страница клиента — список этапов + кнопка Approve"
-                ratio="16 / 10"
-                tone="light"
-              />
-            </article>
-
-            {/* Killer 3: Telegram research bot */}
-            <article className="landing-killer">
-              <div className="landing-killer-head">
-                <span className="landing-killer-num">03</span>
                 <span className="landing-killer-tag">AI · Telegram</span>
               </div>
-              <h3>Бот читает код и заводит задачу.</h3>
+              <h3>Бот читает код и создаёт задачу.</h3>
               <p>
-                Упомяни <code>@unit_duck_bot</code> в чате команды — он <b>реально читает репо</b> через GitHub Contents API, собирает контекст, делает один LLM-вызов и предлагает драфт задачи с приоритетом и блоком «Источники» — прямыми ссылками на файлы. Жмёшь «создать» — задача в проекте.
+                Упомяните <code>@unit_duck_bot</code> в чате команды — он читает репозиторий через GitHub Contents API, собирает контекст, делает один LLM-вызов и предлагает драфт задачи с приоритетом и блоком «Источники» — прямыми ссылками на файлы. Нажимаете «Создать» — задача появляется в проекте.
               </p>
               <div className="landing-tg-demo">
                 <div className="stitch-tg-msg user">
                   <div className="stitch-tg-avatar">Я</div>
                   <div className="stitch-tg-bubble">
-                    <b>@unit_duck_bot</b> посмотри как реализован rate-limit на signin и заведи задачу если что-то не так
+                    <b>@unit_duck_bot</b> посмотри, как реализован rate-limit на signin, и заведи задачу, если что-то не так
                   </div>
                 </div>
                 <div className="stitch-tg-msg bot">
@@ -260,6 +218,48 @@ export const LandingPage = () => {
                       <span className="landing-tg-btn ghost">Изменить</span>
                     </div>
                   </div>
+                </div>
+              </div>
+            </article>
+
+            {/* Killer 2: Client approve */}
+            <article className="landing-killer">
+              <div className="landing-killer-head">
+                <span className="landing-killer-num">02</span>
+                <span className="landing-killer-tag">Client Link</span>
+              </div>
+              <h3>Клиент апрувит релиз по ссылке.</h3>
+              <p>
+                Генерируете <code>/p/&lt;token&gt;</code> — клиент открывает публичную страницу с этапами и статусами. Нажимает Approve — этап уходит в <b>completed</b>, следующий автоматически становится <b>active</b>. Без звонков и писем.
+              </p>
+              <MockupSlot
+                label="Публичная страница клиента — список этапов + кнопка Approve"
+                ratio="16 / 10"
+                tone="light"
+              />
+            </article>
+
+            {/* Killer 3: GitHub auto-close */}
+            <article className="landing-killer">
+              <div className="landing-killer-head">
+                <span className="landing-killer-num">03</span>
+                <span className="landing-killer-tag">GitHub Sync</span>
+              </div>
+              <h3>Merge PR — задача уходит в done.</h3>
+              <p>
+                Привязываете репозиторий через GitHub App. В имени ветки или теле PR указываете <code>POPU-42</code> — webhook парсит ключ, закрывает задачу и переводит статус. Обработка асинхронная, полный лог — в панели webhook-событий проекта.
+              </p>
+              <div className="landing-killer-visual">
+                <div className="landing-flow-step">
+                  <span className="landing-flow-chip gh">git push feat/popu-87-login</span>
+                </div>
+                <div className="landing-flow-arrow">→</div>
+                <div className="landing-flow-step">
+                  <span className="landing-flow-chip pr">PR merged</span>
+                </div>
+                <div className="landing-flow-arrow">→</div>
+                <div className="landing-flow-step">
+                  <span className="landing-flow-chip done">POPU-87 · done ✓</span>
                 </div>
               </div>
             </article>
