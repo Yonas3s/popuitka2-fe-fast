@@ -18,14 +18,6 @@ const STAGE_STATUS_LABEL: Record<StageStatus, string> = {
   unknown: '—',
 };
 
-const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
-  backlog: 'в бэклоге',
-  todo: 'к работе',
-  in_progress: 'в работе',
-  review: 'на проверке',
-  done: 'готово',
-};
-
 const TASK_STATUS_TONE: Record<TaskStatus, 'pending' | 'active' | 'review' | 'done'> = {
   backlog: 'pending',
   todo: 'pending',
