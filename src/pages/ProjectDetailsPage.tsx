@@ -47,6 +47,7 @@ export const ProjectDetailsPage = () => {
   const createStage = useProjectsStore((state) => state.createStage);
   const createShareLink = useProjectsStore((state) => state.createShareLink);
   const pushToast = useUiStore((state) => state.pushToast);
+  const openConfirm = useUiStore((state) => state.openConfirm);
   const [createOpen, setCreateOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [flatTasks, setFlatTasks] = useState<Task[]>([]);
@@ -279,13 +280,54 @@ export const ProjectDetailsPage = () => {
     }
   });
 
-  const onShare = async () => {
+  /** Issue a fresh share token (overwriting any existing one). */
+  const issueShareLink = async (successMessage: string) => {
     try {
       await createShareLink(projectId);
-      pushToast('Ссылка релиза создана', 'success');
+      pushToast(successMessage, 'success');
     } catch {
       pushToast('Не удалось выполнить действие', 'error');
     }
+  };
+
+  /** Create a link only if there isn't one yet — never rotate silently. */
+  const onCreateShare = async () => {
+    if (resolvedShare) {
+      // Already has a working link — just open the panel so the user sees it.
+      setToolsOpen(true);
+      pushToast('Ссылка уже существует — копируйте из панели ниже', 'info');
+      return;
+    }
+    await issueShareLink('Клиентская ссылка создана');
+    setToolsOpen(true);
+  };
+
+  /** Explicit rotate — old link stops working, requires confirmation. */
+  const onRotateShare = () => {
+    if (!resolvedShare) {
+      void issueShareLink('Клиентская ссылка создана');
+      return;
+    }
+    openConfirm({
+      title: 'Перевыпустить клиентскую ссылку?',
+      description:
+        'Старая ссылка перестанет работать у заказчика. Используйте, если ссылка утекла или нужно отозвать доступ.',
+      onConfirm: () => {
+        void issueShareLink('Ссылка перевыпущена — старая больше не работает');
+      },
+    });
+  };
+
+  /** "Запустить релиз" — primary CTA. Creates a link if missing, opens
+   *  the share panel so the user can copy the URL right away. Never
+   *  rotates an existing token silently. */
+  const onLaunchRelease = async () => {
+    if (!resolvedShare) {
+      await issueShareLink('Релиз запущен — ссылка готова');
+    } else {
+      pushToast('Релиз доступен по существующей ссылке', 'info');
+    }
+    setToolsOpen(true);
   };
 
   const onCopy = async () => {
@@ -635,7 +677,7 @@ export const ProjectDetailsPage = () => {
               >
                 Настройки
               </button>
-              <button className="project-v4-primary-btn" type="button" onClick={onShare}>
+              <button className="project-v4-primary-btn" type="button" onClick={onLaunchRelease}>
                 Запустить релиз
               </button>
             </div>
@@ -644,9 +686,24 @@ export const ProjectDetailsPage = () => {
           {toolsOpen ? (
             <section className="project-v4-tools">
               <div className="project-v4-tools-row">
-                <button className="project-v4-secondary-btn" type="button" onClick={onShare}>
-                  Сгенерировать клиентскую ссылку
-                </button>
+                {!resolvedShare ? (
+                  <button
+                    className="project-v4-secondary-btn"
+                    type="button"
+                    onClick={onCreateShare}
+                  >
+                    Создать клиентскую ссылку
+                  </button>
+                ) : (
+                  <button
+                    className="project-v4-secondary-btn"
+                    type="button"
+                    onClick={onRotateShare}
+                    title="Старая ссылка перестанет работать"
+                  >
+                    Перевыпустить ссылку
+                  </button>
+                )}
                 <button
                   className="project-v4-secondary-btn"
                   type="button"
