@@ -1,27 +1,40 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { PageShell } from '../components/layout/PageShell';
-import { GlassPanel } from '../components/ui/GlassPanel';
-import { GradientButton } from '../components/ui/GradientButton';
-import { EmptyState } from '../components/feedback/EmptyState';
-import { ErrorState } from '../components/feedback/ErrorState';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
-import type { PublicSharePayload, Stage, Task } from '../types/models';
+import type { PublicSharePayload, Stage, Task, TaskStatus } from '../types/models';
 import { useUiStore } from '../store/ui.store';
+import { SEO } from '../components/seo/SEO';
+import { TASK_TYPE_CFG } from '../components/tasks/TaskMetaMenu';
 
-type Status = 'idle' | 'loading' | 'error';
+type LoadStatus = 'idle' | 'loading' | 'error';
 type StageStatus = NonNullable<Stage['status']> | 'unknown';
 
-const stageStatusLabel: Record<StageStatus, string> = {
+const STAGE_STATUS_LABEL: Record<StageStatus, string> = {
   active: 'в работе',
-  waiting: 'ожидание',
-  review: 'ожидает ревью',
-  completed: 'завершено',
-  unknown: 'неизвестно',
+  waiting: 'ожидает старта',
+  review: 'на проверке',
+  completed: 'готово',
+  unknown: '—',
 };
 
-const stagePriority: Record<StageStatus, number> = {
+const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
+  backlog: 'в бэклоге',
+  todo: 'к работе',
+  in_progress: 'в работе',
+  review: 'на проверке',
+  done: 'готово',
+};
+
+const TASK_STATUS_TONE: Record<TaskStatus, 'pending' | 'active' | 'review' | 'done'> = {
+  backlog: 'pending',
+  todo: 'pending',
+  in_progress: 'active',
+  review: 'review',
+  done: 'done',
+};
+
+const STAGE_PRIORITY: Record<StageStatus, number> = {
   review: 0,
   active: 1,
   waiting: 2,
@@ -29,11 +42,56 @@ const stagePriority: Record<StageStatus, number> = {
   unknown: 4,
 };
 
-const formatIssueKey = (value?: string) => (value ? value.toUpperCase() : null);
+const fmtIssueKey = (value?: string) => (value ? value.toUpperCase() : '');
+
+const sortStages = (stages: Stage[]): Stage[] =>
+  [...stages].sort((a, b) => {
+    const aS: StageStatus = a.status ?? 'unknown';
+    const bS: StageStatus = b.status ?? 'unknown';
+    return STAGE_PRIORITY[aS] - STAGE_PRIORITY[bS];
+  });
+
+// Group tasks by status, in a meaningful client-facing order:
+// in_progress → review → todo/backlog → done
+const TASK_GROUP_ORDER: TaskStatus[] = ['in_progress', 'review', 'todo', 'backlog', 'done'];
+const TASK_GROUP_TITLE: Record<TaskStatus, string> = {
+  in_progress: 'В работе',
+  review: 'На проверке',
+  todo: 'В очереди',
+  backlog: 'Запланировано',
+  done: 'Готово',
+};
+
+const groupTasks = (tasks: Task[]): { key: TaskStatus; items: Task[] }[] => {
+  const buckets = new Map<TaskStatus, Task[]>();
+  for (const t of tasks) {
+    const status = t.status ?? (t.done ? 'done' : 'todo');
+    if (!buckets.has(status)) buckets.set(status, []);
+    buckets.get(status)!.push(t);
+  }
+  return TASK_GROUP_ORDER
+    .filter((s) => buckets.has(s))
+    .map((s) => ({ key: s, items: buckets.get(s)! }));
+};
+
+const overallStatus = (data: PublicSharePayload): StageStatus => {
+  if (data.approved) return 'completed';
+  if (data.workflowType === 'flat') {
+    if (data.tasks.length === 0) return 'waiting';
+    if (data.tasks.every((t) => t.done || t.status === 'done')) return 'completed';
+    if (data.tasks.some((t) => t.status === 'review')) return 'review';
+    if (data.tasks.some((t) => t.status === 'in_progress')) return 'active';
+    return 'waiting';
+  }
+  if (data.stages.some((s) => s.status === 'review')) return 'review';
+  if (data.stages.some((s) => s.status === 'active')) return 'active';
+  if (data.stages.length > 0 && data.stages.every((s) => s.status === 'completed')) return 'completed';
+  return 'waiting';
+};
 
 export const PublicClientPage = () => {
   const { shareToken = '' } = useParams();
-  const [status, setStatus] = useState<Status>('idle');
+  const [status, setStatus] = useState<LoadStatus>('idle');
   const [payload, setPayload] = useState<PublicSharePayload | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -42,14 +100,12 @@ export const PublicClientPage = () => {
   const loadPublicData = async () => {
     setStatus('loading');
     setErrorMessage('');
-
     try {
       const response = await apiService.getPublicProject(shareToken);
       setPayload(response);
       setStatus('idle');
     } catch (error) {
-      const normalized = normalizeApiError(error);
-      setErrorMessage(normalized.message);
+      setErrorMessage(normalizeApiError(error).message);
       setStatus('error');
     }
   };
@@ -57,10 +113,9 @@ export const PublicClientPage = () => {
   useEffect(() => {
     if (!shareToken) {
       setStatus('error');
-      setErrorMessage('Неверный публичный токен');
+      setErrorMessage('Ссылка некорректная — обратитесь к менеджеру проекта.');
       return;
     }
-
     void loadPublicData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shareToken]);
@@ -68,174 +123,243 @@ export const PublicClientPage = () => {
   const onApprove = async () => {
     try {
       await apiService.approvePublicProject(shareToken);
-      pushToast('Стадия подтверждена', 'success');
+      pushToast('Спасибо! Этап подтверждён.', 'success');
       await loadPublicData();
     } catch (error) {
-      const normalized = normalizeApiError(error);
-      pushToast(normalized.message, 'error');
+      pushToast(normalizeApiError(error).message, 'error');
     }
   };
 
-  const sortStages = (stages: Stage[]): Stage[] => {
-    return [...stages].sort((a, b) => {
-      const aStatus: StageStatus = a.status ?? 'unknown';
-      const bStatus: StageStatus = b.status ?? 'unknown';
-      return stagePriority[aStatus] - stagePriority[bStatus];
-    });
-  };
+  const projectName = payload?.project?.projectName || 'Проект';
 
-  const sortTasks = (tasks: Task[]): Task[] => {
-    return [...tasks].sort((a, b) => Number(a.done) - Number(b.done));
-  };
-
-  const getProjectStatus = (data: PublicSharePayload): StageStatus => {
-    if (data.approved) {
-      return 'completed';
+  const progress = useMemo(() => {
+    if (!payload) return { done: 0, total: 0, percent: 0 };
+    if (payload.workflowType === 'flat') {
+      const total = payload.tasks.length;
+      const done = payload.tasks.filter((t) => t.done || t.status === 'done').length;
+      return { done, total, percent: total === 0 ? 0 : Math.round((done / total) * 100) };
     }
-
-    if (data.stages.some((stage) => stage.status === 'review')) {
-      return 'review';
-    }
-
-    if (data.stages.some((stage) => stage.status === 'active')) {
-      return 'active';
-    }
-
-    if (data.stages.every((stage) => stage.status === 'completed')) {
-      return 'completed';
-    }
-
-    return 'waiting';
-  };
-
-  const getFlatProjectStatus = (data: PublicSharePayload): StageStatus => {
-    if (data.approved) {
-      return 'completed';
-    }
-
-    if (data.tasks.length === 0) {
-      return 'waiting';
-    }
-
-    if (data.tasks.every((task) => task.done)) {
-      return 'completed';
-    }
-
-    return 'active';
-  };
+    const total = payload.stages.length;
+    const done = payload.stages.filter((s) => s.status === 'completed').length;
+    return { done, total, percent: total === 0 ? 0 : Math.round((done / total) * 100) };
+  }, [payload]);
 
   return (
-    <PageShell title="Клиентский просмотр" subtitle="Публичная ссылка для проверки и подтверждения стадии.">
-      <GlassPanel className="client-panel">
-        {status === 'loading' ? <p>Загрузка...</p> : null}
+    <div className="pcp-page">
+      <SEO
+        title={payload ? `${projectName} — статус проекта` : 'Статус проекта'}
+        description="Публичный обзор проекта для заказчика: прогресс по задачам и этапам."
+        noindex
+      />
 
-        {status === 'error' ? (
-          <ErrorState title="Ссылка недоступна" message={errorMessage || 'Не удалось загрузить данные'} />
-        ) : null}
+      <header className="pcp-header">
+        <div className="pcp-container pcp-header-row">
+          <div className="pcp-brand">
+            unit-labs<span>_</span>
+          </div>
+          <div className="pcp-by">
+            обзор для заказчика
+          </div>
+        </div>
+      </header>
 
-        {status === 'idle' && payload ? (
-          <div className="client-canvas">
-            <p className="client-caption">Для заказчика</p>
-            <div className="client-flow">
-              <p className="client-breadcrumb">
-                {(payload.project?.projectName || 'Название проекта') + ' -> Заказчик'}
-              </p>
+      <main className="pcp-main">
+        <div className="pcp-container">
+          {status === 'loading' && (
+            <div className="pcp-card pcp-loading">Загружаем проект…</div>
+          )}
+
+          {status === 'error' && (
+            <div className="pcp-card pcp-error">
+              <h2>Не удалось открыть проект</h2>
+              <p>{errorMessage || 'Ссылка могла быть отозвана. Запросите новую у менеджера.'}</p>
+            </div>
+          )}
+
+          {status === 'idle' && payload && (
+            <>
+              <section className="pcp-hero">
+                <p className="pcp-eyebrow">Проект</p>
+                <h1 className="pcp-title">{projectName}</h1>
+                <div className="pcp-hero-meta">
+                  <span className={`pcp-pill pcp-pill--${overallStatus(payload)}`}>
+                    <span className="pcp-pill-dot" />
+                    {STAGE_STATUS_LABEL[overallStatus(payload)]}
+                  </span>
+                  {progress.total > 0 && (
+                    <span className="pcp-progress-label">
+                      {progress.done} из {progress.total} {payload.workflowType === 'flat' ? 'задач' : 'этапов'} готово
+                    </span>
+                  )}
+                </div>
+                {progress.total > 0 && (
+                  <div className="pcp-progress-bar" aria-label={`Готово ${progress.percent}%`}>
+                    <div className="pcp-progress-fill" style={{ width: `${progress.percent}%` }} />
+                    <span className="pcp-progress-percent">{progress.percent}%</span>
+                  </div>
+                )}
+              </section>
 
               {payload.workflowType === 'flat' ? (
-                (() => {
-                  const projectStatus = getFlatProjectStatus(payload);
-                  const sortedTasks = sortTasks(payload.tasks);
-
-                  return (
-                    <div className="client-column">
-                      <article className="client-card client-project-card">
-                        <h3>{payload.project?.projectName || 'Название проекта'}</h3>
-                        <p className={`client-state state-${projectStatus}`}>
-                          <span className="state-dot" />
-                          {stageStatusLabel[projectStatus]}
-                        </p>
-                        <p className="client-description">Режим flat: отображается общий список задач проекта.</p>
-                      </article>
-
-                      {sortedTasks.length === 0 ? (
-                        <EmptyState title="Задачи не найдены" description="Для этой ссылки нет задач проекта." />
-                      ) : (
-                        sortedTasks.map((task) => {
-                          const taskStatus: StageStatus = task.done ? 'completed' : 'active';
-                          return (
-                            <article key={task.id} className={`client-card client-stage-card stage-${taskStatus}`}>
-                              {task.issueKey ? <p className="client-issue-key">{formatIssueKey(task.issueKey)}</p> : null}
-                              <p className="client-stage-title">{task.title}</p>
-                              <p className={`client-state state-${taskStatus}`}>
-                                <span className="state-dot" />
-                                {task.done ? 'выполнено' : 'в работе'}
-                              </p>
-                            </article>
-                          );
-                        })
-                      )}
-                    </div>
-                  );
-                })()
+                <FlatTasksSection
+                  tasks={payload.tasks}
+                  approved={Boolean(payload.approved)}
+                  onApprove={onApprove}
+                />
               ) : (
-                (() => {
-                  const projectStatus = getProjectStatus(payload);
-                  const sortedStages = sortStages(payload.stages);
-
-                  return (
-                    <div className="client-column">
-                      <article className="client-card client-project-card">
-                        <h3>{payload.project?.projectName || 'Название проекта'}</h3>
-                        <p className={`client-state state-${projectStatus}`}>
-                          <span className="state-dot" />
-                          {stageStatusLabel[projectStatus]}
-                        </p>
-                      </article>
-
-                      {sortedStages.length === 0 ? (
-                        <EmptyState title="Стадии не найдены" description="Для этой ссылки нет доступных стадий." />
-                      ) : (
-                        sortedStages.map((stage) => {
-                          const stageStatus: StageStatus = stage.status ?? 'unknown';
-                          const showApprove = stage.status === 'review' && !payload.approved;
-
-                          return (
-                            <article key={stage.id} className={`client-card client-stage-card stage-${stageStatus}`}>
-                              <p className="client-stage-title">{stage.stageName}</p>
-                              <p className={`client-state state-${stageStatus}`}>
-                                <span className="state-dot" />
-                                {stageStatusLabel[stageStatus]}
-                              </p>
-
-                              {stage.description ? <p className="client-description">{stage.description}</p> : null}
-
-                              {stage.workLink ? (
-                                <a href={stage.workLink} className="client-link-pill" target="_blank" rel="noreferrer">
-                                  {stage.workLink}
-                                </a>
-                              ) : null}
-
-                              {showApprove ? (
-                                <GradientButton type="button" onClick={onApprove}>
-                                  Подтвердить этап -&gt;
-                                </GradientButton>
-                              ) : null}
-
-                              {payload.approved && stage.status === 'completed' ? (
-                                <p className="success-text">Одобрено</p>
-                              ) : null}
-                            </article>
-                          );
-                        })
-                      )}
-                    </div>
-                  );
-                })()
+                <StagesSection
+                  stages={payload.stages}
+                  approved={Boolean(payload.approved)}
+                  onApprove={onApprove}
+                />
               )}
-            </div>
+            </>
+          )}
+        </div>
+      </main>
+
+      <footer className="pcp-footer">
+        <div className="pcp-container pcp-footer-row">
+          <span>Сделано в unit-labs</span>
+          <span className="pcp-footer-hint">
+            Эта страница — публичный обзор без редактирования. Команда видит ваши действия в реальном времени.
+          </span>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+/* ── Sections ──────────────────────────────────────────── */
+
+const FlatTasksSection = ({
+  tasks,
+  approved,
+  onApprove,
+}: {
+  tasks: Task[];
+  approved: boolean;
+  onApprove: () => void;
+}) => {
+  const groups = useMemo(() => groupTasks(tasks), [tasks]);
+  const hasReview = tasks.some((t) => t.status === 'review');
+
+  if (tasks.length === 0) {
+    return (
+      <section className="pcp-empty">
+        <h2>Задач пока нет</h2>
+        <p>Менеджер проекта добавит их в ближайшее время.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="pcp-section">
+      {hasReview && !approved && (
+        <div className="pcp-callout">
+          <div>
+            <h3>Несколько задач ждут вашего подтверждения</h3>
+            <p>Если всё устраивает — нажмите «Принять работу».</p>
           </div>
-        ) : null}
-      </GlassPanel>
-    </PageShell>
+          <button type="button" className="pcp-cta" onClick={onApprove}>
+            Принять работу
+          </button>
+        </div>
+      )}
+
+      {approved && (
+        <div className="pcp-callout pcp-callout--approved">
+          <div>
+            <h3>Работа подтверждена</h3>
+            <p>Спасибо! Команда видит ваше согласование.</p>
+          </div>
+        </div>
+      )}
+
+      {groups.map((group) => (
+        <div key={group.key} className="pcp-group">
+          <h2 className="pcp-group-title">
+            <span className={`pcp-group-dot pcp-group-dot--${TASK_STATUS_TONE[group.key]}`} />
+            {TASK_GROUP_TITLE[group.key]}
+            <span className="pcp-group-count">{group.items.length}</span>
+          </h2>
+          <ul className="pcp-tasks">
+            {group.items.map((t) => {
+              const tp = TASK_TYPE_CFG[t.taskType] || TASK_TYPE_CFG.task;
+              const issueKey = fmtIssueKey(t.issueKey);
+              return (
+                <li key={t.id} className={`pcp-task pcp-task--${TASK_STATUS_TONE[group.key]}`}>
+                  <div className="pcp-task-main">
+                    {issueKey && <span className="pcp-task-key">{issueKey}</span>}
+                    <span className="pcp-task-title">{t.title}</span>
+                  </div>
+                  <span className="pcp-task-type" style={{ '--tc': tp.color } as React.CSSProperties}>
+                    <span className="pcp-task-type-dot" />
+                    {tp.label}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </section>
+  );
+};
+
+const StagesSection = ({
+  stages,
+  approved,
+  onApprove,
+}: {
+  stages: Stage[];
+  approved: boolean;
+  onApprove: () => void;
+}) => {
+  const sorted = useMemo(() => sortStages(stages), [stages]);
+
+  if (sorted.length === 0) {
+    return (
+      <section className="pcp-empty">
+        <h2>Этапы пока не созданы</h2>
+        <p>Менеджер проекта добавит их в ближайшее время.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="pcp-section">
+      <ul className="pcp-stages">
+        {sorted.map((stage) => {
+          const stageStatus: StageStatus = stage.status ?? 'unknown';
+          const showApprove = stage.status === 'review' && !approved;
+          return (
+            <li key={stage.id} className={`pcp-stage pcp-stage--${stageStatus}`}>
+              <div className="pcp-stage-head">
+                <h3 className="pcp-stage-title">{stage.stageName}</h3>
+                <span className={`pcp-pill pcp-pill--${stageStatus}`}>
+                  <span className="pcp-pill-dot" />
+                  {STAGE_STATUS_LABEL[stageStatus]}
+                </span>
+              </div>
+              {stage.description && <p className="pcp-stage-desc">{stage.description}</p>}
+              {stage.workLink && (
+                <a href={stage.workLink} className="pcp-stage-link" target="_blank" rel="noreferrer">
+                  Открыть результат →
+                </a>
+              )}
+              {showApprove && (
+                <button type="button" className="pcp-cta" onClick={onApprove}>
+                  Принять этап
+                </button>
+              )}
+              {approved && stage.status === 'completed' && (
+                <p className="pcp-stage-approved">Подтверждено</p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 };
