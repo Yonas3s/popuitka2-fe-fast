@@ -8,6 +8,7 @@ import {
   extractCreatedApiToken,
   extractDirection,
   extractDirections,
+  extractPublicShare,
   extractProjects,
   extractTasks,
   extractTeamActiveInvites,
@@ -176,6 +177,47 @@ describe('team details and members extractors', () => {
     expect(projects).toHaveLength(1);
     expect(projects[0].id).toBe('p5');
     expect(projects[0].projectName).toBe('Nested Project');
+  });
+});
+
+describe('public share extractor', () => {
+  it('keeps tasks for stages workflow and preserves task stage id', () => {
+    const payload = extractPublicShare({
+      workflow_type: 'stages',
+      project: {
+        _id: 'project-1',
+        project_name: 'Client Portal',
+      },
+      stages: [
+        { _id: 'stage-1', stage_name: 'Discovery', status: 'completed' },
+        { _id: 'stage-2', stage_name: 'Build', status: 'review' },
+      ],
+      tasks: [
+        { _id: 'task-1', title: 'Collect requirements', stage_id: 'stage-1', status: 'done' },
+        { _id: 'task-2', title: 'Prepare release notes', stage_id: 'stage-2', status: 'review' },
+      ],
+    }, 'share-1');
+
+    expect(payload.workflowType).toBe('stages');
+    expect(payload.stages).toHaveLength(2);
+    expect(payload.tasks).toHaveLength(2);
+    expect(payload.tasks[0].stageId).toBe('stage-1');
+    expect(payload.tasks[1].stageId).toBe('stage-2');
+  });
+
+  it('reads project name from the top-level public payload when nested project is absent', () => {
+    const payload = extractPublicShare({
+      _id: 'project-7',
+      project_name: 'Release Portal',
+      workflow_type: 'flat',
+      tasks: [
+        { _id: 'task-1', title: 'Ship changelog', status: 'todo' },
+      ],
+    }, 'share-2');
+
+    expect(payload.project?.projectName).toBe('Release Portal');
+    expect(payload.project?.id).toBe('project-7');
+    expect(payload.workflowType).toBe('flat');
   });
 });
 

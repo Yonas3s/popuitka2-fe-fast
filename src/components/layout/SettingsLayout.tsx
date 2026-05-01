@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { WorkspaceHeader } from './WorkspaceHeader';
+import { WorkspaceFooter } from './WorkspaceFooter';
 
 type SettingsLayoutProps = {
   children: ReactNode;
@@ -98,6 +99,8 @@ export const SettingsLayout = ({ children }: SettingsLayoutProps) => {
           <section className="settings-layout-content">{children}</section>
         </div>
       </main>
+
+      <WorkspaceFooter />
     </div>
   );
 };

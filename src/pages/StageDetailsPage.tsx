@@ -7,6 +7,7 @@ import { useUiStore } from '../store/ui.store';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
+import { WorkspaceFooter } from '../components/layout/WorkspaceFooter';
 import { GroupedTaskList } from '../components/tasks/GroupedTaskList';
 import { BoardView } from '../components/tasks/BoardView';
 import { TaskDetailsDrawer } from '../components/tasks/TaskDetailsDrawer';
@@ -1232,6 +1233,8 @@ export const StageDetailsPage = () => {
           </aside>
         </section>
       </main>
+
+      <WorkspaceFooter />
 
       {openedTask && (
         <TaskDetailsDrawer

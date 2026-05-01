@@ -2,6 +2,7 @@ import { useEffect, useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { APP_TITLE } from '../../lib/config/env';
 import { useAuthStore } from '../../store/auth.store';
+import { SupportMailLink } from '../support/SupportMailLink';
 import { UnifiedHeader } from './UnifiedHeader';
 
 type PageShellProps = {
@@ -118,6 +119,10 @@ export const PageShell = ({ children, title, subtitle }: PageShellProps) => {
         )}
 
         <section className="fade-up delay-2 page-content">{children}</section>
+
+        <footer className="page-shell-help fade-up delay-3">
+          <SupportMailLink className="ghost-link">Помощь</SupportMailLink>
+        </footer>
       </main>
     </>
   );

@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { UnifiedHeader } from '../components/layout/UnifiedHeader';
 import { SEO } from '../components/seo/SEO';
+import { SupportMailLink } from '../components/support/SupportMailLink';
 import { useAuthStore } from '../store/auth.store';
 
 export const NotFoundPage = () => {
@@ -72,6 +73,15 @@ export const NotFoundPage = () => {
           </pre>
         </section>
       </main>
+
+      <footer className="stitch-footer">
+        <div className="stitch-container stitch-footer-row">
+          <p>Если искали рабочий экран и не нашли его, напишите в поддержку.</p>
+          <div className="stitch-footer-links">
+            <SupportMailLink>Помощь</SupportMailLink>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

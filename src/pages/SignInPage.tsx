@@ -8,11 +8,12 @@ import {
   sanitizeRedirectPath,
   withRedirectQuery,
 } from '../lib/auth/redirect';
-import { API_BASE_URL } from '../lib/config/env';
+import { API_BASE_URL, APP_COPYRIGHT_TEXT } from '../lib/config/env';
 import { useAuthStore } from '../store/auth.store';
 import { useUiStore } from '../store/ui.store';
 import { UnifiedHeader } from '../components/layout/UnifiedHeader';
 import { SEO } from '../components/seo/SEO';
+import { SupportMailLink } from '../components/support/SupportMailLink';
 
 type SignInForm = {
   email: string;
@@ -184,10 +185,12 @@ export const SignInPage = () => {
               <span />
               <span />
             </div>
-            <small>ID: 524-88-AB</small>
+            <small>
+              ID: 524-88-AB • <SupportMailLink>Помощь</SupportMailLink>
+            </small>
           </footer>
         </section>
-        <p className="signin-v2-copyright">© 2024 unit-labs inc. Все протоколы защищены.</p>
+        <p className="signin-v2-copyright">{APP_COPYRIGHT_TEXT}</p>
       </main>
     </div>
   );

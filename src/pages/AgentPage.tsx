@@ -6,6 +6,7 @@ import { useUiStore } from '../store/ui.store';
 import { useAuthStore } from '../store/auth.store';
 import { normalizeApiError } from '../lib/api/errors';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
+import { WorkspaceFooter } from '../components/layout/WorkspaceFooter';
 import type { AgentRun } from '../types/models';
 
 const isTerminal = (status: AgentRun['status']) =>
@@ -529,6 +530,8 @@ export const AgentPage = () => {
           </div>
         </div>
       </main>
+
+      <WorkspaceFooter />
     </div>
   );
 };

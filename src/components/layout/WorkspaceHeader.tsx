@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth.store';
 import { UnifiedHeader } from './UnifiedHeader';
+import { WorkspaceReleaseNotesModal } from '../feedback/WorkspaceReleaseNotesModal';
 
 type WorkspaceTab = 'teams' | 'projects' | 'settings';
 
@@ -143,6 +144,8 @@ export const WorkspaceHeader = ({ activeTab }: WorkspaceHeaderProps) => {
           </nav>
         </div>
       ) : null}
+
+      <WorkspaceReleaseNotesModal />
     </>
   );
 };

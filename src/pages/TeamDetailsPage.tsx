@@ -5,6 +5,7 @@ import { normalizeApiError } from '../lib/api/errors';
 import { useAuthStore } from '../store/auth.store';
 import { useUiStore } from '../store/ui.store';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
+import { WorkspaceFooter } from '../components/layout/WorkspaceFooter';
 import type { ApiError, Project, Team, TeamActiveInvite, TeamDetails, TeamMember } from '../types/models';
 
 const getInitials = (value: string) => {
@@ -696,6 +697,8 @@ export const TeamDetailsPage = () => {
           </div>
         </section>
       </main>
+
+      <WorkspaceFooter />
 
       {pendingRemovalMember ? (
         <div className="modal-backdrop" role="presentation">

@@ -1,13 +1,12 @@
 import { Link } from 'react-router-dom';
-import { useMemo } from 'react';
-import { APP_TITLE } from '../lib/config/env';
+import { APP_DISPLAY_YEAR, APP_TITLE } from '../lib/config/env';
 import { UnifiedHeader } from '../components/layout/UnifiedHeader';
 import { SEO } from '../components/seo/SEO';
+import { SupportMailLink } from '../components/support/SupportMailLink';
 import { useAuthStore } from '../store/auth.store';
 
 export const AboutPage = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const year = useMemo(() => new Date().getFullYear(), []);
 
   return (
     <div className="about-page">
@@ -85,7 +84,7 @@ export const AboutPage = () => {
             Нашли баг, хотите интеграцию, идею или просто поздороваться — напишите.
           </p>
           <div className="about-contact-links">
-            <a href="mailto:info@unit-labs.ru" className="ui-btn ui-btn-secondary">info@unit-labs.ru</a>
+            <SupportMailLink className="ui-btn ui-btn-secondary">info@unit-labs.ru</SupportMailLink>
             <a
               href="https://t.me/yokio42"
               target="_blank"
@@ -108,10 +107,11 @@ export const AboutPage = () => {
 
       <footer className="stitch-footer">
         <div className="stitch-container stitch-footer-row">
-          <p>© {year} {APP_TITLE}</p>
+          <p>© {APP_DISPLAY_YEAR} {APP_TITLE}</p>
           <div className="stitch-footer-links">
             <Link to="/">Главная</Link>
             <Link to="/about">О нас</Link>
+            <SupportMailLink>Помощь</SupportMailLink>
             <a
               href="https://github.com/apps/popuitkav2"
               target="_blank"

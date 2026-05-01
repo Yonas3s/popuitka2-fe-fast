@@ -186,6 +186,7 @@ export type Task = {
   title: string;
   description?: string;
   issueKey?: string;
+  stageId?: string;
   done: boolean;
   status: TaskStatus;
   priority: TaskPriority;

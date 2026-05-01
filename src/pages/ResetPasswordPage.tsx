@@ -4,9 +4,11 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useState } from 'react';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
+import { APP_COPYRIGHT_TEXT } from '../lib/config/env';
 import { useUiStore } from '../store/ui.store';
 import { useResetFlowStore } from '../store/reset-flow.store';
 import { UnifiedHeader } from '../components/layout/UnifiedHeader';
+import { SupportMailLink } from '../components/support/SupportMailLink';
 
 type ResetForm = {
   password: string;
@@ -186,11 +188,13 @@ export const ResetPasswordPage = () => {
               <span />
               <span />
             </div>
-            <small>Шаг 3/3</small>
+            <small>
+              Шаг 3/3 • <SupportMailLink>Помощь</SupportMailLink>
+            </small>
           </footer>
         </section>
 
-        <p className="signin-v2-copyright">© 2024 unit-labs inc. Все протоколы защищены.</p>
+        <p className="signin-v2-copyright">{APP_COPYRIGHT_TEXT}</p>
       </main>
     </div>
   );

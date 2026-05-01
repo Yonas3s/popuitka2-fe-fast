@@ -6,6 +6,7 @@ import { useProjectsStore } from '../store/projects.store';
 import { useUiStore } from '../store/ui.store';
 import { apiService } from '../lib/api/service';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
+import { WorkspaceFooter } from '../components/layout/WorkspaceFooter';
 import { Skeleton } from '../components/ui/Skeleton';
 import type { Project, Team, WorkflowType } from '../types/models';
 
@@ -412,16 +413,7 @@ export const ProjectsPage = () => {
         </div>
       ) : null}
 
-      <footer className="projects-v3-footer">
-        <div className="projects-v3-container projects-v3-footer-row">
-          <div className="mono">unit-labs v1.0.4</div>
-          <div>
-            <Link to="/teams">Помощь</Link>
-            <Link to="/signin">Конфиденциальность</Link>
-            <Link to="/signup">Условия</Link>
-          </div>
-        </div>
-      </footer>
+      <WorkspaceFooter />
     </div>
   );
 };

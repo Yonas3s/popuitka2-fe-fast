@@ -500,6 +500,7 @@ const toTaskPriority = (value: unknown): Task['priority'] => {
 export const normalizeTask = (value: unknown, index = 0): Task => {
   const parsed = taskSchema.safeParse(value);
   const record = parsed.success ? (parsed.data as Record<string, unknown>) : asRecord(value);
+  const stageRecord = pickRecordFromPossibleKeys(record, ['stage']);
 
   const done =
     (typeof record.isDone === 'boolean' && record.isDone) ||
@@ -566,6 +567,16 @@ export const normalizeTask = (value: unknown, index = 0): Task => {
       (typeof record.issueKey === 'string' && record.issueKey) ||
       (typeof record.issue_key === 'string' && record.issue_key) ||
       undefined,
+    stageId:
+      (typeof record.stageId === 'string' && record.stageId) ||
+      (typeof record.stage_id === 'string' && record.stage_id) ||
+      (typeof record.currentStageId === 'string' && record.currentStageId) ||
+      (typeof record.current_stage_id === 'string' && record.current_stage_id) ||
+      (stageRecord
+        ? (typeof stageRecord.id === 'string' && stageRecord.id) ||
+          (typeof stageRecord._id === 'string' && stageRecord._id) ||
+          undefined
+        : undefined),
     done,
     status: toTaskStatus(record.status, done),
     priority: toTaskPriority(record.priority),
@@ -1550,7 +1561,11 @@ export const extractPublicShare = (value: unknown, shareToken: string): PublicSh
   const directProject = pickRecordFromPossibleKeys(asObj, ['project']);
   const dataCandidate = pickRecordFromPossibleKeys(asObj, ['data']);
   const nestedProject = dataCandidate ? pickRecordFromPossibleKeys(dataCandidate, ['project']) : null;
-  const projectSource = directProject ?? nestedProject ?? (dataCandidate && isProjectLike(dataCandidate) ? dataCandidate : null);
+  const projectSource =
+    directProject ??
+    nestedProject ??
+    (dataCandidate && isProjectLike(dataCandidate) ? dataCandidate : null) ??
+    (isProjectLike(asObj) ? asObj : null);
   const project = projectSource ? normalizeProject(projectSource) : undefined;
   const rootWorkflowType =
     asObj.workflow_type === 'stages' || asObj.workflow_type === 'flat'
@@ -1560,8 +1575,8 @@ export const extractPublicShare = (value: unknown, shareToken: string): PublicSh
         : undefined;
   const workflowType = rootWorkflowType || project?.workflowType || 'stages';
   const collectionSource = dataCandidate ?? asObj;
-  const stages = workflowType === 'stages' ? extractStages(collectionSource) : [];
-  const tasks = workflowType === 'flat' ? extractTasks(collectionSource) : [];
+  const stages = extractStages(collectionSource);
+  const tasks = extractTasks(collectionSource);
   const approved =
     typeof asObj.approved === 'boolean'
       ? asObj.approved

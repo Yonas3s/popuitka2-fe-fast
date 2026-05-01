@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
+import { WorkspaceFooter } from '../components/layout/WorkspaceFooter';
 import { apiService } from '../lib/api/service';
 import { withRedirectQuery } from '../lib/auth/redirect';
 import { normalizeApiError } from '../lib/api/errors';
@@ -173,6 +174,8 @@ export const TeamInvitePage = () => {
           </section>
         </div>
       </main>
+
+      <WorkspaceFooter />
     </div>
   );
 };

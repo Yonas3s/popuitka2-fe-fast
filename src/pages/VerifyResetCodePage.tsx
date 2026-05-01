@@ -3,9 +3,11 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { OtpCodeInput } from '../components/ui/OtpCodeInput';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
+import { APP_COPYRIGHT_TEXT } from '../lib/config/env';
 import { useUiStore } from '../store/ui.store';
 import { useResetFlowStore } from '../store/reset-flow.store';
 import { UnifiedHeader } from '../components/layout/UnifiedHeader';
+import { SupportMailLink } from '../components/support/SupportMailLink';
 
 const CODE_LENGTH = 6;
 
@@ -177,13 +179,15 @@ export const VerifyResetCodePage = () => {
               <span />
               <span />
             </div>
-            <small>ТОКЕН: REQ-2024-X8</small>
+            <small>
+              ТОКЕН: REQ-2026-X8 • <SupportMailLink>Помощь</SupportMailLink>
+            </small>
           </footer>
         </section>
 
         <div className="signin-v2-bottom-links">
           <Link to="/signin">← Вернуться ко входу</Link>
-          <p className="signin-v2-copyright">© 2024 unit-labs inc. Все протоколы защищены.</p>
+          <p className="signin-v2-copyright">{APP_COPYRIGHT_TEXT}</p>
         </div>
       </main>
     </div>

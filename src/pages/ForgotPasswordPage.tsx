@@ -2,9 +2,11 @@ import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
+import { APP_COPYRIGHT_TEXT } from '../lib/config/env';
 import { useUiStore } from '../store/ui.store';
 import { useResetFlowStore } from '../store/reset-flow.store';
 import { UnifiedHeader } from '../components/layout/UnifiedHeader';
+import { SupportMailLink } from '../components/support/SupportMailLink';
 
 type ForgotForm = {
   email: string;
@@ -97,11 +99,13 @@ export const ForgotPasswordPage = () => {
               <span />
               <span />
             </div>
-            <small>ID: REC-99-XZ</small>
+            <small>
+              ID: REC-99-XZ • <SupportMailLink>Помощь</SupportMailLink>
+            </small>
           </footer>
         </section>
 
-        <p className="signin-v2-copyright">© 2024 unit-labs inc. Все протоколы защищены.</p>
+        <p className="signin-v2-copyright">{APP_COPYRIGHT_TEXT}</p>
       </main>
     </div>
   );

@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { apiService } from '../lib/api/service';
-import { APP_TITLE } from '../lib/config/env';
+import { APP_DISPLAY_YEAR, APP_TITLE } from '../lib/config/env';
 import { UnifiedHeader } from '../components/layout/UnifiedHeader';
 import { SEO } from '../components/seo/SEO';
+import { SupportMailLink } from '../components/support/SupportMailLink';
 import { useAuthStore } from '../store/auth.store';
 
 /**
@@ -95,8 +96,6 @@ export const LandingPage = () => {
 
   const liveLabel = health === 'online' ? 'API v1 · онлайн' : 'API · проверка';
   const healthClass = `health-${health}`;
-  const year = useMemo(() => new Date().getFullYear(), []);
-
   useEffect(() => {
     let cancelled = false;
     apiService
@@ -547,13 +546,14 @@ unit-labs task done POPU-42`}</pre>
       {/* ── Footer ── */}
       <footer className="stitch-footer">
         <div className="stitch-container stitch-footer-row">
-          <p>© {year} {APP_TITLE}</p>
+          <p>© {APP_DISPLAY_YEAR} {APP_TITLE}</p>
           <div className="stitch-footer-links">
             <a href="#product">Продукт</a>
             <a href="#how">Как работает</a>
             <a href="#integrations">Интеграции</a>
             <a href="#pricing">Цена</a>
             <Link to="/about">О нас</Link>
+            <SupportMailLink>Помощь</SupportMailLink>
             <a
               href="https://www.npmjs.com/package/@yokio42/unit-labs-cli"
               target="_blank"

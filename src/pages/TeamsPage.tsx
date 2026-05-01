@@ -4,6 +4,7 @@ import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { useUiStore } from '../store/ui.store';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
+import { WorkspaceFooter } from '../components/layout/WorkspaceFooter';
 import { Skeleton } from '../components/ui/Skeleton';
 import type { ApiError, Team, TeamDetails } from '../types/models';
 
@@ -301,6 +302,8 @@ export const TeamsPage = () => {
           </section>
         </div>
       </main>
+
+      <WorkspaceFooter />
     </div>
   );
 };

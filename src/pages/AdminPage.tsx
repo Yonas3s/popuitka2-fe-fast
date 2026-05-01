@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
+import { WorkspaceFooter } from '../components/layout/WorkspaceFooter';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import type { AdminActionAuthType, AdminActionLog, AdminActionSource, AdminStat, ApiError } from '../types/models';
@@ -387,6 +388,8 @@ export const AdminPage = () => {
           ) : null}
         </div>
       </main>
+
+      <WorkspaceFooter />
     </div>
   );
 };

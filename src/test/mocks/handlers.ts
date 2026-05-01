@@ -1467,7 +1467,14 @@ export const handlers = [
     const project = getProjectById(entry.projectId);
     const workflowType = getWorkflowType(project);
     const stages = workflowType === 'stages' ? state.stagesByProject[entry.projectId] || [] : [];
-    const tasks = workflowType === 'flat' ? state.tasksByProject[entry.projectId] || [] : [];
+    const tasks = workflowType === 'flat'
+      ? state.tasksByProject[entry.projectId] || []
+      : stages.flatMap((stage) =>
+          (state.tasksByStage[stage._id] || []).map((task) => ({
+            ...task,
+            stage_id: stage._id,
+          })),
+        );
     return HttpResponse.json({
       project,
       workflow_type: workflowType,

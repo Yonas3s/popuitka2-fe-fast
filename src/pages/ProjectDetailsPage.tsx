@@ -9,6 +9,7 @@ import { normalizeApiError } from '../lib/api/errors';
 import { FRONTEND_BASE_URL } from '../lib/config/env';
 import { DirectionColorPicker } from '../components/directions/DirectionColorPicker';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
+import { WorkspaceFooter } from '../components/layout/WorkspaceFooter';
 import { ProjectReposPanel } from '../components/github/ProjectReposPanel';
 import { WebhookEventsPanel } from '../components/github/WebhookEventsPanel';
 import { ProjectTelegramPanel } from '../components/telegram/ProjectTelegramPanel';
@@ -1037,18 +1038,7 @@ export const ProjectDetailsPage = () => {
         );
       })() : null}
 
-      <footer className="project-v4-footer">
-        <div className="project-v4-container project-v4-footer-row">
-          <div>
-            unit-labs<span>_</span> <small>© 2023</small>
-          </div>
-          <div>
-            <Link to="/projects">Документация</Link>
-            <Link to="/teams">Поддержка</Link>
-            <Link to="/admin">Статус API</Link>
-          </div>
-        </div>
-      </footer>
+      <WorkspaceFooter />
     </div>
   );
 };
