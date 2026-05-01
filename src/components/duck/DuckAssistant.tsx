@@ -402,6 +402,7 @@ export const DuckAssistant = () => {
       {
         id: 'breakdown',
         label: 'Разбить на задачи',
+        icon: 'list_alt',
         onClick: () => {
           void sendPrompt(
             'Разбей текущий контекст на конкретные задачи: короткий title, понятный scope, без дубликатов.',
@@ -412,6 +413,7 @@ export const DuckAssistant = () => {
       {
         id: 'summary',
         label: 'Суммировать этап',
+        icon: 'summarize',
         onClick: () => {
           void sendPrompt('Сделай короткую сводку текущего состояния и ближайших шагов.');
         },
@@ -419,6 +421,7 @@ export const DuckAssistant = () => {
       {
         id: 'risks',
         label: 'Проверить риски',
+        icon: 'gpp_maybe',
         onClick: () => {
           void sendPrompt('Проведи риск-анализ и дай топ-5 блокеров с mitigation шагами.');
         },

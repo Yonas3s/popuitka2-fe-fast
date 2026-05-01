@@ -1,7 +1,46 @@
-node_modules
-dist
-coverage
-.vite
-.DS_Store
+```gitignore
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+target/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.ENV
+.pytest_cache/
+.mypy_cache/
+.coverage
+
+# Logs
+*.log
+
+# Environment variables
 .env
-.cache
+.env.local
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+```
