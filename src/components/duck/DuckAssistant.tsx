@@ -448,22 +448,17 @@ export const DuckAssistant = () => {
         canCreateTasks={canCreateTasks}
         createTasks={createTasks}
         taskLimit={taskLimit}
-        model={model}
         draft={draft}
         isTyping={isTyping}
         messages={messages}
-        stageOptions={stageOptions}
-        preferredStageId={preferredStageId}
         quickActions={quickActions}
         onClose={close}
         onSubmit={() => {
           void sendPrompt(draft);
         }}
         onDraftChange={setDraft}
-        onModelChange={setModel}
         onCreateTasksChange={setCreateTasks}
         onTaskLimitChange={setTaskLimit}
-        onPreferredStageChange={setPreferredStageId}
         onResetConversation={resetConversation}
         inputRef={inputRef}
       />
