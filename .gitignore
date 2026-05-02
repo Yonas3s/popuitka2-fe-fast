@@ -1,4 +1,3 @@
-```gitignore
 # Dependencies
 node_modules/
 
@@ -43,4 +42,7 @@ Thumbs.db
 # Coverage
 coverage/
 htmlcov/
-```
+
+# Local tool caches
+.cache/
+.aider*

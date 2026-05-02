@@ -16,6 +16,13 @@ type BindToken = {
   instructions: string[];
 };
 
+const formatDate = (value?: string) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('ru-RU');
+};
+
 const formatCountdown = (ms: number): string => {
   if (ms <= 0) return '00:00';
   const total = Math.floor(ms / 1000);
@@ -160,21 +167,30 @@ export const ProjectTelegramPanel = ({ projectId }: ProjectTelegramPanelProps) =
 
       {bindings.length > 0 ? (
         <div className="tg-bindings-list">
-          {bindings.map((b) => (
-            <article key={b.id} className="tg-binding-card">
-              <div className="tg-binding-info">
-                <strong>{b.chatTitle}</strong>
-                {b.createdAt ? <span>{new Date(b.createdAt).toLocaleDateString('ru-RU')}</span> : null}
-              </div>
-              <button
-                type="button"
-                className="ui-btn ui-btn-ghost ui-btn-sm"
-                onClick={() => onUnbind(b)}
-              >
-                Отвязать
-              </button>
-            </article>
-          ))}
+          {bindings.map((b) => {
+            const createdAt = formatDate(b.createdAt);
+            const topicLabel = b.topicTitle || (b.topicId ? `#${b.topicId}` : 'общий чат');
+
+            return (
+              <article key={b.id} className="tg-binding-card">
+                <div className="tg-binding-info">
+                  <strong>{b.chatTitle}</strong>
+                  <div className="tg-binding-meta">
+                    <span className="tg-binding-topic">Тема: {topicLabel}</span>
+                    {b.chatId ? <span>Chat ID: {b.chatId}</span> : null}
+                    {createdAt ? <span>Привязан: {createdAt}</span> : null}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn-ghost ui-btn-sm"
+                  onClick={() => onUnbind(b)}
+                >
+                  Отвязать
+                </button>
+              </article>
+            );
+          })}
         </div>
       ) : null}
 

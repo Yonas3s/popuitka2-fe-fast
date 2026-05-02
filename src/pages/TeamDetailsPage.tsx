@@ -62,6 +62,7 @@ export const TeamDetailsPage = () => {
   const navigate = useNavigate();
 
   const pushToast = useUiStore((state) => state.pushToast);
+  const openConfirm = useUiStore((state) => state.openConfirm);
   const currentUser = useAuthStore((state) => state.user);
 
   const deniedToastKeys = useRef<Set<string>>(new Set());
@@ -72,6 +73,10 @@ export const TeamDetailsPage = () => {
   const [teamDetails, setTeamDetails] = useState<TeamDetails | null>(null);
   const [teamDetailsLoading, setTeamDetailsLoading] = useState(false);
   const [teamDetailsDenied, setTeamDetailsDenied] = useState(false);
+  const [teamSettingsOpen, setTeamSettingsOpen] = useState(false);
+  const [teamNameDraft, setTeamNameDraft] = useState('');
+  const [teamSaving, setTeamSaving] = useState(false);
+  const [teamDeleting, setTeamDeleting] = useState(false);
 
   const [teamProjects, setTeamProjects] = useState<Project[]>([]);
   const [teamProjectsLoading, setTeamProjectsLoading] = useState(false);
@@ -104,6 +109,7 @@ export const TeamDetailsPage = () => {
 
   const effectiveRole = (teamDetails?.myRole || selectedTeam?.role || 'member').toLowerCase();
   const canManageTeam = effectiveRole === 'owner';
+  const currentTeamName = teamDetails?.name || selectedTeam?.name || '';
 
   const notifyDeniedOnce = useCallback(
     (key: string, message: string) => {
@@ -247,6 +253,10 @@ export const TeamDetailsPage = () => {
   }, [loadTeams]);
 
   useEffect(() => {
+    setTeamNameDraft(currentTeamName);
+  }, [currentTeamName]);
+
+  useEffect(() => {
     if (!teamId) {
       navigate('/teams', { replace: true });
       return;
@@ -263,6 +273,7 @@ export const TeamDetailsPage = () => {
     setLatestInviteLink('');
     setMemberActionsOpenForId(null);
     setPendingMemberRemoval(null);
+    setTeamSettingsOpen(false);
 
     void loadTeamDetails();
     void loadTeamProjects();
@@ -338,6 +349,64 @@ export const TeamDetailsPage = () => {
   const closeRemoveMemberDialog = () => {
     setPendingMemberRemoval(null);
     setRemoveMemberConfirmUsername('');
+  };
+
+  const onSaveTeamName = async () => {
+    const nextName = teamNameDraft.trim();
+    if (!nextName) {
+      pushToast('Введите название команды', 'error');
+      return;
+    }
+    if (nextName === currentTeamName) {
+      pushToast('Название уже актуально', 'info');
+      return;
+    }
+
+    setTeamSaving(true);
+    try {
+      const updated = await apiService.patchTeam(teamId, { name: nextName });
+      setTeams((prev) =>
+        prev.map((team) =>
+          team.id === teamId
+            ? {
+                ...team,
+                ...updated,
+                role: team.role ?? updated.role,
+              }
+            : team,
+        ),
+      );
+      setTeamDetails((prev) => (prev ? { ...prev, name: nextName } : prev));
+      pushToast('Команда переименована', 'success');
+    } catch (reason) {
+      pushToast(normalizeApiError(reason).message, 'error');
+    } finally {
+      setTeamSaving(false);
+    }
+  };
+
+  const onDeleteTeam = () => {
+    if (!teamId || teamDeleting) {
+      return;
+    }
+
+    openConfirm({
+      title: 'Удалить команду?',
+      description:
+        'Команда, участники, инвайты и командные проекты со стадиями и задачами будут удалены без восстановления.',
+      onConfirm: async () => {
+        setTeamDeleting(true);
+        try {
+          await apiService.deleteTeam(teamId);
+          pushToast('Команда удалена', 'success');
+          navigate('/teams');
+        } catch (reason) {
+          pushToast(normalizeApiError(reason).message, 'error');
+        } finally {
+          setTeamDeleting(false);
+        }
+      },
+    });
   };
 
   const confirmRemoveMember = async () => {
@@ -484,6 +553,17 @@ export const TeamDetailsPage = () => {
               </Link>
               {canManageTeam ? (
                 <button
+                  className="team-dash-v3-btn ghost"
+                  type="button"
+                  onClick={() => {
+                    setTeamSettingsOpen((prev) => !prev);
+                  }}
+                >
+                  Настройки
+                </button>
+              ) : null}
+              {canManageTeam ? (
+                <button
                   className="team-dash-v3-btn solid"
                   type="button"
                   onClick={() => {
@@ -496,6 +576,40 @@ export const TeamDetailsPage = () => {
               ) : null}
             </div>
           </div>
+
+          {canManageTeam && teamSettingsOpen ? (
+            <section className="team-dash-v3-settings-panel">
+              <div className="team-dash-v3-settings-field">
+                <label htmlFor="team-details-name">Название команды</label>
+                <input
+                  id="team-details-name"
+                  value={teamNameDraft}
+                  onChange={(event) => {
+                    setTeamNameDraft(event.target.value);
+                  }}
+                  placeholder="Название команды"
+                />
+              </div>
+              <div className="team-dash-v3-settings-actions">
+                <button
+                  className="team-dash-v3-btn ghost"
+                  type="button"
+                  onClick={() => void onSaveTeamName()}
+                  disabled={teamSaving || !teamNameDraft.trim()}
+                >
+                  {teamSaving ? 'Сохраняем...' : 'Сохранить название'}
+                </button>
+                <button
+                  className="team-dash-v3-btn danger"
+                  type="button"
+                  onClick={onDeleteTeam}
+                  disabled={teamDeleting}
+                >
+                  {teamDeleting ? 'Удаляем...' : 'Удалить команду'}
+                </button>
+              </div>
+            </section>
+          ) : null}
 
           {teamError ? <p className="team-dash-v3-error">{teamError.message}</p> : null}
           {teamDetailsLoading ? <p className="team-dash-v3-loading">Загружаем карточку команды...</p> : null}

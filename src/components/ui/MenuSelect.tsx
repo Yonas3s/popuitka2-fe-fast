@@ -64,7 +64,17 @@ export const MenuSelect = ({ label, value, options, onChange, disabled }: MenuSe
           }}
         >
           <span className="menu-select-value">{selected?.label || 'Выбрать'}</span>
-          <span className={`menu-select-chevron ${open ? 'open' : ''}`}>⌄</span>
+          <span className={`menu-select-chevron ${open ? 'open' : ''}`} aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path
+                d="M5 7.25 9 11l4-3.75"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
         </button>
 
         {open ? (

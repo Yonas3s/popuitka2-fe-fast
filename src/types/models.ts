@@ -286,6 +286,8 @@ export type TelegramBinding = {
   id: string;
   chatTitle: string;
   chatId?: string;
+  topicTitle?: string;
+  topicId?: string;
   createdAt?: string;
   raw: Record<string, unknown>;
 };

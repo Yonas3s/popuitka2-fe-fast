@@ -75,12 +75,18 @@ export type CreateProjectPayload = {
   workflow_type?: WorkflowType;
 };
 
+export type UpdateProjectPayload = {
+  project_name?: string;
+  work_link?: string;
+};
+
 export type CreateStagePayload = {
   stage_name: string;
   description?: string;
 };
 
 export type UpdateStagePayload = {
+  stage_name?: string;
   work_link?: string;
   description?: string;
 };
@@ -144,6 +150,10 @@ export type ResetPasswordPayload = {
 };
 
 export type CreateTeamPayload = {
+  name: string;
+};
+
+export type UpdateTeamPayload = {
   name: string;
 };
 
@@ -237,6 +247,15 @@ export const apiService = {
     return extractTeam(response.data);
   },
 
+  async patchTeam(teamId: string, payload: UpdateTeamPayload): Promise<Team> {
+    const response = await apiClient.patch(endpoints.teamById(teamId), payload);
+    return extractTeam(response.data);
+  },
+
+  async deleteTeam(teamId: string): Promise<void> {
+    await apiClient.delete(endpoints.teamById(teamId));
+  },
+
   async getTeams(): Promise<Team[]> {
     const response = await apiClient.get(endpoints.teams());
     return extractTeams(response.data);
@@ -294,6 +313,15 @@ export const apiService = {
     return extractProject(response.data);
   },
 
+  async patchProject(projectId: string, payload: UpdateProjectPayload): Promise<Project> {
+    const response = await apiClient.patch(endpoints.projectById(projectId), payload);
+    return extractProject(response.data);
+  },
+
+  async deleteProject(projectId: string): Promise<void> {
+    await apiClient.delete(endpoints.projectById(projectId));
+  },
+
   async getProject(projectId: string): Promise<Project> {
     const response = await apiClient.get(endpoints.projectById(projectId));
     return extractProject(response.data);
@@ -345,6 +373,10 @@ export const apiService = {
   async patchStage(projectId: string, stageId: string, payload: UpdateStagePayload): Promise<Stage> {
     const response = await apiClient.patch(endpoints.stageById(projectId, stageId), payload);
     return extractStage(response.data);
+  },
+
+  async deleteStage(projectId: string, stageId: string): Promise<void> {
+    await apiClient.delete(endpoints.stageById(projectId, stageId));
   },
 
   async requestReview(projectId: string, stageId: string): Promise<void> {
@@ -510,14 +542,29 @@ export const apiService = {
   async getInstallationRepos(installationId: string): Promise<GitHubRepo[]> {
     const response = await apiClient.get(endpoints.githubInstallationRepos(installationId));
     const list = Array.isArray(response.data) ? response.data : [];
-    return list.map((item: Record<string, unknown>) => ({
-      externalId: String(item.externalId || item.external_id || item.id || ''),
-      fullName: String(item.fullName || item.full_name || ''),
-      name: String(item.name || ''),
-      isPrivate: Boolean(item.isPrivate ?? item.is_private ?? item.private),
-      htmlUrl: String(item.htmlUrl || item.html_url || ''),
-      raw: item,
-    }));
+    return list.map((item: Record<string, unknown>) => {
+      const owner = typeof item.owner === 'object' && item.owner !== null ? item.owner as Record<string, unknown> : {};
+      const ownerLogin = String(item.ownerLogin || item.owner_login || owner.login || '');
+      const name = String(item.name || item.repositoryName || item.repository_name || '');
+      const fullName = String(
+        item.fullName ||
+        item.full_name ||
+        (ownerLogin && name ? `${ownerLogin}/${name}` : '') ||
+        name ||
+        item.externalId ||
+        item.external_id ||
+        item.id ||
+        '',
+      );
+      return {
+        externalId: String(item.externalId || item.external_id || item.id || ''),
+        fullName,
+        name: name || fullName.split('/').pop() || fullName,
+        isPrivate: Boolean(item.isPrivate ?? item.is_private ?? item.private),
+        htmlUrl: String(item.htmlUrl || item.html_url || (fullName.includes('/') ? `https://github.com/${fullName}` : '')),
+        raw: item,
+      };
+    });
   },
 
   async handleGitHubInstallCallback(installationId: string, setupAction: string): Promise<void> {
@@ -534,13 +581,74 @@ export const apiService = {
         ? item.repositoryId
         : typeof item.repository_id === 'object' && item.repository_id !== null
           ? item.repository_id
+          : typeof item.repository === 'object' && item.repository !== null
+            ? item.repository
+            : typeof item.repo === 'object' && item.repo !== null
+              ? item.repo
+              : typeof item.githubRepository === 'object' && item.githubRepository !== null
+                ? item.githubRepository
+                : typeof item.github_repository === 'object' && item.github_repository !== null
+                  ? item.github_repository
           : item) as Record<string, unknown>;
+      const owner = typeof repo.owner === 'object' && repo.owner !== null ? repo.owner as Record<string, unknown> : {};
+      const ownerLogin = String(
+        repo.ownerLogin ||
+        repo.owner_login ||
+        repo.owner_name ||
+        repo.ownerName ||
+        item.ownerLogin ||
+        item.owner_login ||
+        owner.login ||
+        '',
+      );
+      const repoName = String(
+        repo.name ||
+        repo.repoName ||
+        repo.repo_name ||
+        repo.repositoryName ||
+        repo.repository_name ||
+        repo.repository ||
+        item.name ||
+        item.repoName ||
+        item.repo_name ||
+        item.repositoryName ||
+        item.repository_name ||
+        '',
+      );
+      const repositoryExternalId = String(
+        repo.externalId ||
+        repo.external_id ||
+        repo.githubId ||
+        repo.github_id ||
+        repo.githubRepositoryId ||
+        repo.github_repository_id ||
+        item.repositoryExternalId ||
+        item.repository_external_id ||
+        item.githubRepositoryId ||
+        item.github_repository_id ||
+        (typeof item.repository_id === 'string' ? item.repository_id : '') ||
+        '',
+      );
+      const fullName = String(
+        repo.fullName ||
+        repo.full_name ||
+        repo.repositoryFullName ||
+        repo.repository_full_name ||
+        item.fullName ||
+        item.full_name ||
+        item.repositoryFullName ||
+        item.repository_full_name ||
+        (ownerLogin && repoName ? `${ownerLogin}/${repoName}` : '') ||
+        repoName ||
+        repositoryExternalId ||
+        '',
+      );
       return {
         id: String(item.id || item._id || ''),
-        repositoryExternalId: String(repo.externalId || repo.external_id || item.repositoryExternalId || item.repository_external_id || ''),
+        repositoryExternalId,
         installationId: String(repo.installationId || repo.installation_id || item.installationId || item.installation_id || ''),
-        fullName: String(repo.fullName || repo.full_name || item.fullName || item.full_name || ''),
-        htmlUrl: String(repo.htmlUrl || repo.html_url || item.htmlUrl || item.html_url || ''),
+        fullName,
+        htmlUrl: String(repo.htmlUrl || repo.html_url || item.htmlUrl || item.html_url || (fullName.includes('/') ? `https://github.com/${fullName}` : '')),
         autoCloseOnMerge: Boolean(item.autoCloseOnMerge ?? item.auto_close_on_merge),
         raw: item,
       };
@@ -590,6 +698,26 @@ export const apiService = {
       id: String(item.id || item._id || ''),
       chatTitle: String(item.chatTitle || item.chat_title || item.title || 'Чат'),
       chatId: item.chatId ? String(item.chatId) : item.chat_id ? String(item.chat_id) : undefined,
+      topicTitle:
+        typeof item.topicTitle === 'string'
+          ? item.topicTitle
+          : typeof item.topic_title === 'string'
+            ? item.topic_title
+            : typeof item.threadTitle === 'string'
+              ? item.threadTitle
+              : typeof item.thread_title === 'string'
+                ? item.thread_title
+                : undefined,
+      topicId:
+        item.topicId
+          ? String(item.topicId)
+          : item.topic_id
+            ? String(item.topic_id)
+            : item.messageThreadId
+              ? String(item.messageThreadId)
+              : item.message_thread_id
+                ? String(item.message_thread_id)
+                : undefined,
       createdAt: String(item.createdAt || item.created_at || ''),
       raw: item,
     }));

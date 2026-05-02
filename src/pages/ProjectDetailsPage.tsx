@@ -46,11 +46,16 @@ export const ProjectDetailsPage = () => {
   const fetchProject = useProjectsStore((state) => state.fetchProject);
   const fetchStages = useProjectsStore((state) => state.fetchStages);
   const createStage = useProjectsStore((state) => state.createStage);
+  const patchProject = useProjectsStore((state) => state.patchProject);
+  const deleteProject = useProjectsStore((state) => state.deleteProject);
   const createShareLink = useProjectsStore((state) => state.createShareLink);
   const pushToast = useUiStore((state) => state.pushToast);
   const openConfirm = useUiStore((state) => state.openConfirm);
   const [createOpen, setCreateOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [projectNameDraft, setProjectNameDraft] = useState('');
+  const [projectSaving, setProjectSaving] = useState(false);
+  const [projectDeleting, setProjectDeleting] = useState(false);
   const [flatTasks, setFlatTasks] = useState<Task[]>([]);
   const [flatLoading, setFlatLoading] = useState(false);
   const [flatError, setFlatError] = useState<ApiError | null>(null);
@@ -89,6 +94,10 @@ export const ProjectDetailsPage = () => {
 
     void fetchProject(projectId);
   }, [fetchProject, projectId]);
+
+  useEffect(() => {
+    setProjectNameDraft(project?.projectName ?? '');
+  }, [project?.projectName]);
 
   useEffect(() => {
     if (!projectId || !project) {
@@ -342,6 +351,52 @@ export const ProjectDetailsPage = () => {
     } catch {
       pushToast('Не удалось скопировать ссылку', 'error');
     }
+  };
+
+  const onSaveProjectName = async () => {
+    const nextName = projectNameDraft.trim();
+    if (!nextName) {
+      pushToast('Введите название проекта', 'error');
+      return;
+    }
+    if (nextName === project?.projectName) {
+      pushToast('Название уже актуально', 'info');
+      return;
+    }
+
+    setProjectSaving(true);
+    try {
+      await patchProject(projectId, { project_name: nextName });
+      pushToast('Проект переименован', 'success');
+    } catch (reason) {
+      pushToast(normalizeApiError(reason).message, 'error');
+    } finally {
+      setProjectSaving(false);
+    }
+  };
+
+  const onDeleteProject = () => {
+    if (!projectId || projectDeleting) {
+      return;
+    }
+
+    openConfirm({
+      title: 'Удалить проект?',
+      description:
+        'Проект, этапы, задачи, направления, репозитории и Telegram-привязки будут удалены без восстановления.',
+      onConfirm: async () => {
+        setProjectDeleting(true);
+        try {
+          await deleteProject(projectId);
+          pushToast('Проект удален', 'success');
+          navigate('/projects');
+        } catch (reason) {
+          pushToast(normalizeApiError(reason).message, 'error');
+        } finally {
+          setProjectDeleting(false);
+        }
+      },
+    });
   };
 
   const onDeleteFlatTask = async (taskId: string) => {
@@ -686,6 +741,40 @@ export const ProjectDetailsPage = () => {
 
           {toolsOpen ? (
             <section className="project-v4-tools">
+              <div className="project-v4-tools-project">
+                <div className="project-v4-tools-field">
+                  <label htmlFor="project-name-settings">Название проекта</label>
+                  <input
+                    id="project-name-settings"
+                    value={projectNameDraft}
+                    onChange={(event) => {
+                      setProjectNameDraft(event.target.value);
+                    }}
+                    placeholder="Название проекта"
+                  />
+                </div>
+                <div className="project-v4-tools-actions">
+                  <button
+                    className="project-v4-secondary-btn"
+                    type="button"
+                    onClick={() => void onSaveProjectName()}
+                    disabled={projectSaving || !projectNameDraft.trim()}
+                  >
+                    {projectSaving ? 'Сохраняем...' : 'Сохранить название'}
+                  </button>
+                  <button
+                    className="project-v4-danger-btn"
+                    type="button"
+                    onClick={onDeleteProject}
+                    disabled={projectDeleting}
+                  >
+                    {projectDeleting ? 'Удаляем...' : 'Удалить проект'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="project-v4-tools-divider" />
+
               <div className="project-v4-tools-row">
                 {!resolvedShare ? (
                   <button
@@ -801,17 +890,8 @@ export const ProjectDetailsPage = () => {
                     className={`project-v4-stage-row ${stage.status === 'active' ? 'is-active' : ''} ${
                       stage.status === 'completed' ? 'is-completed' : ''
                     } ${stage.status === 'waiting' ? 'is-waiting' : ''} ${stage.status === 'review' ? 'is-review' : ''}`}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Открыть этап ${stage.stageName}`}
                     onClick={() => {
                       navigate(stageHref);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        navigate(stageHref);
-                      }
                     }}
                   >
                     <div className="project-v4-stage-grid">
@@ -830,7 +910,17 @@ export const ProjectDetailsPage = () => {
                         <span>{getStageUpdatedLabel(stage)}</span>
                       </div>
                       <div className="project-v4-action">
-                        <span>⋯</span>
+                        <button
+                          type="button"
+                          className="project-v4-stage-open-btn"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            navigate(stageHref);
+                          }}
+                        >
+                          Открыть
+                          <span aria-hidden="true">→</span>
+                        </button>
                       </div>
                     </div>
 

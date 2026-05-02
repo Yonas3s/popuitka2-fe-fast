@@ -452,6 +452,7 @@ export const DuckAssistant = () => {
         createTasks={createTasks}
         taskLimit={taskLimit}
         model={model}
+        mood={effectiveMood}
         draft={draft}
         isTyping={isTyping}
         messages={messages}

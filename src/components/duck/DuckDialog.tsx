@@ -1,6 +1,7 @@
-import type { KeyboardEvent, RefObject } from 'react';
+import type { FormEvent, KeyboardEvent, RefObject } from 'react';
 import type { DuckMessage } from '../../store/duck.store';
 import type { WorkflowType } from '../../types/models';
+import { PixelDuck, type DuckMood } from './PixelDuck';
 
 type StageOption = {
   id: string;
@@ -10,7 +11,6 @@ type StageOption = {
 type QuickAction = {
   id: string;
   label: string;
-  icon: string;
   onClick: () => void;
 };
 
@@ -25,6 +25,7 @@ type DuckDialogProps = {
   createTasks: boolean;
   taskLimit: number;
   model: string;
+  mood: DuckMood;
   draft: string;
   isTyping: boolean;
   messages: DuckMessage[];
@@ -42,27 +43,52 @@ type DuckDialogProps = {
   inputRef: RefObject<HTMLTextAreaElement>;
 };
 
+const formatTime = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '--:--';
+  }
+  return date.toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
 export const DuckDialog = ({
   open,
   projectId,
   projectName,
+  stageName,
+  workflowType = 'stages',
   canCreateTasks,
   createTasks,
   taskLimit,
+  model,
+  mood,
   draft,
   isTyping,
+  messages,
+  stageOptions,
+  preferredStageId,
   quickActions,
   onClose,
   onSubmit,
   onDraftChange,
+  onModelChange,
   onCreateTasksChange,
   onTaskLimitChange,
+  onPreferredStageChange,
   onResetConversation,
   inputRef,
 }: DuckDialogProps) => {
   if (!open) {
     return null;
   }
+
+  const onFormSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSubmit();
+  };
 
   const onTextareaKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'enter') {
@@ -71,114 +97,163 @@ export const DuckDialog = ({
     }
   };
 
-  // Friendly context subtitle. Falls back to "глобально" when the user is
-  // not on a project page — better than showing raw uuids as in v1.
   const subtitleParts: string[] = [];
   if (projectName) {
     subtitleParts.push(projectName);
   } else if (projectId) {
     subtitleParts.push('проект');
   } else {
-    subtitleParts.push('Orbit Payments');
+    subtitleParts.push('глобальный контекст');
+  }
+  if (stageName && workflowType === 'stages') {
+    subtitleParts.push(stageName);
   }
   const subtitle = subtitleParts.join(' · ');
+  const modeLabel = workflowType === 'flat' ? 'flat-проект' : 'этапы';
+  const statusLabel = isTyping ? 'думаю' : canCreateTasks ? 'готов к задачам' : 'только анализ';
 
   return (
-    <div className="duck-dialog">
-      {/* Header */}
+    <section className="duck-dialog" role="dialog" aria-modal="true" aria-label="Утка - AI-агент">
       <header className="duck-dialog-head">
-        <div className="duck-dialog-title">
-          <div className="duck-dialog-icon">
-            <span className="material-symbols-outlined duck-icon-filled">smart_toy</span>
+        <div className="duck-dialog-hero">
+          <div className={`duck-dialog-avatar duck-dialog-avatar--${mood}`}>
+            <PixelDuck mood={mood} className="duck-dialog-avatar-art" />
           </div>
-          <div>
-            <h3>Утка</h3>
+          <div className="duck-dialog-title">
+            <div className="duck-dialog-title-line">
+              <h3>Утка</h3>
+              <span className={`duck-dialog-status ${isTyping ? 'is-busy' : 'is-ready'}`}>
+                {statusLabel}
+              </span>
+            </div>
             <p>{subtitle}</p>
           </div>
         </div>
-        <button type="button" onClick={onClose} aria-label="Закрыть" className="duck-close-btn">
-          <span className="material-symbols-outlined">close</span>
+        <button className="duck-dialog-close" type="button" onClick={onClose} aria-label="Закрыть">
+          ×
         </button>
       </header>
 
-      {/* Body */}
-      <div className="duck-dialog-body">
-        {/* Quick Scenarios */}
-        <div className="duck-quick-scenarios">
-          <label className="duck-section-label">Быстрые сценарии</label>
-          <div className="duck-quick-actions">
-            {quickActions.map((action) => (
-              <button key={action.id} type="button" onClick={action.onClick} className="duck-quick-action-btn">
-                <span className="material-symbols-outlined duck-action-icon">{action.icon}</span>
-                {action.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Settings Row */}
-        <div className="duck-settings-row">
-          <label className="duck-toggle-label">
-            <div className="duck-toggle">
-              <input
-                type="checkbox"
-                checked={createTasks && canCreateTasks}
-                disabled={!canCreateTasks}
-                onChange={(event) => onCreateTasksChange(event.target.checked)}
-                className="duck-toggle-input"
-              />
-              <span className="duck-toggle-track"></span>
-              <span className="duck-toggle-thumb"></span>
-            </div>
-            <span className="duck-toggle-text">Автосоздание задач</span>
-          </label>
-          <div className="duck-limit-control">
-            <label htmlFor="duck-limit-input" className="duck-limit-label">Лимит</label>
-            <input
-              id="duck-limit-input"
-              type="number"
-              min={1}
-              max={20}
-              value={taskLimit}
-              disabled={!createTasks || !canCreateTasks}
-              onChange={(event) => onTaskLimitChange(Number(event.target.value))}
-              className="duck-limit-input"
-            />
-          </div>
-        </div>
-
-        {/* Main Input */}
-        <div className="duck-input-area">
-          <textarea
-            ref={inputRef}
-            value={draft}
-            onKeyDown={onTextareaKeyDown}
-            onChange={(event) => onDraftChange(event.target.value)}
-            placeholder="Что нужно сделать?"
-            rows={4}
-            className="duck-textarea"
-          />
-        </div>
-
-        {/* Info Area */}
-        <div className="duck-info-area">
-          <span className="material-symbols-outlined duck-info-icon">info</span>
-          <p className="duck-info-text">
-            Нажми на быстрый сценарий или напиши запрос в свободной форме. ИИ проанализирует контекст проекта и предложит варианты действий.
-          </p>
-        </div>
+      <div className="duck-dialog-actions">
+        {quickActions.map((action, index) => (
+          <button key={action.id} type="button" onClick={action.onClick}>
+            <span>{String(index + 1).padStart(2, '0')}</span>
+            <strong>{action.label}</strong>
+          </button>
+        ))}
       </div>
 
-      {/* Footer */}
-      <footer className="duck-dialog-footer">
-        <button type="button" className="duck-footer-btn duck-footer-btn-outline" onClick={onResetConversation}>
-          Очистить
-        </button>
-        <button type="submit" className="duck-footer-btn duck-footer-btn-primary" onClick={onSubmit} disabled={!draft.trim() || isTyping}>
-          Отправить
-          <span className="material-symbols-outlined duck-send-icon">send</span>
-        </button>
-      </footer>
-    </div>
+      <div className="duck-dialog-controls">
+        <div className={`duck-dialog-control-card duck-dialog-control-toggle ${!canCreateTasks ? 'is-disabled' : ''}`}>
+          <label>
+            <input
+              type="checkbox"
+              checked={createTasks && canCreateTasks}
+              disabled={!canCreateTasks}
+              onChange={(event) => onCreateTasksChange(event.target.checked)}
+            />
+            <span>Автозадачи</span>
+          </label>
+          <small>{canCreateTasks ? 'Утка может создать задачи' : 'Нужна роль owner'}</small>
+        </div>
+
+        <label className="duck-dialog-control-card">
+          <span>Лимит</span>
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={taskLimit}
+            disabled={!createTasks || !canCreateTasks}
+            onChange={(event) => onTaskLimitChange(Number(event.target.value))}
+          />
+        </label>
+
+        {workflowType === 'stages' ? (
+          <label className="duck-dialog-control-card duck-dialog-stage-control">
+            <span>Этап</span>
+            <select
+              value={preferredStageId ?? ''}
+              disabled={!createTasks || !canCreateTasks || stageOptions.length === 0}
+              onChange={(event) => onPreferredStageChange(event.target.value || null)}
+            >
+              {stageOptions.length === 0 ? <option value="">Нет этапов</option> : null}
+              {stageOptions.map((stage) => (
+                <option key={stage.id} value={stage.id}>
+                  {stage.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        <label className="duck-dialog-control-card duck-dialog-model-control">
+          <span>Модель</span>
+          <input
+            value={model}
+            onChange={(event) => onModelChange(event.target.value)}
+            placeholder="auto"
+          />
+        </label>
+      </div>
+
+      <div className="duck-dialog-history">
+        {messages.length === 0 ? (
+          <div className="duck-dialog-empty">
+            <strong>Готова разобрать текущий контекст</strong>
+            <span>
+              Выбери сценарий или напиши запрос. Контекст: {modeLabel}. Отправка: <code>Ctrl/Cmd + Enter</code>.
+            </span>
+          </div>
+        ) : (
+          <ul>
+            {messages.map((message) => (
+              <li key={message.id} className={`duck-message ${message.role === 'assistant' ? 'is-assistant' : 'is-user'}`}>
+                <div className="duck-message-avatar" aria-hidden="true">
+                  {message.role === 'assistant' ? (
+                    <PixelDuck mood="idle" className="duck-message-duck" />
+                  ) : (
+                    <span>Вы</span>
+                  )}
+                </div>
+                <div className="duck-message-bubble">
+                  <div className="duck-message-meta">
+                    <strong>{message.role === 'assistant' ? 'Duck' : 'Вы'}</strong>
+                    <span>{formatTime(message.createdAt)}</span>
+                  </div>
+                  <p>{message.text}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        {isTyping ? (
+          <div className="duck-dialog-typing">
+            <span aria-hidden="true" />
+            Duck собирает контекст...
+          </div>
+        ) : null}
+      </div>
+
+      <form className="duck-dialog-input" onSubmit={onFormSubmit}>
+        <textarea
+          ref={inputRef}
+          value={draft}
+          onKeyDown={onTextareaKeyDown}
+          onChange={(event) => onDraftChange(event.target.value)}
+          placeholder="Что нужно сделать?"
+          rows={3}
+        />
+        <div className="duck-dialog-input-actions">
+          <span>Ctrl/Cmd + Enter</span>
+          <button type="button" className="duck-link-btn" onClick={onResetConversation}>
+            Очистить
+          </button>
+          <button type="submit" className="duck-primary-btn" disabled={!draft.trim() || isTyping}>
+            Запустить
+          </button>
+        </div>
+      </form>
+    </section>
   );
 };

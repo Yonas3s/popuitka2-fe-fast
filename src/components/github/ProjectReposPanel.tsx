@@ -8,6 +8,24 @@ type ProjectReposPanelProps = {
   projectId: string;
 };
 
+const getRepoLabel = (repo: BoundRepository) =>
+  repo.fullName || repo.repositoryExternalId || 'Название репозитория не пришло';
+
+const splitRepoLabel = (label: string) => {
+  const parts = label.split('/');
+  if (parts.length >= 2) {
+    return {
+      owner: parts.slice(0, -1).join('/'),
+      name: parts[parts.length - 1],
+    };
+  }
+
+  return {
+    owner: '',
+    name: label,
+  };
+};
+
 export const ProjectReposPanel = ({ projectId }: ProjectReposPanelProps) => {
   const pushToast = useUiStore((state) => state.pushToast);
   const openConfirm = useUiStore((state) => state.openConfirm);
@@ -142,25 +160,45 @@ export const ProjectReposPanel = ({ projectId }: ProjectReposPanelProps) => {
 
       {boundRepos.length > 0 ? (
         <div className="gh-bound-list">
-          {boundRepos.map((repo) => (
-            <article key={repo.id} className="gh-bound-card">
-              <div className="gh-bound-info">
-                <a href={repo.htmlUrl} target="_blank" rel="noreferrer" className="gh-bound-name">
-                  {repo.fullName}
-                </a>
-                <span className="gh-bound-meta">
-                  auto-close: {repo.autoCloseOnMerge ? 'вкл' : 'выкл'}
-                </span>
-              </div>
-              <button
-                type="button"
-                className="ui-btn ui-btn-ghost ui-btn-sm"
-                onClick={() => onUnbind(repo)}
-              >
-                Отвязать
-              </button>
-            </article>
-          ))}
+          {boundRepos.map((repo) => {
+            const label = getRepoLabel(repo);
+            const { owner, name } = splitRepoLabel(label);
+
+            return (
+              <article key={repo.id} className="gh-bound-card">
+                <div className="gh-bound-info">
+                  <div className="gh-bound-repo-icon" aria-hidden="true">
+                    GH
+                  </div>
+                  <div className="gh-bound-copy">
+                    {repo.htmlUrl ? (
+                      <a href={repo.htmlUrl} target="_blank" rel="noreferrer" className="gh-bound-name">
+                        {name}
+                      </a>
+                    ) : (
+                      <strong className="gh-bound-name">{name}</strong>
+                    )}
+                    {owner ? <span className="gh-bound-owner">{owner}</span> : null}
+                    <div className="gh-bound-meta-row">
+                      <span className={`gh-bound-chip ${repo.autoCloseOnMerge ? 'is-on' : 'is-off'}`}>
+                        auto-close: {repo.autoCloseOnMerge ? 'вкл' : 'выкл'}
+                      </span>
+                      {repo.repositoryExternalId ? (
+                        <span className="gh-bound-id">repo id: {repo.repositoryExternalId}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn-ghost ui-btn-sm"
+                  onClick={() => onUnbind(repo)}
+                >
+                  Отвязать
+                </button>
+              </article>
+            );
+          })}
         </div>
       ) : null}
 

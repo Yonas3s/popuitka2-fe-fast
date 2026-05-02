@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useProjectsStore } from '../store/projects.store';
 import { useStageStore } from '../store/stage.store';
 import { useAuthStore } from '../store/auth.store';
@@ -44,6 +44,7 @@ const formatIssueKey = (value?: string) => (value ? value.toUpperCase() : null);
 
 export const StageDetailsPage = () => {
   const { projectId = '', stageId = '' } = useParams();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const user = useAuthStore((state) => state.user);
@@ -70,9 +71,11 @@ export const StageDetailsPage = () => {
 
   const [editValues, setEditValues] = useState<EditState>({});
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [stageNameDraft, setStageNameDraft] = useState('');
   const [contextDraft, setContextDraft] = useState('');
   const [workLinkDraft, setWorkLinkDraft] = useState('');
   const [savingContext, setSavingContext] = useState(false);
+  const [deletingStage, setDeletingStage] = useState(false);
   const [requestingReview, setRequestingReview] = useState(false);
   const [assignableMembers, setAssignableMembers] = useState<TeamMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
@@ -138,9 +141,10 @@ export const StageDetailsPage = () => {
     !project;
 
   useEffect(() => {
+    setStageNameDraft(currentStage?.stageName ?? '');
     setContextDraft(currentStage?.description ?? '');
     setWorkLinkDraft(currentStage?.workLink ?? '');
-  }, [currentStage?.description, currentStage?.workLink]);
+  }, [currentStage?.description, currentStage?.stageName, currentStage?.workLink]);
 
   // Deeplink: ?task=POPU-86 opens, scrolls to and highlights the matching task.
   useEffect(() => {
@@ -381,18 +385,48 @@ export const StageDetailsPage = () => {
       return;
     }
 
+    const nextStageName = stageNameDraft.trim();
+    if (!nextStageName) {
+      pushToast('Введите название этапа', 'error');
+      return;
+    }
+
     setSavingContext(true);
     try {
       await patchStage(projectId, stageId, {
+        stage_name: nextStageName,
         description: contextDraft.trim(),
         work_link: workLinkDraft.trim(),
       });
-      pushToast('Контекст стадии обновлен', 'success');
+      pushToast('Этап обновлен', 'success');
     } catch (reason) {
       pushToast(normalizeApiError(reason).message, 'error');
     } finally {
       setSavingContext(false);
     }
+  };
+
+  const onDeleteStage = () => {
+    if (!ensureStageRoute() || deletingStage) {
+      return;
+    }
+
+    openConfirm({
+      title: 'Удалить этап?',
+      description: 'Этап и все его задачи будут удалены без восстановления.',
+      onConfirm: async () => {
+        setDeletingStage(true);
+        try {
+          await apiService.deleteStage(projectId, stageId);
+          pushToast('Этап удален', 'success');
+          navigate(`/projects/${projectId}`);
+        } catch (reason) {
+          pushToast(normalizeApiError(reason).message, 'error');
+        } finally {
+          setDeletingStage(false);
+        }
+      },
+    });
   };
 
   const onPreviewBuild = () => {
@@ -1195,12 +1229,31 @@ export const StageDetailsPage = () => {
             <article className="stage-v5-card">
               <header className="stage-v5-card-head">
                 <h3>Контекст</h3>
-                <button type="button" onClick={() => void onSaveContext()}>
-                  {savingContext ? 'Сохраняем...' : 'Сохранить'}
-                </button>
+                <div className="stage-v5-card-head-links">
+                  <button
+                    type="button"
+                    className="stage-v5-delete-link"
+                    onClick={onDeleteStage}
+                    disabled={deletingStage}
+                  >
+                    {deletingStage ? 'Удаляем...' : 'Удалить'}
+                  </button>
+                  <button type="button" onClick={() => void onSaveContext()} disabled={savingContext}>
+                    {savingContext ? 'Сохраняем...' : 'Сохранить'}
+                  </button>
+                </div>
               </header>
 
               <div className="stage-v5-context-body">
+                <label>Название этапа</label>
+                <input
+                  value={stageNameDraft}
+                  onChange={(event) => {
+                    setStageNameDraft(event.target.value);
+                  }}
+                  placeholder="MVP"
+                />
+
                 <label>Описание</label>
                 <textarea
                   value={contextDraft}

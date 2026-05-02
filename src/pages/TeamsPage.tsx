@@ -40,6 +40,7 @@ const getRoleHint = (role?: string) => {
 export const TeamsPage = () => {
   const navigate = useNavigate();
   const pushToast = useUiStore((state) => state.pushToast);
+  const openConfirm = useUiStore((state) => state.openConfirm);
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [teamsLoading, setTeamsLoading] = useState(true);
@@ -47,6 +48,11 @@ export const TeamsPage = () => {
   const [createName, setCreateName] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
+  const [teamActionsOpenForId, setTeamActionsOpenForId] = useState<string | null>(null);
+  const [renameTeamId, setRenameTeamId] = useState<string | null>(null);
+  const [renameName, setRenameName] = useState('');
+  const [renameLoading, setRenameLoading] = useState(false);
+  const [deletingTeamId, setDeletingTeamId] = useState<string | null>(null);
 
   const [teamDetailsById, setTeamDetailsById] = useState<Record<string, TeamDetails>>({});
   const [teamDetailsLoadingById, setTeamDetailsLoadingById] = useState<Record<string, boolean>>({});
@@ -81,6 +87,29 @@ export const TeamsPage = () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!createOpen && !renameTeamId) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setCreateOpen(false);
+        setRenameTeamId(null);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [createOpen, renameTeamId]);
 
   useEffect(() => {
     if (teams.length === 0) {
@@ -144,6 +173,87 @@ export const TeamsPage = () => {
     }
   };
 
+  const onStartRenameTeam = (team: Team) => {
+    setTeamActionsOpenForId(null);
+    setRenameTeamId(team.id);
+    setRenameName(team.name);
+  };
+
+  const onRenameTeam = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const teamName = renameName.trim();
+    if (!renameTeamId) {
+      return;
+    }
+    if (teamName.length < 2) {
+      pushToast('Название команды должно быть не короче 2 символов', 'error');
+      return;
+    }
+
+    setRenameLoading(true);
+    try {
+      const updated = await apiService.patchTeam(renameTeamId, { name: teamName });
+      setTeams((prev) =>
+        prev.map((team) =>
+          team.id === renameTeamId
+            ? {
+                ...team,
+                ...updated,
+                role: team.role ?? updated.role,
+              }
+            : team,
+        ),
+      );
+      setTeamDetailsById((prev) => {
+        const current = prev[renameTeamId];
+        if (!current) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [renameTeamId]: {
+            ...current,
+            name: teamName,
+          },
+        };
+      });
+      setRenameTeamId(null);
+      setRenameName('');
+      pushToast('Команда переименована', 'success');
+    } catch (reason) {
+      pushToast(normalizeApiError(reason).message, 'error');
+    } finally {
+      setRenameLoading(false);
+    }
+  };
+
+  const onDeleteTeam = (team: Team) => {
+    setTeamActionsOpenForId(null);
+    openConfirm({
+      title: 'Удалить команду?',
+      description:
+        'Команда, участники, инвайты и командные проекты со стадиями и задачами будут удалены без восстановления.',
+      onConfirm: async () => {
+        setDeletingTeamId(team.id);
+        try {
+          await apiService.deleteTeam(team.id);
+          setTeams((prev) => prev.filter((item) => item.id !== team.id));
+          setTeamDetailsById((prev) => {
+            const next = { ...prev };
+            delete next[team.id];
+            return next;
+          });
+          pushToast('Команда удалена', 'success');
+        } catch (reason) {
+          pushToast(normalizeApiError(reason).message, 'error');
+        } finally {
+          setDeletingTeamId(null);
+        }
+      },
+    });
+  };
+
   return (
     <div className="teams-v3-page">
       <WorkspaceHeader activeTab="teams" />
@@ -164,44 +274,13 @@ export const TeamsPage = () => {
               className="ui-btn ui-btn-primary"
               type="button"
               onClick={() => {
-                setCreateOpen((prev) => !prev);
+                setCreateOpen(true);
               }}
             >
               <span className="ui-btn-icon" aria-hidden="true">+</span>
               Создать команду
             </button>
           </div>
-
-          {createOpen ? (
-            <section className="teams-v3-create-panel">
-              <form className="teams-v3-create-form" onSubmit={onCreateTeam}>
-                <label htmlFor="team-name">Название команды</label>
-                <input
-                  id="team-name"
-                  value={createName}
-                  onChange={(event) => {
-                    setCreateName(event.target.value);
-                  }}
-                  placeholder="Основная разработка"
-                />
-                <div className="teams-v3-create-actions">
-                  <button
-                    type="button"
-                    className="ui-btn ui-btn-secondary ui-btn-sm"
-                    onClick={() => {
-                      setCreateOpen(false);
-                    }}
-                    disabled={createLoading}
-                  >
-                    Отмена
-                  </button>
-                  <button type="submit" className="ui-btn ui-btn-primary ui-btn-sm" disabled={createLoading}>
-                    {createLoading ? 'Создаем...' : 'Создать'}
-                  </button>
-                </div>
-              </form>
-            </section>
-          ) : null}
 
           {teamsError ? <p className="teams-v3-error">{teamsError.message}</p> : null}
 
@@ -238,14 +317,53 @@ export const TeamsPage = () => {
               const projectsCount = details?.stats.projects;
               const membersPreview = typeof membersCount === 'number' ? Math.min(membersCount, 3) : 0;
               const isStatsLoading = Boolean(teamDetailsLoadingById[team.id]);
+              const effectiveRole = team.role || details?.myRole;
+              const canManageTeam = effectiveRole?.toLowerCase() === 'owner';
 
               return (
                 <article key={team.id} className="teams-v3-card">
                   <div className="teams-v3-card-head">
                     <div className="teams-v3-card-icon">{getInitials(team.name)}</div>
-                    <button className="teams-v3-card-more" type="button" aria-label={`Меню команды ${team.name}`}>
-                      ⋮
-                    </button>
+                    <div className="teams-v3-card-head-actions">
+                      <span className="teams-v3-role-chip">{getRoleLabel(effectiveRole)}</span>
+                      {canManageTeam ? (
+                        <div className="teams-v3-card-menu">
+                          <button
+                            className="teams-v3-card-more"
+                            type="button"
+                            aria-label={`Меню команды ${team.name}`}
+                            aria-expanded={teamActionsOpenForId === team.id}
+                            onClick={() => {
+                              setTeamActionsOpenForId((current) => (current === team.id ? null : team.id));
+                            }}
+                          >
+                            ⋮
+                          </button>
+                          {teamActionsOpenForId === team.id ? (
+                            <div className="teams-v3-card-menu-panel">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onStartRenameTeam(team);
+                                }}
+                              >
+                                Переименовать
+                              </button>
+                              <button
+                                type="button"
+                                className="teams-v3-menu-danger"
+                                disabled={deletingTeamId === team.id}
+                                onClick={() => {
+                                  onDeleteTeam(team);
+                                }}
+                              >
+                                {deletingTeamId === team.id ? 'Удаляем...' : 'Удалить'}
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
 
                   <h2>
@@ -280,8 +398,6 @@ export const TeamsPage = () => {
                     <Link to={`/teams/${team.id}?tab=projects`}>Проекты</Link>
                     <Link to={`/teams/${team.id}?tab=members`}>Участники</Link>
                   </div>
-
-                  <span className="teams-v3-role-chip">{getRoleLabel(team.role)}</span>
                 </article>
               );
             })}
@@ -302,6 +418,130 @@ export const TeamsPage = () => {
           </section>
         </div>
       </main>
+
+      {createOpen ? (
+        <div
+          className="teams-v3-modal-backdrop"
+          role="presentation"
+          onClick={() => {
+            setCreateOpen(false);
+          }}
+        >
+          <section
+            className="teams-v3-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-team-modal-title"
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          >
+            <header className="teams-v3-modal-head">
+              <h2 id="create-team-modal-title">Создать команду</h2>
+              <button
+                type="button"
+                className="teams-v3-modal-close"
+                aria-label="Закрыть окно создания команды"
+                onClick={() => {
+                  setCreateOpen(false);
+                }}
+              >
+                ×
+              </button>
+            </header>
+
+            <form className="teams-v3-create-form" onSubmit={onCreateTeam}>
+              <label htmlFor="team-name">Название команды</label>
+              <input
+                id="team-name"
+                autoFocus
+                value={createName}
+                onChange={(event) => {
+                  setCreateName(event.target.value);
+                }}
+                placeholder="Основная разработка"
+              />
+              <div className="teams-v3-create-actions">
+                <button
+                  type="button"
+                  className="ui-btn ui-btn-secondary ui-btn-sm"
+                  onClick={() => {
+                    setCreateOpen(false);
+                  }}
+                  disabled={createLoading}
+                >
+                  Отмена
+                </button>
+                <button type="submit" className="ui-btn ui-btn-primary ui-btn-sm" disabled={createLoading}>
+                  {createLoading ? 'Создаем...' : 'Создать'}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
+
+      {renameTeamId ? (
+        <div
+          className="teams-v3-modal-backdrop"
+          role="presentation"
+          onClick={() => {
+            setRenameTeamId(null);
+          }}
+        >
+          <section
+            className="teams-v3-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rename-team-modal-title"
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          >
+            <header className="teams-v3-modal-head">
+              <h2 id="rename-team-modal-title">Переименовать команду</h2>
+              <button
+                type="button"
+                className="teams-v3-modal-close"
+                aria-label="Закрыть окно переименования команды"
+                onClick={() => {
+                  setRenameTeamId(null);
+                }}
+              >
+                ×
+              </button>
+            </header>
+
+            <form className="teams-v3-create-form" onSubmit={onRenameTeam}>
+              <label htmlFor="rename-team-name">Название команды</label>
+              <input
+                id="rename-team-name"
+                autoFocus
+                value={renameName}
+                onChange={(event) => {
+                  setRenameName(event.target.value);
+                }}
+                placeholder="Основная разработка"
+              />
+              <div className="teams-v3-create-actions">
+                <button
+                  type="button"
+                  className="ui-btn ui-btn-secondary ui-btn-sm"
+                  onClick={() => {
+                    setRenameTeamId(null);
+                  }}
+                  disabled={renameLoading}
+                >
+                  Отмена
+                </button>
+                <button type="submit" className="ui-btn ui-btn-primary ui-btn-sm" disabled={renameLoading}>
+                  {renameLoading ? 'Сохраняем...' : 'Сохранить'}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
 
       <WorkspaceFooter />
     </div>
