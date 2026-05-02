@@ -258,6 +258,9 @@ export const LandingPage = () => {
                 label="Публичная страница клиента — список этапов + кнопка Approve"
                 ratio="16 / 10"
                 tone="light"
+                src="/screens/public-link-web.png"
+                srcMobile="/screens/public-link-phone.png"
+                alt="Публичная страница клиента unit-labs со списком этапов, задачами и кнопкой принятия этапа"
               />
             </article>
 
