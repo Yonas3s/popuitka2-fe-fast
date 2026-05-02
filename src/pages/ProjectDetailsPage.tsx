@@ -54,7 +54,9 @@ export const ProjectDetailsPage = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [projectNameDraft, setProjectNameDraft] = useState('');
+  const [projectWorkLinkDraft, setProjectWorkLinkDraft] = useState('');
   const [projectSaving, setProjectSaving] = useState(false);
+  const [projectWorkLinkSaving, setProjectWorkLinkSaving] = useState(false);
   const [projectDeleting, setProjectDeleting] = useState(false);
   const [flatTasks, setFlatTasks] = useState<Task[]>([]);
   const [flatLoading, setFlatLoading] = useState(false);
@@ -98,6 +100,10 @@ export const ProjectDetailsPage = () => {
   useEffect(() => {
     setProjectNameDraft(project?.projectName ?? '');
   }, [project?.projectName]);
+
+  useEffect(() => {
+    setProjectWorkLinkDraft(project?.workLink ?? '');
+  }, [project?.workLink]);
 
   useEffect(() => {
     if (!projectId || !project) {
@@ -372,6 +378,46 @@ export const ProjectDetailsPage = () => {
       pushToast(normalizeApiError(reason).message, 'error');
     } finally {
       setProjectSaving(false);
+    }
+  };
+
+  const onSaveProjectWorkLink = async () => {
+    const nextWorkLink = projectWorkLinkDraft.trim();
+    if (nextWorkLink) {
+      try {
+        new URL(nextWorkLink);
+      } catch {
+        pushToast('Введите корректную ссылку результата', 'error');
+        return;
+      }
+    }
+
+    if (nextWorkLink === (project?.workLink ?? '')) {
+      pushToast('Ссылка уже актуальна', 'info');
+      return;
+    }
+
+    setProjectWorkLinkSaving(true);
+    try {
+      await patchProject(projectId, { work_link: nextWorkLink });
+      pushToast(nextWorkLink ? 'Ссылка результата сохранена' : 'Ссылка результата очищена', 'success');
+    } catch (reason) {
+      pushToast(normalizeApiError(reason).message, 'error');
+    } finally {
+      setProjectWorkLinkSaving(false);
+    }
+  };
+
+  const onOpenProjectWorkLink = () => {
+    const nextWorkLink = projectWorkLinkDraft.trim();
+    if (!nextWorkLink) {
+      return;
+    }
+
+    try {
+      window.open(new URL(nextWorkLink).toString(), '_blank', 'noopener,noreferrer');
+    } catch {
+      pushToast('Неверная ссылка результата', 'error');
     }
   };
 
@@ -753,6 +799,22 @@ export const ProjectDetailsPage = () => {
                     placeholder="Название проекта"
                   />
                 </div>
+                {isFlatWorkflow ? (
+                  <div className="project-v4-tools-field">
+                    <label htmlFor="project-work-link-settings">Ссылка на результат / предпросмотр</label>
+                    <input
+                      id="project-work-link-settings"
+                      value={projectWorkLinkDraft}
+                      onChange={(event) => {
+                        setProjectWorkLinkDraft(event.target.value);
+                      }}
+                      placeholder="https://example.com/result"
+                    />
+                    <small>
+                      Для flat-проекта эта ссылка появится preview-карточкой на публичной странице клиента.
+                    </small>
+                  </div>
+                ) : null}
                 <div className="project-v4-tools-actions">
                   <button
                     className="project-v4-secondary-btn"
@@ -762,6 +824,26 @@ export const ProjectDetailsPage = () => {
                   >
                     {projectSaving ? 'Сохраняем...' : 'Сохранить название'}
                   </button>
+                  {isFlatWorkflow ? (
+                    <>
+                      <button
+                        className="project-v4-secondary-btn"
+                        type="button"
+                        onClick={() => void onSaveProjectWorkLink()}
+                        disabled={projectWorkLinkSaving}
+                      >
+                        {projectWorkLinkSaving ? 'Сохраняем...' : 'Сохранить ссылку'}
+                      </button>
+                      <button
+                        className="project-v4-secondary-btn"
+                        type="button"
+                        onClick={onOpenProjectWorkLink}
+                        disabled={!projectWorkLinkDraft.trim()}
+                      >
+                        Открыть результат
+                      </button>
+                    </>
+                  ) : null}
                   <button
                     className="project-v4-danger-btn"
                     type="button"

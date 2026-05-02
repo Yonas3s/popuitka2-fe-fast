@@ -167,6 +167,7 @@ export type Project = {
   teamId?: string;
   status?: 'active' | 'completed';
   workflowType: WorkflowType;
+  workLink?: string;
   shareLink?: string;
   raw: Record<string, unknown>;
 };

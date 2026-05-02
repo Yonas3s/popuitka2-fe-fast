@@ -325,6 +325,7 @@ export const PublicClientPage = () => {
                 {payload.workflowType === 'flat' ? (
                   <FlatTasksSection
                     tasks={payload.tasks}
+                    workLink={payload.project?.workLink}
                     approved={Boolean(payload.approved)}
                     onApprove={onApprove}
                     onOpenTask={openTaskDrawer}
@@ -455,12 +456,14 @@ const DetachedTasksBlock = ({
 
 const FlatTasksSection = ({
   tasks,
+  workLink,
   approved,
   onApprove,
   onOpenTask,
   activeTaskId,
 }: {
   tasks: Task[];
+  workLink?: string;
   approved: boolean;
   onApprove: () => void;
   onOpenTask: (taskId: string) => void;
@@ -469,7 +472,7 @@ const FlatTasksSection = ({
   const groups = useMemo(() => groupTasks(tasks), [tasks]);
   const hasReview = tasks.some((t) => t.status === 'review');
 
-  if (tasks.length === 0) {
+  if (tasks.length === 0 && !workLink) {
     return (
       <section className="pcp-empty">
         <h2>Задач пока нет</h2>
@@ -480,6 +483,16 @@ const FlatTasksSection = ({
 
   return (
     <section className="pcp-section">
+      {workLink ? (
+        <div className="pcp-flat-result">
+          <div className="pcp-flat-result-head">
+            <span>Результат</span>
+            <p>Ссылка, которую команда добавила для клиентского просмотра.</p>
+          </div>
+          <ExternalLinkPreviewCard url={workLink} />
+        </div>
+      ) : null}
+
       {hasReview && !approved && (
         <div className="pcp-callout">
           <div>
@@ -501,7 +514,14 @@ const FlatTasksSection = ({
         </div>
       )}
 
-      <TaskGroupsList groups={groups} onOpenTask={onOpenTask} activeTaskId={activeTaskId} />
+      {tasks.length > 0 ? (
+        <TaskGroupsList groups={groups} onOpenTask={onOpenTask} activeTaskId={activeTaskId} />
+      ) : (
+        <section className="pcp-empty">
+          <h2>Задач пока нет</h2>
+          <p>Менеджер проекта добавит их в ближайшее время.</p>
+        </section>
+      )}
     </section>
   );
 };

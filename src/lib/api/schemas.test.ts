@@ -210,6 +210,7 @@ describe('public share extractor', () => {
       _id: 'project-7',
       project_name: 'Release Portal',
       workflow_type: 'flat',
+      work_link: 'https://unit-labs.vercel.app/preview',
       tasks: [
         { _id: 'task-1', title: 'Ship changelog', status: 'todo' },
       ],
@@ -217,6 +218,7 @@ describe('public share extractor', () => {
 
     expect(payload.project?.projectName).toBe('Release Portal');
     expect(payload.project?.id).toBe('project-7');
+    expect(payload.project?.workLink).toBe('https://unit-labs.vercel.app/preview');
     expect(payload.workflowType).toBe('flat');
   });
 });

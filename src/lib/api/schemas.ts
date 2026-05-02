@@ -41,6 +41,8 @@ const projectSchema = z
     clientUrl: z.string().optional(),
     workflow_type: z.enum(['stages', 'flat']).optional(),
     workflowType: z.enum(['stages', 'flat']).optional(),
+    work_link: z.string().optional(),
+    workLink: z.string().optional(),
   })
   .passthrough();
 
@@ -432,6 +434,10 @@ export const normalizeProject = (value: unknown, index = 0): Project => {
     (record.workflow_type === 'stages' || record.workflow_type === 'flat' ? record.workflow_type : undefined) ||
     (record.workflowType === 'stages' || record.workflowType === 'flat' ? record.workflowType : undefined) ||
     'stages';
+  const workLink =
+    (typeof record.work_link === 'string' && record.work_link) ||
+    (typeof record.workLink === 'string' && record.workLink) ||
+    undefined;
 
   return {
     id: normalizeId(record, `project-${index}`),
@@ -444,6 +450,7 @@ export const normalizeProject = (value: unknown, index = 0): Project => {
         ? (record.status as 'active' | 'completed')
         : undefined,
     workflowType,
+    workLink,
     shareLink,
     raw: record,
   };
@@ -1566,7 +1573,21 @@ export const extractPublicShare = (value: unknown, shareToken: string): PublicSh
     nestedProject ??
     (dataCandidate && isProjectLike(dataCandidate) ? dataCandidate : null) ??
     (isProjectLike(asObj) ? asObj : null);
-  const project = projectSource ? normalizeProject(projectSource) : undefined;
+  const rootWorkLink =
+    (typeof asObj.work_link === 'string' && asObj.work_link) ||
+    (typeof asObj.workLink === 'string' && asObj.workLink) ||
+    (typeof dataCandidate?.work_link === 'string' && dataCandidate.work_link) ||
+    (typeof dataCandidate?.workLink === 'string' && dataCandidate.workLink) ||
+    undefined;
+  const projectRecord = projectSource
+    ? {
+        ...projectSource,
+        ...(rootWorkLink && typeof projectSource.work_link !== 'string' && typeof projectSource.workLink !== 'string'
+          ? { work_link: rootWorkLink }
+          : {}),
+      }
+    : null;
+  const project = projectRecord ? normalizeProject(projectRecord) : undefined;
   const rootWorkflowType =
     asObj.workflow_type === 'stages' || asObj.workflow_type === 'flat'
       ? asObj.workflow_type
