@@ -32,8 +32,9 @@ describe('WorkspaceReleaseNotesModal', () => {
     renderModal('/projects');
 
     expect(
-      screen.getByRole('dialog', { name: 'Что нового в рабочей зоне' }),
+      screen.getByRole('dialog', { name: 'Рабочая зона стала взрослее' }),
     ).toBeInTheDocument();
+    expect(screen.getByText('Превью результата и задачи')).toBeInTheDocument();
   });
 
   it('does not show on landing', () => {

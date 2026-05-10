@@ -110,6 +110,58 @@ export const WorkspaceReleaseNotesModal = () => {
         <section className="projects-v3-create workspace-release-body">
           <p className="workspace-release-summary">{WORKSPACE_RELEASE.summary}</p>
 
+          <div
+            className="workspace-release-previews"
+            aria-label="Превью обновления"
+          >
+            {WORKSPACE_RELEASE.previews.map((preview) => (
+              <article
+                key={preview.title}
+                className={`workspace-release-preview is-${preview.tone}`}
+              >
+                <div className="workspace-release-preview-shot" aria-hidden="true">
+                  {preview.tone === 'workspace' ? (
+                    <>
+                      <div className="workspace-release-mini-hero">
+                        <span />
+                        <strong>mvp</strong>
+                        <em>Ревью</em>
+                      </div>
+                      <div className="workspace-release-mini-toolbar">
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                      <div className="workspace-release-mini-list">
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="workspace-release-client-card">
+                        <span />
+                        <strong>Vercel preview</strong>
+                        <em>Открыть результат</em>
+                      </div>
+                      <div className="workspace-release-client-tasks">
+                        <span />
+                        <span />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="workspace-release-preview-copy">
+                  <span>{preview.eyebrow}</span>
+                  <h3>{preview.title}</h3>
+                  <p>{preview.caption}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+
           <div className="workspace-release-sections">
             {WORKSPACE_RELEASE.sections.map((section) => (
               <article key={section.title} className="workspace-release-section">
