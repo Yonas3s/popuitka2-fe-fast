@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useProjectsStore } from '../store/projects.store';
 import { useStageStore } from '../store/stage.store';
@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/auth.store';
 import { useUiStore } from '../store/ui.store';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
+import { parseSafeExternalUrl } from '../lib/security/safe-url';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
 import { WorkspaceFooter } from '../components/layout/WorkspaceFooter';
 import { GroupedTaskList } from '../components/tasks/GroupedTaskList';
@@ -13,6 +14,8 @@ import { BoardView } from '../components/tasks/BoardView';
 import { TaskDetailsDrawer } from '../components/tasks/TaskDetailsDrawer';
 import { ViewSettingsPanel, type ViewMode, type VisibleColumns } from '../components/tasks/ViewSettingsPanel';
 import { Skeleton } from '../components/ui/Skeleton';
+import { DirectionColorPicker } from '../components/directions/DirectionColorPicker';
+import { SectionRail, type SectionRailItem } from '../components/navigation/SectionRail';
 import type { DirectionTag, TaskPriority, TaskStatus, TaskType, TeamMember } from '../types/models';
 
 type EditState = {
@@ -32,6 +35,13 @@ const statusToTab = (status?: string): 'draft' | 'progress' | 'review' | 'done' 
   return 'draft';
 };
 
+const stageStatusSteps = [
+  { key: 'draft', label: 'Черновик', hint: 'План' },
+  { key: 'progress', label: 'В работе', hint: 'Сборка' },
+  { key: 'review', label: 'Ревью', hint: 'Проверка' },
+  { key: 'done', label: 'Готово', hint: 'Релиз' },
+] as const;
+
 const taskTypeLabels: Record<TaskType, string> = {
   task: 'Задача',
   bug: 'Баг',
@@ -43,7 +53,7 @@ const taskTypeLabels: Record<TaskType, string> = {
 const formatIssueKey = (value?: string) => (value ? value.toUpperCase() : null);
 
 export const StageDetailsPage = () => {
-  const { projectId = '', stageId = '' } = useParams();
+  const { projectId = '', stageId = '', stageSection = '' } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -77,6 +87,7 @@ export const StageDetailsPage = () => {
   const [savingContext, setSavingContext] = useState(false);
   const [deletingStage, setDeletingStage] = useState(false);
   const [requestingReview, setRequestingReview] = useState(false);
+  const [stageSectionsOpen, setStageSectionsOpen] = useState(false);
   const [assignableMembers, setAssignableMembers] = useState<TeamMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
 
@@ -119,6 +130,8 @@ export const StageDetailsPage = () => {
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
   const consumedDeeplinkRef = useRef<string | null>(null);
   const quickTaskInputRef = useRef<HTMLInputElement | null>(null);
+  const activeStageFilterCount = Number(taskTypeFilter !== 'all') + Number(directionFilter !== 'all');
+  const activeViewFilterCount = activeStageFilterCount + priorityFilter.length;
 
   useEffect(() => {
     if (!projectId || !stageId) {
@@ -265,6 +278,11 @@ export const StageDetailsPage = () => {
   }, [projectId]);
 
   const stageTab = statusToTab(currentStage?.status);
+  const stageStatusIndex = Math.max(
+    0,
+    stageStatusSteps.findIndex((step) => step.key === stageTab),
+  );
+  const stageStatusCurrent = stageStatusSteps[stageStatusIndex] ?? stageStatusSteps[0];
 
   const stageVersion = useMemo(() => {
     const raw = (currentStage?.raw ?? {}) as Record<string, unknown>;
@@ -391,13 +409,22 @@ export const StageDetailsPage = () => {
       return;
     }
 
+    const nextWorkLink = workLinkDraft.trim();
+    const safeWorkLink = nextWorkLink ? parseSafeExternalUrl(nextWorkLink) : null;
+    const normalizedWorkLink = safeWorkLink?.toString() ?? '';
+    if (nextWorkLink && !safeWorkLink) {
+      pushToast('Введите HTTPS-ссылку результата', 'error');
+      return;
+    }
+
     setSavingContext(true);
     try {
       await patchStage(projectId, stageId, {
         stage_name: nextStageName,
         description: contextDraft.trim(),
-        work_link: workLinkDraft.trim(),
+        work_link: normalizedWorkLink,
       });
+      setWorkLinkDraft(normalizedWorkLink);
       pushToast('Этап обновлен', 'success');
     } catch (reason) {
       pushToast(normalizeApiError(reason).message, 'error');
@@ -435,14 +462,16 @@ export const StageDetailsPage = () => {
       return;
     }
 
-    try {
-      window.open(workLinkDraft.trim(), '_blank', 'noopener,noreferrer');
-    } catch {
+    const safeWorkLink = parseSafeExternalUrl(workLinkDraft);
+    if (!safeWorkLink) {
       pushToast('Неверная ссылка предпросмотра', 'error');
+      return;
     }
+
+    window.open(safeWorkLink.toString(), '_blank', 'noopener,noreferrer');
   };
 
-  const onRequestReview = async () => {
+  const submitReviewRequest = async () => {
     if (!ensureStageRoute()) {
       return;
     }
@@ -462,6 +491,25 @@ export const StageDetailsPage = () => {
     } finally {
       setRequestingReview(false);
     }
+  };
+
+  const onRequestReview = () => {
+    if (!ensureStageRoute()) {
+      return;
+    }
+
+    if (currentStage?.status === 'completed') {
+      pushToast('Стадия уже завершена', 'info');
+      return;
+    }
+
+    openConfirm({
+      title: 'Запросить ревью?',
+      description: `Этап "${currentStage?.stageName || 'Этап'}" перейдет на проверку. Исполнители увидят, что работа готова к ревью.`,
+      onConfirm: () => {
+        void submitReviewRequest();
+      },
+    });
   };
 
   const onCreateTask = async () => {
@@ -704,6 +752,27 @@ export const StageDetailsPage = () => {
     }
   };
 
+  const onChangeDirectionColor = async (directionId: string, paletteKey: string) => {
+    if (!projectId) {
+      return;
+    }
+
+    const previous = directions;
+    setDirections((prev) =>
+      prev.map((direction) => (direction.id === directionId ? { ...direction, color: paletteKey } : direction)),
+    );
+
+    try {
+      const updated = await apiService.updateDirection(projectId, directionId, {
+        color: paletteKey,
+      });
+      setDirections((prev) => prev.map((direction) => (direction.id === directionId ? updated : direction)));
+    } catch (reason) {
+      setDirections(previous);
+      pushToast(normalizeApiError(reason).message, 'error');
+    }
+  };
+
   const stageStatusPill = useMemo(() => {
     if (currentStage?.status === 'completed') {
       return { label: 'Готово', className: 'stage-v5-pill done' };
@@ -718,12 +787,53 @@ export const StageDetailsPage = () => {
   }, [currentStage?.status]);
 
   const canGoStage = Boolean(projectId && stageId);
+  const stageSectionItems = useMemo<SectionRailItem[]>(
+    () => [
+      {
+        id: 'tasks',
+        label: 'Задачи',
+        helper: 'Список и доска этапа',
+        icon: 'tasks',
+        action: 'page',
+      },
+      {
+        id: 'settings',
+        label: 'Настройки',
+        helper: 'Контекст и активность',
+        icon: 'settings',
+        action: 'page',
+      },
+    ],
+    [],
+  );
+  const activeStageSection = stageSectionItems.some((item) => item.id === stageSection) ? stageSection : 'tasks';
+
+  const onSelectStageSection = useCallback(
+    (item: SectionRailItem) => {
+      setStageSectionsOpen(false);
+      navigate(`/projects/${projectId}/stages/${stageId}/${item.id}`);
+    },
+    [navigate, projectId, stageId],
+  );
 
   return (
     <div className="stage-v5-page">
       <WorkspaceHeader activeTab="projects" />
 
       <main className="stage-v5-main">
+        <div className="stage-v5-shell project-v4-content">
+          <SectionRail
+            activeId={activeStageSection}
+            ariaLabel="Разделы этапа"
+            items={stageSectionItems}
+            mobileOpen={stageSectionsOpen}
+            sheetTitle="Разделы этапа"
+            sheetSubtitle="Задачи отдельно, контекст и активность отдельно"
+            onCloseMobile={() => setStageSectionsOpen(false)}
+            onSelect={onSelectStageSection}
+          />
+
+          <div className="project-v4-content-stack">
         <section className="stage-v5-hero">
           <div className="stage-v5-hero-left">
             <div className="stage-v5-title-row">
@@ -739,19 +849,41 @@ export const StageDetailsPage = () => {
           </div>
 
           <div className="stage-v5-hero-right">
-            <div className="stage-v5-status-tabs" aria-label="Статус этапа">
-              <button type="button" className={stageTab === 'draft' ? 'active' : ''}>
-                Черновик
-              </button>
-              <button type="button" className={stageTab === 'progress' ? 'active' : ''}>
-                В работе
-              </button>
-              <button type="button" className={stageTab === 'review' ? 'active' : ''}>
-                Ревью
-              </button>
-              <button type="button" className={stageTab === 'done' ? 'active' : ''}>
-                Готово
-              </button>
+            <button className="stage-v5-secondary-btn stage-v5-section-mobile-btn" type="button" onClick={() => setStageSectionsOpen(true)}>
+              Разделы
+            </button>
+            <div className={`stage-v5-status-tabs stage-v5-status-tabs--${stageTab}`} aria-label="Статус этапа">
+              <span className="stage-v5-status-orbit" aria-hidden="true" />
+              <div className="stage-v5-status-current">
+                <span>Статус этапа</span>
+                <strong>{stageStatusCurrent.label}</strong>
+              </div>
+              <div className="stage-v5-status-path" role="list" aria-label="Прогресс этапа">
+                <span className="stage-v5-status-rail" aria-hidden="true">
+                  <span />
+                </span>
+                {stageStatusSteps.map((step, index) => (
+                  <span
+                    key={step.key}
+                    className={[
+                      'stage-v5-status-step',
+                      stageTab === step.key ? 'active' : '',
+                      index < stageStatusIndex ? 'complete' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    role="listitem"
+                  >
+                    <span className="stage-v5-status-step-mark" aria-hidden="true">
+                      {index < stageStatusIndex ? '✓' : index + 1}
+                    </span>
+                    <span className="stage-v5-status-step-copy">
+                      <span>{step.label}</span>
+                      <small>{step.hint}</small>
+                    </span>
+                  </span>
+                ))}
+              </div>
             </div>
 
             <button className="stage-v5-secondary-btn" type="button" onClick={onPreviewBuild}>
@@ -770,6 +902,8 @@ export const StageDetailsPage = () => {
 
         <section className="stage-v5-layout">
           <div className="stage-v5-main-column">
+            {activeStageSection === 'tasks' ? (
+              <>
             <article className="stage-v5-card">
               <header className="stage-v5-card-head">
                 <h3>Задачи</h3>
@@ -791,8 +925,15 @@ export const StageDetailsPage = () => {
                     </button>
                   </div>
                   <div className="vsp-trigger-wrap">
-                    <button className="vsp-trigger" onClick={() => setViewPanelOpen((p) => !p)} title="Настройки отображения">
+                    <button
+                      className={`vsp-trigger ${activeViewFilterCount > 0 ? 'is-active' : ''}`}
+                      type="button"
+                      onClick={() => setViewPanelOpen((p) => !p)}
+                      title="Настройки отображения и фильтры"
+                      aria-label="Настройки отображения и фильтры"
+                    >
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 4h4M10 4h4M2 8h8M12 8h2M2 12h2M6 12h8" strokeLinecap="round"/><circle cx="8" cy="4" r="1.5"/><circle cx="11" cy="8" r="1.5"/><circle cx="5" cy="12" r="1.5"/></svg>
+                      {activeViewFilterCount > 0 ? <span className="vsp-trigger-badge">{activeViewFilterCount}</span> : null}
                     </button>
                     <ViewSettingsPanel
                       open={viewPanelOpen}
@@ -807,6 +948,13 @@ export const StageDetailsPage = () => {
                       onVisibleColumnsChange={setVisibleCols}
                       priorityFilter={priorityFilter}
                       onPriorityFilterChange={setPriorityFilter}
+                      taskTypeFilter={taskTypeFilter}
+                      onTaskTypeFilterChange={setTaskTypeFilter}
+                      directionFilter={directionFilter}
+                      onDirectionFilterChange={setDirectionFilter}
+                      directions={directions}
+                      directionsLoading={directionsLoading}
+                      visibleCount={filteredTasks.length}
                     />
                   </div>
                 </div>
@@ -1065,7 +1213,7 @@ export const StageDetailsPage = () => {
                                 })
                               ) : (
                                 <span className="stage-v5-task-assign-note">
-                                  Нет направлений. Добавьте в правой колонке.
+                                  Нет направлений. Добавьте их в настройках этапа.
                                 </span>
                               )}
                             </div>
@@ -1127,89 +1275,36 @@ export const StageDetailsPage = () => {
                 </div>
               </div>}
             </article>
+              </>
+            ) : null}
 
+            {activeStageSection === 'settings' ? (
+              <>
             <article className="stage-v5-card">
               <header className="stage-v5-card-head">
-                <h3>Системная активность</h3>
-                <div className="stage-v5-card-head-links">
-                  <button type="button">Фильтр</button>
-                  <button type="button">Экспорт</button>
-                </div>
+                <h3>Направления</h3>
               </header>
-
-              <div className="stage-v5-log-list">
-                <div className="stage-v5-log-row">
-                  <span>{new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
-                  <p>
-                    <strong>@{user?.username || 'владелец'}</strong> обновил статус на{' '}
-                    <span className={stageStatusPill.className}>{stageStatusPill.label.toUpperCase()}</span>
-                  </p>
-                </div>
-                <div className="stage-v5-log-row">
-                  <span>{new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
-                  <p>
-                    Системная проверка: <strong>выполнение задач {progress}%</strong>.
-                  </p>
-                </div>
-                <div className="stage-v5-log-row">
-                  <span>Ранее</span>
-                  <p>
-                    Этап загружен из <strong>{project?.projectName || 'проекта'}</strong>.
-                  </p>
-                </div>
-              </div>
-            </article>
-          </div>
-
-          <aside className="stage-v5-side-column">
-            <article className="stage-v5-card">
-              <header className="stage-v5-card-head">
-                <h3>Теги и фильтры</h3>
-              </header>
-              <div className="stage-v5-tags-card-body">
-                <div className="stage-v5-task-filters">
-                  <label>
-                    <span>Тип</span>
-                    <select
-                      value={taskTypeFilter}
-                      onChange={(event) => {
-                        setTaskTypeFilter(event.target.value as 'all' | TaskType);
-                      }}
-                    >
-                      <option value="all">Все типы</option>
-                      <option value="task">Задача</option>
-                      <option value="bug">Баг</option>
-                      <option value="feature">Фича</option>
-                      <option value="improvement">Улучшение</option>
-                      <option value="chore">Техдолг</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>Направление</span>
-                    <select
-                      value={directionFilter}
-                      disabled={directionsLoading || directions.length === 0}
-                      onChange={(event) => {
-                        setDirectionFilter(event.target.value as 'all' | string);
-                      }}
-                    >
-                      <option value="all">Все направления</option>
-                      {directions.map((direction) => (
-                        <option key={direction.id} value={direction.id}>
-                          {direction.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-
-                <div className="stage-v5-direction-create">
+              <div className="flat-directions-body">
+                {directions.length === 0 ? (
+                  <span className="flat-directions-empty">Пока нет направлений</span>
+                ) : (
+                  <div className="flat-directions-chips">
+                    {directions.map((direction) => (
+                      <DirectionColorPicker
+                        key={direction.id}
+                        directionId={direction.id}
+                        name={direction.name}
+                        color={direction.color}
+                        onPickColor={(key) => onChangeDirectionColor(direction.id, key)}
+                      />
+                    ))}
+                  </div>
+                )}
+                <div className="flat-directions-add">
                   <input
                     value={newDirectionName}
                     placeholder="Добавить направление"
-                    onChange={(event) => {
-                      setNewDirectionName(event.target.value);
-                    }}
+                    onChange={(event) => setNewDirectionName(event.target.value)}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter') {
                         event.preventDefault();
@@ -1217,12 +1312,10 @@ export const StageDetailsPage = () => {
                       }
                     }}
                   />
-                  <button type="button" onClick={() => void onAddDirection()}>
+                  <button type="button" className="ui-btn ui-btn-secondary ui-btn-sm" onClick={() => void onAddDirection()}>
                     + Направление
                   </button>
                 </div>
-
-                <p className="stage-v5-tags-hint">Показано задач: {filteredTasks.length}</p>
               </div>
             </article>
 
@@ -1271,20 +1364,47 @@ export const StageDetailsPage = () => {
                   }}
                   placeholder="https://..."
                 />
-
-                <div className="stage-v5-objectives">
-                  <h4>Цели</h4>
-                  <ul>
-                    <li>Проверка интеграции OAuth2</li>
-                    <li>Проверка устойчивости сессий</li>
-                    <li>Аудит совместимости устаревших эндпоинтов</li>
-                  </ul>
-                </div>
               </div>
             </article>
 
-          </aside>
+            <article className="stage-v5-card">
+              <header className="stage-v5-card-head">
+                <h3>Системная активность</h3>
+                <div className="stage-v5-card-head-links">
+                  <button type="button">Фильтр</button>
+                  <button type="button">Экспорт</button>
+                </div>
+              </header>
+
+              <div className="stage-v5-log-list">
+                <div className="stage-v5-log-row">
+                  <span>{new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <p>
+                    <strong>@{user?.username || 'владелец'}</strong> обновил статус на{' '}
+                    <span className={stageStatusPill.className}>{stageStatusPill.label.toUpperCase()}</span>
+                  </p>
+                </div>
+                <div className="stage-v5-log-row">
+                  <span>{new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <p>
+                    Системная проверка: <strong>выполнение задач {progress}%</strong>.
+                  </p>
+                </div>
+                <div className="stage-v5-log-row">
+                  <span>Ранее</span>
+                  <p>
+                    Этап загружен из <strong>{project?.projectName || 'проекта'}</strong>.
+                  </p>
+                </div>
+              </div>
+            </article>
+              </>
+            ) : null}
+          </div>
+
         </section>
+          </div>
+        </div>
       </main>
 
       <WorkspaceFooter />

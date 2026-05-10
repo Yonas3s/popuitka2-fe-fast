@@ -73,6 +73,8 @@ export const AppRoutes = () => {
           <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
           <Route path="/projects/:projectId/agent" element={<AgentPage />} />
           <Route path="/projects/:projectId/stages/:stageId" element={<StageDetailsPage />} />
+          <Route path="/projects/:projectId/stages/:stageId/:stageSection" element={<StageDetailsPage />} />
+          <Route path="/projects/:projectId/:projectSection" element={<ProjectDetailsPage />} />
         </Route>
 
         <Route path="/p/:shareToken" element={<PublicClientPage />} />

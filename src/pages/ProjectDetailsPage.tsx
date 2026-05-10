@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/auth.store';
 import { apiService } from '../lib/api/service';
 import { normalizeApiError } from '../lib/api/errors';
 import { FRONTEND_BASE_URL } from '../lib/config/env';
+import { parseSafeExternalUrl } from '../lib/security/safe-url';
 import { DirectionColorPicker } from '../components/directions/DirectionColorPicker';
 import { WorkspaceHeader } from '../components/layout/WorkspaceHeader';
 import { WorkspaceFooter } from '../components/layout/WorkspaceFooter';
@@ -18,6 +19,7 @@ import { BoardView } from '../components/tasks/BoardView';
 import { TaskDetailsDrawer } from '../components/tasks/TaskDetailsDrawer';
 import { ViewSettingsPanel, type ViewMode, type VisibleColumns } from '../components/tasks/ViewSettingsPanel';
 import { Skeleton } from '../components/ui/Skeleton';
+import { SectionRail, type SectionRailItem } from '../components/navigation/SectionRail';
 import type {
   ApiError,
   DirectionTag,
@@ -35,7 +37,7 @@ type StageForm = {
 };
 
 export const ProjectDetailsPage = () => {
-  const { projectId = '' } = useParams();
+  const { projectId = '', projectSection = '' } = useParams();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const project = useProjectsStore((state) => state.currentProject);
@@ -52,12 +54,12 @@ export const ProjectDetailsPage = () => {
   const pushToast = useUiStore((state) => state.pushToast);
   const openConfirm = useUiStore((state) => state.openConfirm);
   const [createOpen, setCreateOpen] = useState(false);
-  const [toolsOpen, setToolsOpen] = useState(false);
   const [projectNameDraft, setProjectNameDraft] = useState('');
   const [projectWorkLinkDraft, setProjectWorkLinkDraft] = useState('');
   const [projectSaving, setProjectSaving] = useState(false);
   const [projectWorkLinkSaving, setProjectWorkLinkSaving] = useState(false);
   const [projectDeleting, setProjectDeleting] = useState(false);
+  const [projectSectionsOpen, setProjectSectionsOpen] = useState(false);
   const [flatTasks, setFlatTasks] = useState<Task[]>([]);
   const [flatLoading, setFlatLoading] = useState(false);
   const [flatError, setFlatError] = useState<ApiError | null>(null);
@@ -80,7 +82,11 @@ export const ProjectDetailsPage = () => {
     id: true, status: true, assignee: true, priority: true, labels: true, created: true,
   });
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority[]>([]);
+  const [taskTypeFilter, setTaskTypeFilter] = useState<'all' | TaskType>('all');
+  const [directionFilter, setDirectionFilter] = useState<'all' | string>('all');
   const [newDirectionName, setNewDirectionName] = useState('');
+  const activeFlatTaskFilterCount = Number(taskTypeFilter !== 'all') + Number(directionFilter !== 'all');
+  const activeFlatViewFilterCount = activeFlatTaskFilterCount + priorityFilter.length;
 
   const {
     register,
@@ -179,6 +185,60 @@ export const ProjectDetailsPage = () => {
 
   const workflowType = project?.workflowType || 'stages';
   const isFlatWorkflow = workflowType === 'flat';
+
+  const projectSectionItems = useMemo<SectionRailItem[]>(() => {
+    return [
+      isFlatWorkflow
+        ? {
+            id: 'tasks',
+            label: 'Задачи',
+            helper: 'Список и доска',
+            icon: 'tasks',
+            action: 'page',
+          }
+        : {
+            id: 'stages',
+            label: 'Этапы',
+            helper: 'Поставка проекта',
+            icon: 'stages',
+            action: 'page',
+          },
+      {
+        id: 'settings',
+        label: 'Настройки',
+        helper: 'Проект, направления и ссылки',
+        icon: 'settings',
+        action: 'page',
+      },
+      {
+        id: 'agent',
+        label: 'Агент',
+        helper: 'Автоматизация проекта',
+        icon: 'agent',
+        action: 'route',
+        to: `/projects/${projectId}/agent`,
+      },
+    ];
+  }, [isFlatWorkflow, projectId]);
+
+  const defaultProjectSection = isFlatWorkflow ? 'tasks' : 'stages';
+  const activeProjectSection = projectSectionItems.some((item) => item.action === 'page' && item.id === projectSection)
+    ? projectSection
+    : defaultProjectSection;
+
+  const onSelectProjectSection = useCallback(
+    (item: SectionRailItem) => {
+      setProjectSectionsOpen(false);
+
+      if (item.action === 'route' && item.to) {
+        navigate(item.to);
+        return;
+      }
+
+      navigate(`/projects/${projectId}/${item.id}`);
+    },
+    [navigate, projectId],
+  );
 
   // Single gate for flat mode skeleton — don't un-skeleton until every
   // dependency of the task card is ready (project + tasks + members + directions).
@@ -310,12 +370,12 @@ export const ProjectDetailsPage = () => {
   const onCreateShare = async () => {
     if (resolvedShare) {
       // Already has a working link — just open the panel so the user sees it.
-      setToolsOpen(true);
+      navigate(`/projects/${projectId}/settings`);
       pushToast('Ссылка уже существует — копируйте из панели ниже', 'info');
       return;
     }
     await issueShareLink('Клиентская ссылка создана');
-    setToolsOpen(true);
+    navigate(`/projects/${projectId}/settings`);
   };
 
   /** Explicit rotate — old link stops working, requires confirmation. */
@@ -343,7 +403,7 @@ export const ProjectDetailsPage = () => {
     } else {
       pushToast('Релиз доступен по существующей ссылке', 'info');
     }
-    setToolsOpen(true);
+    navigate(`/projects/${projectId}/settings`);
   };
 
   const onCopy = async () => {
@@ -383,24 +443,25 @@ export const ProjectDetailsPage = () => {
 
   const onSaveProjectWorkLink = async () => {
     const nextWorkLink = projectWorkLinkDraft.trim();
+    const safeWorkLink = nextWorkLink ? parseSafeExternalUrl(nextWorkLink) : null;
+    const normalizedWorkLink = safeWorkLink?.toString() ?? '';
     if (nextWorkLink) {
-      try {
-        new URL(nextWorkLink);
-      } catch {
-        pushToast('Введите корректную ссылку результата', 'error');
+      if (!safeWorkLink) {
+        pushToast('Введите HTTPS-ссылку результата', 'error');
         return;
       }
     }
 
-    if (nextWorkLink === (project?.workLink ?? '')) {
+    if (normalizedWorkLink === (project?.workLink ?? '')) {
       pushToast('Ссылка уже актуальна', 'info');
       return;
     }
 
     setProjectWorkLinkSaving(true);
     try {
-      await patchProject(projectId, { work_link: nextWorkLink });
-      pushToast(nextWorkLink ? 'Ссылка результата сохранена' : 'Ссылка результата очищена', 'success');
+      await patchProject(projectId, { work_link: normalizedWorkLink });
+      setProjectWorkLinkDraft(normalizedWorkLink);
+      pushToast(normalizedWorkLink ? 'Ссылка результата сохранена' : 'Ссылка результата очищена', 'success');
     } catch (reason) {
       pushToast(normalizeApiError(reason).message, 'error');
     } finally {
@@ -414,11 +475,13 @@ export const ProjectDetailsPage = () => {
       return;
     }
 
-    try {
-      window.open(new URL(nextWorkLink).toString(), '_blank', 'noopener,noreferrer');
-    } catch {
+    const safeWorkLink = parseSafeExternalUrl(nextWorkLink);
+    if (!safeWorkLink) {
       pushToast('Неверная ссылка результата', 'error');
+      return;
     }
+
+    window.open(safeWorkLink.toString(), '_blank', 'noopener,noreferrer');
   };
 
   const onDeleteProject = () => {
@@ -652,6 +715,12 @@ export const ProjectDetailsPage = () => {
           if (priorityFilter.length > 0 && !priorityFilter.includes(task.priority)) {
             return false;
           }
+          if (taskTypeFilter !== 'all' && task.taskType !== taskTypeFilter) {
+            return false;
+          }
+          if (directionFilter !== 'all' && !task.directionIds.includes(directionFilter)) {
+            return false;
+          }
           return true;
         })
         .sort((a, b) => {
@@ -665,7 +734,7 @@ export const ProjectDetailsPage = () => {
           return doneOrder !== 0 ? doneOrder : a.index - b.index;
         })
         .map(({ task }) => task),
-    [flatTasks, priorityFilter],
+    [directionFilter, flatTasks, priorityFilter, taskTypeFilter],
   );
 
   const userInitials = useMemo(() => {
@@ -749,44 +818,49 @@ export const ProjectDetailsPage = () => {
       <main className="project-v4-main">
         <div className="project-v4-grid-bg" />
         <div className="project-v4-container project-v4-content">
-          <div className="project-v4-head">
-            <div>
-              <div className="project-v4-title-row">
-                <h1>{project?.projectName || 'Проект'}</h1>
-                <span className={projectStatusMeta.className}>{projectStatusMeta.label}</span>
+          <SectionRail
+            activeId={activeProjectSection}
+            ariaLabel="Разделы проекта"
+            items={projectSectionItems}
+            mobileOpen={projectSectionsOpen}
+            sheetTitle="Разделы проекта"
+            sheetSubtitle="Быстрый переход между страницами проекта"
+            onCloseMobile={() => setProjectSectionsOpen(false)}
+            onSelect={onSelectProjectSection}
+          />
+
+          <div className="project-v4-content-stack">
+            <div className="project-v4-head">
+              <div>
+                <div className="project-v4-title-row">
+                  <h1>{project?.projectName || 'Проект'}</h1>
+                  <span className={projectStatusMeta.className}>{projectStatusMeta.label}</span>
+                </div>
+                <p>
+                  {project?.description ||
+                    (isFlatWorkflow
+                      ? 'Сквозной список задач проекта без стадий.'
+                      : 'Поэтапная поставка и прозрачный процесс согласования для клиента.')}
+                </p>
               </div>
-              <p>
-                {project?.description ||
-                  (isFlatWorkflow
-                    ? 'Сквозной список задач проекта без стадий.'
-                    : 'Поэтапная поставка и прозрачный процесс согласования для клиента.')}
-              </p>
+
+              <div className="project-v4-actions">
+                <button
+                  className="project-v4-secondary-btn project-v4-section-mobile-btn"
+                  type="button"
+                  onClick={() => setProjectSectionsOpen(true)}
+                >
+                  Разделы
+                </button>
+                <button className="project-v4-primary-btn" type="button" onClick={onLaunchRelease}>
+                  Запустить релиз
+                </button>
+              </div>
             </div>
 
-            <div className="project-v4-actions">
-              <Link
-                className="project-v4-secondary-btn"
-                to={`/projects/${projectId}/agent`}
-              >
-                Агент
-              </Link>
-              <button
-                className="project-v4-secondary-btn"
-                type="button"
-                onClick={() => {
-                  setToolsOpen((prev) => !prev);
-                }}
-              >
-                Настройки
-              </button>
-              <button className="project-v4-primary-btn" type="button" onClick={onLaunchRelease}>
-                Запустить релиз
-              </button>
-            </div>
-          </div>
-
-          {toolsOpen ? (
-            <section className="project-v4-tools">
+            {activeProjectSection === 'settings' ? (
+              <>
+              <section id="project-section-settings" className="project-v4-tools">
               <div className="project-v4-tools-project">
                 <div className="project-v4-tools-field">
                   <label htmlFor="project-name-settings">Название проекта</label>
@@ -894,10 +968,60 @@ export const ProjectDetailsPage = () => {
               <p className="project-v4-tools-link">
                 {frontendShareUrl ? frontendShareUrl : 'Ссылка пока не создана'}
               </p>
-            </section>
-          ) : null}
+              </section>
+              <section id="project-section-directions" className="project-v4-section-anchor">
+                <article className="stage-v5-card">
+                  <header className="stage-v5-card-head">
+                    <h3>Направления</h3>
+                  </header>
+                  <div className="flat-directions-body">
+                    {directions.length === 0 ? (
+                      <span className="flat-directions-empty">Пока нет направлений</span>
+                    ) : (
+                      <div className="flat-directions-chips">
+                        {directions.map((direction) => (
+                          <DirectionColorPicker
+                            key={direction.id}
+                            directionId={direction.id}
+                            name={direction.name}
+                            color={direction.color}
+                            onPickColor={(key) => onChangeDirectionColor(direction.id, key)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    <div className="flat-directions-add">
+                      <input
+                        value={newDirectionName}
+                        placeholder="Добавить направление"
+                        onChange={(event) => setNewDirectionName(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            void onAddFlatDirection();
+                          }
+                        }}
+                      />
+                      <button type="button" className="ui-btn ui-btn-secondary ui-btn-sm" onClick={() => void onAddFlatDirection()}>
+                        + Направление
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              </section>
+              <section id="project-section-repos" className="project-v4-section-anchor">
+                <ProjectReposPanel projectId={projectId} />
+              </section>
+              <section id="project-section-telegram" className="project-v4-section-anchor">
+                <ProjectTelegramPanel projectId={projectId} />
+              </section>
+              <section id="project-section-webhooks" className="project-v4-section-anchor">
+                <WebhookEventsPanel projectId={projectId} />
+              </section>
+              </>
+            ) : null}
 
-          {!isFlatWorkflow && createOpen ? (
+          {!isFlatWorkflow && activeProjectSection === 'stages' && createOpen ? (
             <section className="project-v4-create-stage">
               <form className="project-v4-create-form" onSubmit={onSubmit}>
                 <div>
@@ -931,8 +1055,8 @@ export const ProjectDetailsPage = () => {
             </section>
           ) : null}
 
-          {!isFlatWorkflow ? (
-            <section className="project-v4-stages">
+          {!isFlatWorkflow && activeProjectSection === 'stages' ? (
+            <section id="project-section-stages" className="project-v4-stages">
               <div className="project-v4-stages-head">
                 <div>Порядок</div>
                 <div>Название этапа</div>
@@ -1031,49 +1155,12 @@ export const ProjectDetailsPage = () => {
                 + Добавить этап
               </button>
             </section>
-          ) : (
+          ) : null}
+
+          {isFlatWorkflow && activeProjectSection === 'tasks' ? (
             <section className="stage-v5-layout">
               <div className="stage-v5-main-column">
-                <article className="stage-v5-card">
-                  <header className="stage-v5-card-head">
-                    <h3>Направления</h3>
-                  </header>
-                  <div className="flat-directions-body">
-                    {directions.length === 0 ? (
-                      <span className="flat-directions-empty">Пока нет направлений</span>
-                    ) : (
-                      <div className="flat-directions-chips">
-                        {directions.map((direction) => (
-                          <DirectionColorPicker
-                            key={direction.id}
-                            directionId={direction.id}
-                            name={direction.name}
-                            color={direction.color}
-                            onPickColor={(key) => onChangeDirectionColor(direction.id, key)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    <div className="flat-directions-add">
-                      <input
-                        value={newDirectionName}
-                        placeholder="Добавить направление"
-                        onChange={(event) => setNewDirectionName(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.preventDefault();
-                            void onAddFlatDirection();
-                          }
-                        }}
-                      />
-                      <button type="button" className="ui-btn ui-btn-secondary ui-btn-sm" onClick={() => void onAddFlatDirection()}>
-                        + Направление
-                      </button>
-                    </div>
-                  </div>
-                </article>
-
-                <article className="stage-v5-card">
+                <article id="project-section-tasks" className="stage-v5-card">
                   <header className="stage-v5-card-head">
                     <h3>Задачи</h3>
                     <div className="stage-v5-card-head-links" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
@@ -1094,8 +1181,15 @@ export const ProjectDetailsPage = () => {
                         </button>
                       </div>
                       <div className="vsp-trigger-wrap">
-                        <button className="vsp-trigger" onClick={() => setViewPanelOpen((p) => !p)} title="Настройки отображения">
+                        <button
+                          className={`vsp-trigger ${activeFlatViewFilterCount > 0 ? 'is-active' : ''}`}
+                          type="button"
+                          onClick={() => setViewPanelOpen((p) => !p)}
+                          title="Настройки отображения и фильтры"
+                          aria-label="Настройки отображения и фильтры"
+                        >
                           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 4h4M10 4h4M2 8h8M12 8h2M2 12h2M6 12h8" strokeLinecap="round"/><circle cx="8" cy="4" r="1.5"/><circle cx="11" cy="8" r="1.5"/><circle cx="5" cy="12" r="1.5"/></svg>
+                          {activeFlatViewFilterCount > 0 ? <span className="vsp-trigger-badge">{activeFlatViewFilterCount}</span> : null}
                         </button>
                         <ViewSettingsPanel
                           open={viewPanelOpen}
@@ -1110,6 +1204,13 @@ export const ProjectDetailsPage = () => {
                           onVisibleColumnsChange={setVisibleCols}
                           priorityFilter={priorityFilter}
                           onPriorityFilterChange={setPriorityFilter}
+                          taskTypeFilter={taskTypeFilter}
+                          onTaskTypeFilterChange={setTaskTypeFilter}
+                          directionFilter={directionFilter}
+                          onDirectionFilterChange={setDirectionFilter}
+                          directions={directions}
+                          directionsLoading={directionsLoading}
+                          visibleCount={filteredFlatTasks.length}
                         />
                       </div>
                     </div>
@@ -1177,12 +1278,8 @@ export const ProjectDetailsPage = () => {
                 </article>
               </div>
             </section>
-          )}
-
-
-          <ProjectReposPanel projectId={projectId} />
-          <ProjectTelegramPanel projectId={projectId} />
-          <WebhookEventsPanel projectId={projectId} />
+          ) : null}
+          </div>
         </div>
       </main>
 

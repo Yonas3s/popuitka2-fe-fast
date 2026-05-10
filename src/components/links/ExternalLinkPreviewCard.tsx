@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { parseSafeExternalUrl } from '../../lib/security/safe-url';
 
 type ProviderTone = 'neutral' | 'vercel' | 'netlify' | 'figma';
 
@@ -16,7 +17,11 @@ type LinkPreviewModel = {
 const shorten = (value: string, max = 56) => (value.length > max ? `${value.slice(0, max - 1)}…` : value);
 
 const resolvePreviewModel = (value: string): LinkPreviewModel => {
-  const parsed = new URL(value);
+  const parsed = parseSafeExternalUrl(value);
+  if (!parsed) {
+    throw new Error('Unsafe external URL');
+  }
+
   const host = parsed.hostname.replace(/^www\./, '');
   const path = `${parsed.pathname || '/'}${parsed.search || ''}${parsed.hash || ''}`;
   const route = path === '/' ? 'Главная страница' : shorten(decodeURIComponent(path), 68);
@@ -43,9 +48,7 @@ const resolvePreviewModel = (value: string): LinkPreviewModel => {
     badge,
     tone,
     faviconUrl: `https://www.google.com/s2/favicons?sz=128&domain_url=${encodeURIComponent(parsed.origin)}`,
-    screenshotUrl: /^https?:$/.test(parsed.protocol)
-      ? `https://s.wordpress.com/mshots/v1/${encodeURIComponent(parsed.toString())}?w=1200&h=760`
-      : undefined,
+    screenshotUrl: `https://s.wordpress.com/mshots/v1/${encodeURIComponent(parsed.toString())}?w=1200&h=760`,
   };
 };
 
@@ -71,12 +74,13 @@ export const ExternalLinkPreviewCard = ({ url }: ExternalLinkPreviewCardProps) =
 
   if (!preview) {
     return (
-      <a className="pcp-link-preview pcp-link-preview--fallback-only" href={url} target="_blank" rel="noreferrer">
+      <div className="pcp-link-preview pcp-link-preview--fallback-only pcp-link-preview--invalid" role="note">
         <div className="pcp-link-preview-fallback pcp-link-preview-fallback--neutral">
-          <span className="pcp-link-preview-fallback-badge">Результат</span>
-          <strong>{url}</strong>
+          <span className="pcp-link-preview-fallback-badge">Ссылка недоступна</span>
+          <strong>Некорректная ссылка результата</strong>
+          <span>Поддерживаются только HTTPS-ссылки и локальные HTTP-превью.</span>
         </div>
-      </a>
+      </div>
     );
   }
 

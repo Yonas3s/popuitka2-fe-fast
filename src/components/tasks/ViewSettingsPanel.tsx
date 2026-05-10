@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { TaskPriority } from '../../types/models';
+import type { DirectionTag, TaskPriority, TaskType } from '../../types/models';
 import { ALL_TASK_PRIORITIES, TASK_PRIORITY_CFG } from './TaskMetaMenu';
 
 export type ViewMode = 'list' | 'board';
@@ -28,6 +28,13 @@ type ViewSettingsPanelProps = {
   onVisibleColumnsChange: (cols: VisibleColumns) => void;
   priorityFilter: TaskPriority[];
   onPriorityFilterChange: (next: TaskPriority[]) => void;
+  taskTypeFilter?: 'all' | TaskType;
+  onTaskTypeFilterChange?: (value: 'all' | TaskType) => void;
+  directionFilter?: 'all' | string;
+  onDirectionFilterChange?: (value: 'all' | string) => void;
+  directions?: DirectionTag[];
+  directionsLoading?: boolean;
+  visibleCount?: number;
 };
 
 const COL_LABELS: { key: keyof VisibleColumns; label: string }[] = [
@@ -39,6 +46,15 @@ const COL_LABELS: { key: keyof VisibleColumns; label: string }[] = [
   { key: 'created', label: 'Created' },
 ];
 
+const TASK_TYPE_OPTIONS: { value: 'all' | TaskType; label: string }[] = [
+  { value: 'all', label: 'All types' },
+  { value: 'task', label: 'Task' },
+  { value: 'bug', label: 'Bug' },
+  { value: 'feature', label: 'Feature' },
+  { value: 'improvement', label: 'Improvement' },
+  { value: 'chore', label: 'Chore' },
+];
+
 export const ViewSettingsPanel = ({
   open, onClose,
   grouping, onGroupingChange,
@@ -46,6 +62,13 @@ export const ViewSettingsPanel = ({
   showEmptyGroups, onShowEmptyGroupsChange,
   visibleColumns, onVisibleColumnsChange,
   priorityFilter, onPriorityFilterChange,
+  taskTypeFilter = 'all',
+  onTaskTypeFilterChange,
+  directionFilter = 'all',
+  onDirectionFilterChange,
+  directions = [],
+  directionsLoading = false,
+  visibleCount,
 }: ViewSettingsPanelProps) => {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -76,6 +99,9 @@ export const ViewSettingsPanel = ({
     if (set.has(p)) set.delete(p); else set.add(p);
     onPriorityFilterChange(Array.from(set));
   };
+
+  const hasTaskFilters = Boolean(onTaskTypeFilterChange && onDirectionFilterChange);
+  const activeTaskFilterCount = Number(taskTypeFilter !== 'all') + Number(directionFilter !== 'all');
 
   return (
     <div className="vsp" ref={ref}>
@@ -143,6 +169,79 @@ export const ViewSettingsPanel = ({
           );
         })}
       </div>
+
+      {hasTaskFilters && (
+        <>
+          <div className="vsp-divider" />
+
+          <div className="vsp-section-label">
+            <span>Filter by task</span>
+            {activeTaskFilterCount > 0 && (
+              <button
+                type="button"
+                className="vsp-section-clear"
+                onClick={() => {
+                  onTaskTypeFilterChange?.('all');
+                  onDirectionFilterChange?.('all');
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <div className="vsp-row">
+            <span className="vsp-label">Type</span>
+            <select
+              className="vsp-select"
+              value={taskTypeFilter}
+              onChange={(event) => onTaskTypeFilterChange?.(event.target.value as 'all' | TaskType)}
+            >
+              {TASK_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="vsp-row">
+            <span className="vsp-label">Direction</span>
+            <select
+              className="vsp-select"
+              value={directionFilter}
+              disabled={directionsLoading || directions.length === 0}
+              onChange={(event) => onDirectionFilterChange?.(event.target.value as 'all' | string)}
+            >
+              <option value="all">All directions</option>
+              {directions.map((direction) => (
+                <option key={direction.id} value={direction.id}>
+                  {direction.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {typeof visibleCount === 'number' ? (
+            <div className="vsp-filter-footer">
+              <span>Shown: {visibleCount}</span>
+              {(priorityFilter.length > 0 || activeTaskFilterCount > 0) && (
+                <button
+                  type="button"
+                  className="vsp-section-clear"
+                  onClick={() => {
+                    onPriorityFilterChange([]);
+                    onTaskTypeFilterChange?.('all');
+                    onDirectionFilterChange?.('all');
+                  }}
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+          ) : null}
+        </>
+      )}
 
       <div className="vsp-divider" />
 

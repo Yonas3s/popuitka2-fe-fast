@@ -684,7 +684,7 @@ export const TeamDetailsPage = () => {
                 ) : null}
 
                 <div className="team-dash-v3-members-list">
-                  {membersForView.map((member) => (
+                  {membersForView.map((member, memberIndex) => (
                     <article key={member.id} className="team-dash-v3-member-row">
                       <div className="team-dash-v3-member-avatar">{getInitials(member.username || member.email || 'U')}</div>
 
@@ -697,7 +697,7 @@ export const TeamDetailsPage = () => {
                         <span className="team-dash-v3-member-role">{getRoleLabel(member.role)}</span>
 
                         {canManageTeam && member.id !== currentUser?.id ? (
-                          <div className="team-dash-v3-member-menu">
+                          <div className={`team-dash-v3-member-menu ${memberIndex >= membersForView.length - 1 ? 'is-drop-up' : ''}`}>
                             <button
                               type="button"
                               className="team-dash-v3-member-menu-trigger"

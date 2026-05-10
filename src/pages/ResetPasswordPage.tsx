@@ -37,6 +37,10 @@ export const ResetPasswordPage = () => {
     if (!storeEmail && emailFromUrl && tokenFromUrl) {
       setFlow(emailFromUrl, tokenFromUrl);
     }
+
+    if (emailFromUrl || tokenFromUrl) {
+      window.history.replaceState({}, document.title, '/reset-password');
+    }
   }, [emailFromUrl, tokenFromUrl, storeEmail, setFlow]);
 
   const {

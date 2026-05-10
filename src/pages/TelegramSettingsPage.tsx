@@ -209,13 +209,14 @@ export const TelegramSettingsPage = () => {
                 </button>
               </div>
 
-              <div className="tg-qr-wrap">
-                <img
-                  className="tg-qr"
-                  alt="QR для открытия бота в Telegram"
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(link.deepLink)}`}
-                />
-                <p className="tg-qr-hint">Отсканируй с телефона, чтобы открыть бота</p>
+              <div className="tg-secure-link-card" role="note">
+                <span className="tg-secure-link-icon" aria-hidden="true">
+                  ↗
+                </span>
+                <div>
+                  <strong>Секретная ссылка не уходит в QR-сервисы</strong>
+                  <p>Откройте Telegram на этом устройстве или скопируйте ссылку на телефон.</p>
+                </div>
               </div>
 
               <div className={`tg-countdown ${expired ? 'expired' : ''}`}>
