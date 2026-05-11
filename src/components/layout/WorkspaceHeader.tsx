@@ -20,6 +20,7 @@ export const WorkspaceHeader = ({ activeTab }: WorkspaceHeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isEmailRevealed, setIsEmailRevealed] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && !user && !meLoading && !meLoaded) {
@@ -47,6 +48,8 @@ export const WorkspaceHeader = ({ activeTab }: WorkspaceHeaderProps) => {
     setMobileOpen(false);
     navigate('/signin');
   };
+
+  const emailToggleClassName = `header-email-toggle${isEmailRevealed ? '' : ' is-blurred'}`;
 
   return (
     <>
@@ -79,7 +82,18 @@ export const WorkspaceHeader = ({ activeTab }: WorkspaceHeaderProps) => {
           <>
             <div className="workspace-user-block" aria-label="Текущий пользователь">
               <strong>{user?.username || 'Пользователь'}</strong>
-              <span>{meLoading ? 'Загрузка...' : (user?.email || '')}</span>
+              {meLoading ? (
+                <span>Загрузка...</span>
+              ) : user?.email ? (
+                <button
+                  type="button"
+                  className={emailToggleClassName}
+                  onClick={() => setIsEmailRevealed(true)}
+                  aria-label="Показать почту"
+                >
+                  {user.email}
+                </button>
+              ) : null}
             </div>
             <button type="button" className="ui-btn ui-btn-ghost ui-btn-sm workspace-logout-desktop" onClick={handleLogout}>
               Выйти
@@ -109,7 +123,16 @@ export const WorkspaceHeader = ({ activeTab }: WorkspaceHeaderProps) => {
           <nav className="workspace-mobile-menu" aria-label="Основная навигация">
             <div className="workspace-mobile-user">
               <strong>{user?.username || 'Пользователь'}</strong>
-              <span>{user?.email || ''}</span>
+              {user?.email ? (
+                <button
+                  type="button"
+                  className={emailToggleClassName}
+                  onClick={() => setIsEmailRevealed(true)}
+                  aria-label="Показать почту"
+                >
+                  {user.email}
+                </button>
+              ) : null}
             </div>
 
             <div className="workspace-mobile-links">

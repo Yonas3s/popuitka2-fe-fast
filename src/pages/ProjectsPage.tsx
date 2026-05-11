@@ -296,7 +296,7 @@ export const ProjectsPage = () => {
             {projects.map((project, index) => {
               const accentClass = PROJECT_ACCENT_CLASSES[index % PROJECT_ACCENT_CLASSES.length];
               const status = getProjectStatusMeta(project.status);
-              const description = project.description || 'Рабочее пространство проекта для поэтапного управления релизом.';
+              const description = project.description?.trim();
               return (
                 <Link className="projects-v3-card" key={project.id} to={`/projects/${project.id}`}>
                   <div className="projects-v3-card-head">
@@ -307,7 +307,7 @@ export const ProjectsPage = () => {
                   </div>
 
                   <h3>{project.projectName}</h3>
-                  <p className="projects-v3-description">{description}</p>
+                  {description ? <p className="projects-v3-description">{description}</p> : null}
 
                   <div className="projects-v3-meta">
                     <span>{getProjectVersion(project, index)}</span>

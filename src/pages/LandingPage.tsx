@@ -15,7 +15,6 @@ import { useAuthStore } from '../store/auth.store';
  * real screenshot drops in.
  */
 const MOBILE_MQ = '(max-width: 700px)';
-
 const MockupSlot = ({
   label,
   ratio = '16 / 10',
@@ -87,6 +86,7 @@ export const LandingPage = () => {
   const meLoaded = useAuthStore((state) => state.meLoaded);
   const loadMe = useAuthStore((state) => state.loadMe);
   const [health, setHealth] = useState<'loading' | 'online' | 'offline'>('loading');
+  const [isEmailRevealed, setIsEmailRevealed] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && !user && !meLoading && !meLoaded) {
@@ -96,6 +96,7 @@ export const LandingPage = () => {
 
   const liveLabel = health === 'online' ? 'API v1 · онлайн' : 'API · проверка';
   const healthClass = `health-${health}`;
+  const emailToggleClassName = `header-email-toggle${isEmailRevealed ? '' : ' is-blurred'}`;
   useEffect(() => {
     let cancelled = false;
     apiService
@@ -136,7 +137,16 @@ export const LandingPage = () => {
             <>
               <div className="stitch-user-info">
                 <strong>{user?.username || 'Загрузка...'}</strong>
-                <span>{user?.email || ''}</span>
+                {user?.email ? (
+                  <button
+                    type="button"
+                    className={emailToggleClassName}
+                    onClick={() => setIsEmailRevealed(true)}
+                    aria-label="Показать почту"
+                  >
+                    {user.email}
+                  </button>
+                ) : null}
               </div>
               <Link to="/projects" className="stitch-solid-button">К проектам</Link>
             </>
