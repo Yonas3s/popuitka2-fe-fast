@@ -6135,6 +6135,7 @@ p {
 /* How it works */
 
 .stitch-how {
+  scroll-margin-top: 78px;
   padding: 80px 0;
   background: #f9fafb;
   border-top: 1px solid #e5e7eb;
@@ -16201,6 +16202,293 @@ a.agent-v2-task-title:hover {
   gap: 10px;
   padding: 36px 48px;
 }
+
+.landing-mockup-ui {
+  flex: 1;
+  min-height: 0;
+  padding: 22px;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  overflow: hidden;
+}
+
+.landing-mini-modal,
+.landing-mini-board,
+.landing-mini-github,
+.landing-mini-client {
+  height: 100%;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  color: #111827;
+}
+
+.landing-mini-modal {
+  width: min(330px, 100%);
+  margin: 0 auto;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 18px 40px -28px rgba(15, 23, 42, 0.32);
+}
+
+.landing-mini-modal-head,
+.landing-mini-toolbar,
+.landing-mini-client-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.landing-mini-modal-head strong,
+.landing-mini-toolbar strong,
+.landing-mini-client-head strong,
+.landing-mini-gh-card strong,
+.landing-mini-task strong,
+.landing-mini-review-card strong {
+  font-size: 13px;
+  line-height: 1.25;
+  font-weight: 750;
+}
+
+.landing-mini-modal-head span,
+.landing-mini-toolbar span,
+.landing-mini-client-head span,
+.landing-mini-gh-card small,
+.landing-mini-task small {
+  font-size: 10px;
+  color: #64748b;
+  line-height: 1.25;
+}
+
+.landing-mini-modal label {
+  display: grid;
+  gap: 6px;
+  font-size: 10px;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.landing-mini-modal label span {
+  padding: 9px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #111827;
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.landing-mini-segments {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  padding: 3px;
+  border-radius: 9px;
+  background: #eef2ff;
+}
+
+.landing-mini-segments span {
+  padding: 7px 10px;
+  border-radius: 7px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 750;
+  color: #64748b;
+}
+
+.landing-mini-segments .is-active {
+  color: #1d4ed8;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.landing-mini-stage-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+
+.landing-mini-stage-row span {
+  padding: 8px 6px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.landing-mini-modal button,
+.landing-mini-client-actions button {
+  border: 0;
+  border-radius: 8px;
+  background: #111827;
+  color: #fff;
+  padding: 9px 12px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.landing-mini-board {
+  grid-template-rows: auto auto auto auto 1fr;
+}
+
+.landing-mini-task,
+.landing-mini-gh-card,
+.landing-mini-review-card,
+.landing-mini-agent {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 10px 28px -24px rgba(15, 23, 42, 0.45);
+}
+
+.landing-mini-task {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+}
+
+.landing-mini-task div,
+.landing-mini-gh-card div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.landing-mini-task strong,
+.landing-mini-gh-card strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.landing-mini-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  background: #93c5fd;
+}
+
+.landing-mini-dot.is-review { background: #fbbf24; }
+.landing-mini-dot.is-done { background: #34d399; }
+
+.landing-mini-agent {
+  align-self: end;
+  padding: 12px;
+  background: #111827;
+  color: #fff;
+}
+
+.landing-mini-agent span {
+  font-size: 10px;
+  color: #93c5fd;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.landing-mini-agent p,
+.landing-mini-review-card p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.landing-mini-gh-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+}
+
+.landing-mini-gh-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: #111827;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.landing-mini-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.landing-mini-events {
+  display: grid;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.landing-mini-events span {
+  padding: 9px 10px;
+  border-left: 3px solid #3b82f6;
+  border-radius: 8px;
+  background: #fff;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.landing-mini-client {
+  align-content: center;
+}
+
+.landing-mini-progress {
+  height: 10px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.landing-mini-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #3b82f6, #22c55e);
+}
+
+.landing-mini-review-card {
+  padding: 14px;
+}
+
+.landing-mini-client-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.landing-mini-client-actions span {
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #eef2ff;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .lm-line {
   height: 10px;
   border-radius: 6px;
@@ -16318,6 +16606,18 @@ a.agent-v2-task-title:hover {
 .landing-killer:nth-child(even) > :first-child {
   order: 2;
 }
+
+.landing-killer:nth-child(3) .landing-killer-head,
+.landing-killer:nth-child(3) h3,
+.landing-killer:nth-child(3) p {
+  grid-column: 1;
+}
+
+.landing-killer:nth-child(3) .landing-killer-visual {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+}
+
 .landing-killer-head {
   display: flex;
   align-items: center;
@@ -16632,6 +16932,13 @@ a.agent-v2-task-title:hover {
   }
   .landing-killer:nth-child(even) > :first-child {
     order: 0;
+  }
+  .landing-killer:nth-child(3) .landing-killer-head,
+  .landing-killer:nth-child(3) h3,
+  .landing-killer:nth-child(3) p,
+  .landing-killer:nth-child(3) .landing-killer-visual {
+    grid-column: auto;
+    grid-row: auto;
   }
   .landing-killer h3 { font-size: 26px; }
   .landing-how-grid,

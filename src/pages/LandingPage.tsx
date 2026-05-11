@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { apiService } from '../lib/api/service';
 import { APP_DISPLAY_YEAR, APP_TITLE } from '../lib/config/env';
 import { UnifiedHeader } from '../components/layout/UnifiedHeader';
@@ -23,6 +24,7 @@ const MockupSlot = ({
   src,
   srcMobile,
   alt,
+  children,
 }: {
   label: string;
   ratio?: string;
@@ -32,6 +34,7 @@ const MockupSlot = ({
   /** Optional mobile-specific screenshot. Swapped in via <picture> at ≤700px. */
   srcMobile?: string;
   alt?: string;
+  children?: ReactNode;
 }) => {
   const rootClass = [
     'landing-mockup',
@@ -53,7 +56,9 @@ const MockupSlot = ({
         <span />
         <span />
       </div>
-      {src ? (
+      {children ? (
+        <div className="landing-mockup-ui">{children}</div>
+      ) : src ? (
         <div className="landing-mockup-image">
           <picture>
             {srcMobile && <source media={MOBILE_MQ} srcSet={srcMobile} />}
@@ -319,7 +324,28 @@ export const LandingPage = () => {
               <p>
                 Режим <b>stages</b> — для релизов с этапами (dev → staging → prod). Режим <b>flat</b> — если задачи плоским списком. Переключается при создании.
               </p>
-              <MockupSlot label="Модалка создания проекта (имя + workflow_type)" ratio="4 / 3" />
+              <MockupSlot label="Модалка создания проекта" ratio="4 / 3">
+                <div className="landing-mini-modal">
+                  <div className="landing-mini-modal-head">
+                    <strong>Новый проект</strong>
+                    <span>Release workspace</span>
+                  </div>
+                  <label>
+                    Название
+                    <span>Orbit Payments</span>
+                  </label>
+                  <div className="landing-mini-segments">
+                    <span className="is-active">stages</span>
+                    <span>flat</span>
+                  </div>
+                  <div className="landing-mini-stage-row">
+                    <span>Dev</span>
+                    <span>Staging</span>
+                    <span>Prod</span>
+                  </div>
+                  <button type="button">Создать проект</button>
+                </div>
+              </MockupSlot>
             </article>
 
             <article className="landing-how-step">
@@ -330,7 +356,31 @@ export const LandingPage = () => {
               <p>
                 Вручную, через CLI <code>unit-labs task new</code>, из Claude Code или Codex через MCP или попроси <b>AI-агента</b> разложить промпт на задачи — 5-10 штук за пару секунд.
               </p>
-              <MockupSlot label="Список задач + запуск Agent run с промптом" ratio="4 / 3" />
+              <MockupSlot label="Список задач и AI-агент" ratio="4 / 3">
+                <div className="landing-mini-board">
+                  <div className="landing-mini-toolbar">
+                    <strong>Orbit Payments</strong>
+                    <span>v1.2.0</span>
+                  </div>
+                  {[
+                    ['Checkout API: идемпотентность', 'BE', 'feature'],
+                    ['Публичная ссылка для клиента', 'FE', 'review'],
+                    ['Webhook: auto-close on merge', 'BE', 'done'],
+                  ].map(([title, direction, status]) => (
+                    <div className="landing-mini-task" key={title}>
+                      <span className={`landing-mini-dot is-${status}`} />
+                      <div>
+                        <strong>{title}</strong>
+                        <small>{direction} · {status}</small>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="landing-mini-agent">
+                    <span>AI Agent</span>
+                    <p>Разложи релиз payments на задачи</p>
+                  </div>
+                </div>
+              </MockupSlot>
             </article>
 
             <article className="landing-how-step">
@@ -341,7 +391,26 @@ export const LandingPage = () => {
               <p>
                 Один клик — устанавливаешь GitHub App, выбираешь репо, включаешь <b>auto-close on merge</b>. Дальше merge → done происходит сам.
               </p>
-              <MockupSlot label="Панель привязки репо + список webhook-событий" ratio="4 / 3" />
+              <MockupSlot label="Панель GitHub репозитория" ratio="4 / 3">
+                <div className="landing-mini-github">
+                  <div className="landing-mini-gh-card">
+                    <span className="landing-mini-gh-icon">GH</span>
+                    <div>
+                      <strong>acme/orbit-payments</strong>
+                      <small>GitHub App connected</small>
+                    </div>
+                  </div>
+                  <div className="landing-mini-toggle-row">
+                    <span>auto-close on merge</span>
+                    <strong>on</strong>
+                  </div>
+                  <div className="landing-mini-events">
+                    <span>merged pull request #48</span>
+                    <span>closed task FE-12</span>
+                    <span>stage updated to review</span>
+                  </div>
+                </div>
+              </MockupSlot>
             </article>
 
             <article className="landing-how-step">
@@ -352,7 +421,25 @@ export const LandingPage = () => {
               <p>
                 Сгенерируй <code>/p/&lt;token&gt;</code>, отправь в мессенджер. Клиент смотрит прогресс, ставит Approve — этап закрыт, следующий активен.
               </p>
-              <MockupSlot label="Кнопка «Запросить ревью» + копирование клиент-ссылки" ratio="4 / 3" />
+              <MockupSlot label="Клиентская ссылка и approve" ratio="4 / 3">
+                <div className="landing-mini-client">
+                  <div className="landing-mini-client-head">
+                    <strong>Client review</strong>
+                    <span>public link</span>
+                  </div>
+                  <div className="landing-mini-progress">
+                    <span style={{ width: '72%' }} />
+                  </div>
+                  <div className="landing-mini-review-card">
+                    <strong>Staging готов</strong>
+                    <p>4 задачи закрыты, 1 ждет апрув клиента.</p>
+                  </div>
+                  <div className="landing-mini-client-actions">
+                    <button type="button">Approve</button>
+                    <span>/p/orbit-42</span>
+                  </div>
+                </div>
+              </MockupSlot>
             </article>
           </div>
         </div>
