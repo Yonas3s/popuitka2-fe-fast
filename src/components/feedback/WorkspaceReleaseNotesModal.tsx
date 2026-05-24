@@ -122,32 +122,34 @@ export const WorkspaceReleaseNotesModal = () => {
                 <div className="workspace-release-preview-shot" aria-hidden="true">
                   {preview.tone === 'workspace' ? (
                     <>
-                      <div className="workspace-release-mini-hero">
-                        <span />
-                        <strong>mvp</strong>
-                        <em>Ревью</em>
-                      </div>
-                      <div className="workspace-release-mini-toolbar">
-                        <span />
-                        <span />
-                        <span />
-                      </div>
-                      <div className="workspace-release-mini-list">
-                        <span />
-                        <span />
-                        <span />
+                      <div className="workspace-release-mini-shell">
+                        <aside>
+                          <span />
+                          <span />
+                          <span />
+                        </aside>
+                        <main>
+                          <div />
+                          <section>
+                            <span />
+                            <span />
+                          </section>
+                        </main>
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className="workspace-release-client-card">
-                        <span />
-                        <strong>Vercel preview</strong>
-                        <em>Открыть результат</em>
-                      </div>
-                      <div className="workspace-release-client-tasks">
-                        <span />
-                        <span />
+                      <div className="workspace-release-settings-shot">
+                        <aside>
+                          <span />
+                          <span />
+                          <span />
+                        </aside>
+                        <main>
+                          <strong />
+                          <span />
+                          <span />
+                        </main>
                       </div>
                     </>
                   )}
